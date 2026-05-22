@@ -3,12 +3,11 @@ import os
 from PIL import Image
 import numpy as np
 
-# 내부 메모리 추적용 글로벌 레지스트리 (1:1 단일 채널용 및 이클립스 다중 채널용 공유)
-IMAGE_NAME_REGISTRY = {}
+# 내부 메모리 추적용 글로벌 레지스트리
 ECLIPSE_NAME_REGISTRY = {}
 
 # ========================================================
-# [기존 기능] 1. 기본형 다이나믹 이미지 배치 노드 (Optional 방식)
+# [기본형] 1. 기본형 다이나믹 이미지 배치 노드 (Optional 방식)
 # ========================================================
 class DynamicImageBatch:
     def __init__(self):
@@ -63,7 +62,7 @@ class DynamicImageBatch:
 
 
 # ========================================================
-# [기존 기능] 2. 첫 번째 이미지 저장 노드 (단일 채널 파일명 전달용)
+# [기본형] 2. 첫 번째 이미지 저장 노드 (단일 채널 파일명 전달용)
 # ========================================================
 class TJ_SaveImage_Primary:
     def __init__(self):
@@ -101,7 +100,7 @@ class TJ_SaveImage_Primary:
 
 
 # ========================================================
-# [기존 기능] 3. 두 번째 이미지 저장 노드 (단일 채널 접미사 추가용)
+# [기본형] 3. 두 번째 이미지 저장 노드 (단일 채널 접미사 추가용)
 # ========================================================
 class TJ_SaveImage_Subsequent:
     def __init__(self):
@@ -141,7 +140,7 @@ class TJ_SaveImage_Subsequent:
 
 
 # ========================================================
-# [신규 기능] 4. 이클립스 전용 다이나믹 이미지 배치 노드 (20개 채널 대응)
+# [이클립스 전용] 4. 다이나믹 이미지 배치 노드 (연결 이슈 해결 완료)
 # ========================================================
 class DynamicImageBatchEclipse:
     def __init__(self):
@@ -149,11 +148,13 @@ class DynamicImageBatchEclipse:
         
     @classmethod
     def INPUT_TYPES(s):
+        # [해결점] 이클립스의 독자적인 데이터 형식을 강제로 연결하기 위해
+        # 타입을 만능 와일드카드인 "*"로 설정하여 선 연결 제한을 해제합니다.
         return {
             "required": {},
             "optional": {
                 "image_1": ("IMAGE",),
-                "files_1": ("LIST",), 
+                "files_1": ("*",), 
             }
         }
 
@@ -190,9 +191,19 @@ class DynamicImageBatchEclipse:
                         valid_images.append(img)
                         
                         filename_found = "Eclipse_Out"
-                        if files_list and isinstance(files_list, list) and len(files_list) > 0:
-                            raw_path = str(files_list[0])
-                            filename_found = os.path.splitext(os.path.basename(raw_path))[0]
+                        # 이클립스에서 넘어온 데이터를 텍스트로 안전하게 파싱 및 분해
+                        if files_list:
+                            if isinstance(files_list, list) and len(files_list) > 0:
+                                raw_path = str(files_list[0])
+                                filename_found = os.path.splitext(os.path.basename(raw_path))[0]
+                            elif isinstance(files_list, dict):
+                                # 딕셔너리 형태로 감싸져서 전달될 경우를 위한 예외 처리
+                                for k, v in files_list.items():
+                                    if isinstance(v, list) and len(v) > 0:
+                                        filename_found = os.path.splitext(os.path.basename(str(v[0])))[0]
+                                        break
+                            else:
+                                filename_found = os.path.splitext(os.path.basename(str(files_list)))[0]
                         
                         batched_names.append(filename_found)
         
@@ -217,7 +228,7 @@ class DynamicImageBatchEclipse:
 
 
 # ========================================================
-# [신규 기능] 5. 이클립스 전용 후속 파일 저장 노드 (서픽스 자동 매칭)
+# [이클립스 전용] 5. 후속 파일 저장 노드
 # ========================================================
 class TJ_SaveImage_EclipseSubsequent:
     def __init__(self):
@@ -263,7 +274,7 @@ class TJ_SaveImage_EclipseSubsequent:
 
 
 # ========================================================
-# 6. 매핑 매니저 시스템 등록
+# 6. 매핑 매니저 시스템 등록 및 이름 반영
 # ========================================================
 NODE_CLASS_MAPPINGS = {
     "DynamicImageBatch": DynamicImageBatch,
