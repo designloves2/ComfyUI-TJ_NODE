@@ -20,16 +20,16 @@ This is a set of custom nodes designed to resolve image alignment and filename l
     * *You can maintain the original extension or manually specify the format (`PNG`, `JPG`, `WebP`), and any format will be saved with lossless/highest quality (100%).*
 * **유연한 커스텀 경로 지원 (Flexible Custom Path)**: 저장 경로 칸을 비워두면 원본 폴더에 저장됩니다. 절대 경로(풀 패스)는 물론, `..\` 이나 `\upscale` 같은 상대 경로 입력을 지원하여 원본 폴더를 기준으로 정밀한 하위/상위 폴더 분할 저장이 가능합니다. (없는 폴더는 자동 생성)
     * *If the save path is left blank, it is saved in the original folder. It supports absolute paths as well as relative paths like `..\` or `\upscale`, allowing precise sub/parent folder partitioning based on the original folder. (Non-existent folders are automatically created)*
+
 *💡 활용 예시 (이클립스 원본 경로가 C:\AI\output\image\2026-05-22\ 일 때)
 \upscale 혹은 upscale 입력 시:
 
 C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결과물이 깔끔하게 보관됩니다.
-
 ..\ 입력 시:
 
 한 단계 상위인 C:\AI\output\image\ 폴더에 바로 결과물이 저장됩니다.
-
 ..\upscale_total 입력 시:
+
 ---
 
 ## 노드 라인업 (Node Lineup)
