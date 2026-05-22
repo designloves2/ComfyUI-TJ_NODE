@@ -11,16 +11,12 @@ ECLIPSE_NAME_REGISTRY = {}
 def save_image_with_quality(img_obj, file_path, ext):
     ext = ext.lower().strip('.')
     if ext == 'png':
-        # PNG는 무손실이므로 최고 압축(파일 용량 최적화)으로 저장해도 화질 저하가 없습니다.
         img_obj.save(file_path, format='PNG', compress_level=3)
     elif ext in ['jpg', 'jpeg']:
-        # JPG 화질 100% 고정 및 최적화 옵션 활성화
         img_obj.save(file_path, format='JPEG', quality=100, subsampling=0, optimize=True)
     elif ext == 'webp':
-        # WebP 무손실(Lossless) 모드 및 퀄리티 100% 설정
         img_obj.save(file_path, format='WEBP', lossless=True, quality=100)
     else:
-        # 혹시 모를 예외 상황은 PNG로 안전하게 저장
         img_obj.save(file_path, format='PNG')
 
 # ========================================================
@@ -105,19 +101,20 @@ class TJ_SaveImage_Primary:
         full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(
             filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
         )
-        final_filename = f"{filename}_{counter:05d}"
+        final_filename = f"{filename}_{counter:05d}.png"
+        file_path = os.path.join(full_output_folder, final_filename)
         
         for image in images:
             i = 255.0 * image.cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
-            file_path = os.path.join(full_output_folder, f"{final_filename}.png")
             img.save(file_path, compress_level=4)
             
-        return (images, final_filename + ".png") # 기본형은 확장자를 포함해서 토큰을 넘겨줍니다.
+        # 기본형 노드는 전체 절대 경로를 통째로 넘겨주어 하위 노드가 원본 폴더를 추적할 수 있게 합니다.
+        return (images, file_path)
 
 
 # ========================================================
-# [기본형] 3. 두 번째 이미지 저장 노드 (확장자 선택 및 100% 화질 보강)
+# [기본형] 3. 두 번째 이미지 저장 노드 (경로 입력 기능 보강)
 # ========================================================
 class TJ_SaveImage_Subsequent:
     def __init__(self):
@@ -132,6 +129,7 @@ class TJ_SaveImage_Subsequent:
                 "base_filename": ("STRING", {"forceInput": True}),
                 "filename_suffix": ("STRING", {"default": "_upscaled"}),
                 "extension_option": (["Original", "png", "jpg", "webp"], {"default": "Original"}),
+                "save_path_opt": ("STRING", {"default": ""}), # 커스텀 저장 경로 입력 항목 추가
             }
         }
     
@@ -140,13 +138,20 @@ class TJ_SaveImage_Subsequent:
     FUNCTION = "save_images"
     CATEGORY = "TJ_Node/Image"
 
-    def save_images(self, images, base_filename, filename_suffix, extension_option):
-        # 들어온 파일명에서 순수 이름과 원본 확장자 분리
+    def save_images(self, images, base_filename, filename_suffix, extension_option, save_path_opt):
         orig_path = Path(base_filename)
         pure_name = orig_path.stem
         orig_ext = orig_path.suffix.lower().strip('.') if orig_path.suffix else "png"
         
-        # 최종 확장자 결정
+        # 1. 저장할 디렉토리 경로 결정 (비어있으면 원본 폴더, 입력 있으면 해당 폴더)
+        if save_path_opt.strip() == "":
+            final_dir = orig_path.parent
+        else:
+            final_dir = Path(save_path_opt.strip())
+            
+        # 폴더가 존재하지 않으면 자동으로 생성합니다.
+        final_dir.mkdir(parents=True, exist_ok=True)
+        
         target_ext = orig_ext if extension_option == "Original" else extension_option
         final_filename = f"{pure_name}{filename_suffix}"
         
@@ -159,14 +164,14 @@ class TJ_SaveImage_Subsequent:
             else:
                 file_name = f"{final_filename}.{target_ext}"
                 
-            file_path = os.path.join(self.output_dir, file_name)
-            save_image_with_quality(img, file_path, target_ext)
+            file_path = final_dir / file_name
+            save_image_with_quality(img, str(file_path), target_ext)
             
         return {"ui": {"images": []}}
 
 
 # ========================================================
-# [이클립스 전용] 4. 다이나믹 이미지 배치 노드 (이름+확장자 통째로 수집)
+# [이클립스 전용] 4. 다이나믹 이미지 배치 노드 (전체 경로 보존)
 # ========================================================
 class DynamicImageBatchEclipse:
     def __init__(self):
@@ -188,7 +193,7 @@ class DynamicImageBatchEclipse:
     
     def do_batch(self, **kwargs):
         valid_images = []
-        batched_names = [] # 여기에는 확장자가 포함된 전체 파일명이 담깁니다.
+        batched_paths = [] # 확장자뿐만 아니라 전체 경로를 보존하기 위해 이름을 변경합니다.
         
         def get_number(key_str):
             try: return int(key_str.split('_')[1])
@@ -214,27 +219,27 @@ class DynamicImageBatchEclipse:
                     if len(img.shape) == 4 and img.shape[0] > 0:
                         valid_images.append(img)
                         
-                        filename_found = "Eclipse_Out.png"
+                        full_path_found = ""
                         if files_list:
-                            raw_str_path = ""
                             if isinstance(files_list, list) and len(files_list) > 0:
-                                raw_str_path = str(files_list[0])
+                                full_path_found = str(files_list[0])
                             elif isinstance(files_list, dict):
                                 for k, v in files_list.items():
                                     if isinstance(v, list) and len(v) > 0:
-                                        raw_str_path = str(v[0])
+                                        full_path_found = str(v[0])
                                         break
                                     elif isinstance(v, str):
-                                        raw_str_path = v
+                                        full_path_found = v
                                         break
                             else:
-                                raw_str_path = str(files_list)
-                            
-                            if raw_str_path:
-                                # 이번엔 stem 대신 name을 가져와서 확장자 정보까지 통째로 보존합니다.
-                                filename_found = Path(raw_str_path).name
+                                full_path_found = str(files_list)
                         
-                        batched_names.append(filename_found)
+                        # 경로가 비어있을 경우를 대비한 가상 기본 경로 지정
+                        if not full_path_found:
+                            import folder_paths
+                            full_path_found = os.path.join(folder_paths.get_output_directory(), "Eclipse_Out.png")
+                            
+                        batched_paths.append(full_path_found)
         
         if not valid_images:
             return (torch.zeros((1, 64, 64, 3), dtype=torch.float32),)
@@ -251,13 +256,13 @@ class DynamicImageBatchEclipse:
             processed_images.append(img)
 
         batched_images = torch.cat(processed_images, dim=0)
-        ECLIPSE_NAME_REGISTRY[id(batched_images)] = batched_names
+        ECLIPSE_NAME_REGISTRY[id(batched_images)] = batched_paths
         
         return (batched_images,)
 
 
 # ========================================================
-# [이클립스 전용] 5. 후속 파일 저장 노드 (오리지날 추적 및 100% 화질 보강)
+# [이클립스 전용] 5. 후속 파일 저장 노드 (폴더 경로 추적 및 커스텀 지정)
 # ========================================================
 class TJ_SaveImage_EclipseSubsequent:
     def __init__(self):
@@ -271,6 +276,7 @@ class TJ_SaveImage_EclipseSubsequent:
                 "images": ("IMAGE",),
                 "filename_suffix": ("STRING", {"default": "_upscaled"}),
                 "extension_option": (["Original", "png", "jpg", "webp"], {"default": "Original"}),
+                "save_path_opt": ("STRING", {"default": ""}), # 커스텀 저장 경로 입력 항목 추가
             }
         }
     
@@ -279,44 +285,52 @@ class TJ_SaveImage_EclipseSubsequent:
     FUNCTION = "save_images"
     CATEGORY = "TJ_Node/Image"
 
-    def save_images(self, images, filename_suffix, extension_option):
-        source_names = ECLIPSE_NAME_REGISTRY.get(id(images), None)
+    def save_images(self, images, filename_suffix, extension_option, save_path_opt):
+        source_paths = ECLIPSE_NAME_REGISTRY.get(id(images), None)
         
-        if source_names is None:
+        if source_paths is None:
             for registered_id, value in ECLIPSE_NAME_REGISTRY.items():
                 if isinstance(value, list) and len(value) == images.shape[0]:
-                    source_names = value
+                    source_paths = value
                     break
                     
-        if not source_names:
-            source_names = [f"Eclipse_Bulk_{i}.png" for i in range(images.shape[0])]
+        if not source_paths:
+            source_paths = [os.path.join(self.output_dir, f"Eclipse_Bulk_{i}.png") for i in range(images.shape[0])]
         
         for idx in range(images.shape[0]):
             image = images[idx : idx + 1]
             i = 255.0 * image.squeeze(0).cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             
-            # 파일 정보 분석
-            full_name = source_names[idx] if idx < len(source_names) else f"Extra_{idx}.png"
-            file_path_obj = Path(full_name)
+            # 원본 풀 경로 객체화
+            full_path_str = source_paths[idx] if idx < len(source_paths) else os.path.join(self.output_dir, f"Extra_{idx}.png")
+            orig_path_obj = Path(full_path_str)
             
-            pure_name = file_path_obj.stem
-            orig_ext = file_path_obj.suffix.lower().strip('.') if file_path_obj.suffix else "png"
+            pure_name = orig_path_obj.stem
+            orig_ext = orig_path_obj.suffix.lower().strip('.') if orig_path_obj.suffix else "png"
             
-            # 사용자가 설정한 옵션에 따라 확장자 분기 처리
+            # 1. 저장할 폴더 경로 탐색 로직
+            if save_path_opt.strip() == "":
+                # 비어 있으면 원본 파일이 저장되었던 폴더 그대로 추적 (날짜별 분할 폴더 완벽 대응)
+                final_dir = orig_path_obj.parent
+            else:
+                # 사용자가 주소를 적어두면 해당 주소 사용
+                final_dir = Path(save_path_opt.strip())
+                
+            # 지정 폴더가 가상 디렉토리라면 자동 생성
+            final_dir.mkdir(parents=True, exist_ok=True)
+            
             target_ext = orig_ext if extension_option == "Original" else extension_option
-            
             file_name = f"{pure_name}{filename_suffix}.{target_ext}"
-            file_path = os.path.join(self.output_dir, file_name)
             
-            # 최고 화질 고정 헬퍼 함수로 저장
-            save_image_with_quality(img, file_path, target_ext)
+            file_path = final_dir / file_name
+            save_image_with_quality(img, str(file_path), target_ext)
             
         return {"ui": {"images": []}}
 
 
 # ========================================================
-# 6. 매핑 매니저 시스템 등록 및 이름 반영
+# 6. 매핑 매니저 시스템 등록
 # ========================================================
 NODE_CLASS_MAPPINGS = {
     "DynamicImageBatch": DynamicImageBatch,
