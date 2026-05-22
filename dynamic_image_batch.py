@@ -19,6 +19,33 @@ def save_image_with_quality(img_obj, file_path, ext):
     else:
         img_obj.save(file_path, format='PNG')
 
+# 경로 해석을 위한 지능형 헬퍼 함수
+def resolve_target_dir(base_dir_path, input_path_str):
+    input_str = input_path_str.strip()
+    
+    # 1. 입력이 비어있으면 원본 경로 그대로 사용
+    if not input_str:
+        return base_dir_path
+        
+    input_path = Path(input_str)
+    
+    # 2. 풀 패스(절대 경로)인 경우 그대로 반환
+    if input_path.is_absolute():
+        return input_path
+        
+    # 3. 상대 경로인 경우 처리 (\upscale, upscale, ..\ 등)
+    # 앞쪽의 슬래시나 백슬래시를 제거하여 순수 상대 경로 객체로 변환
+    cleaned_str = input_str.lstrip('\\/')
+    
+    if input_str.startswith('..'):
+        # ..\ 로 시작하는 경우 원본의 상위 폴더를 조합하여 완전한 경로 생성
+        resolved_path = (base_dir_path / input_path).resolve()
+    else:
+        # \upscale 또는 upscale 인 경우 원본 폴더 하위에 조인
+        resolved_path = (base_dir_path / cleaned_str).resolve()
+        
+    return resolved_path
+
 # ========================================================
 # [기본형] 1. 기본형 다이나믹 이미지 배치 노드 (Optional 방식)
 # ========================================================
@@ -109,12 +136,11 @@ class TJ_SaveImage_Primary:
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             img.save(file_path, compress_level=4)
             
-        # 기본형 노드는 전체 절대 경로를 통째로 넘겨주어 하위 노드가 원본 폴더를 추적할 수 있게 합니다.
         return (images, file_path)
 
 
 # ========================================================
-# [기본형] 3. 두 번째 이미지 저장 노드 (경로 입력 기능 보강)
+# [기본형] 3. 두 번째 이미지 저장 노드 (상대 경로 완전 지원)
 # ========================================================
 class TJ_SaveImage_Subsequent:
     def __init__(self):
@@ -129,7 +155,7 @@ class TJ_SaveImage_Subsequent:
                 "base_filename": ("STRING", {"forceInput": True}),
                 "filename_suffix": ("STRING", {"default": "_upscaled"}),
                 "extension_option": (["Original", "png", "jpg", "webp"], {"default": "Original"}),
-                "save_path_opt": ("STRING", {"default": ""}), # 커스텀 저장 경로 입력 항목 추가
+                "save_path_opt": ("STRING", {"default": ""}),
             }
         }
     
@@ -143,13 +169,8 @@ class TJ_SaveImage_Subsequent:
         pure_name = orig_path.stem
         orig_ext = orig_path.suffix.lower().strip('.') if orig_path.suffix else "png"
         
-        # 1. 저장할 디렉토리 경로 결정 (비어있으면 원본 폴더, 입력 있으면 해당 폴더)
-        if save_path_opt.strip() == "":
-            final_dir = orig_path.parent
-        else:
-            final_dir = Path(save_path_opt.strip())
-            
-        # 폴더가 존재하지 않으면 자동으로 생성합니다.
+        # 지능형 경로 해석 적용 (원본 폴더 기준)
+        final_dir = resolve_target_dir(orig_path.parent, save_path_opt)
         final_dir.mkdir(parents=True, exist_ok=True)
         
         target_ext = orig_ext if extension_option == "Original" else extension_option
@@ -193,7 +214,7 @@ class DynamicImageBatchEclipse:
     
     def do_batch(self, **kwargs):
         valid_images = []
-        batched_paths = [] # 확장자뿐만 아니라 전체 경로를 보존하기 위해 이름을 변경합니다.
+        batched_paths = []
         
         def get_number(key_str):
             try: return int(key_str.split('_')[1])
@@ -234,7 +255,6 @@ class DynamicImageBatchEclipse:
                             else:
                                 full_path_found = str(files_list)
                         
-                        # 경로가 비어있을 경우를 대비한 가상 기본 경로 지정
                         if not full_path_found:
                             import folder_paths
                             full_path_found = os.path.join(folder_paths.get_output_directory(), "Eclipse_Out.png")
@@ -262,7 +282,7 @@ class DynamicImageBatchEclipse:
 
 
 # ========================================================
-# [이클립스 전용] 5. 후속 파일 저장 노드 (폴더 경로 추적 및 커스텀 지정)
+# [이클립스 전용] 5. 후속 파일 저장 노드 (상대 경로 완전 지원)
 # ========================================================
 class TJ_SaveImage_EclipseSubsequent:
     def __init__(self):
@@ -276,7 +296,7 @@ class TJ_SaveImage_EclipseSubsequent:
                 "images": ("IMAGE",),
                 "filename_suffix": ("STRING", {"default": "_upscaled"}),
                 "extension_option": (["Original", "png", "jpg", "webp"], {"default": "Original"}),
-                "save_path_opt": ("STRING", {"default": ""}), # 커스텀 저장 경로 입력 항목 추가
+                "save_path_opt": ("STRING", {"default": ""}),
             }
         }
     
@@ -302,22 +322,14 @@ class TJ_SaveImage_EclipseSubsequent:
             i = 255.0 * image.squeeze(0).cpu().numpy()
             img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
             
-            # 원본 풀 경로 객체화
             full_path_str = source_paths[idx] if idx < len(source_paths) else os.path.join(self.output_dir, f"Extra_{idx}.png")
             orig_path_obj = Path(full_path_str)
             
             pure_name = orig_path_obj.stem
             orig_ext = orig_path_obj.suffix.lower().strip('.') if orig_path_obj.suffix else "png"
             
-            # 1. 저장할 폴더 경로 탐색 로직
-            if save_path_opt.strip() == "":
-                # 비어 있으면 원본 파일이 저장되었던 폴더 그대로 추적 (날짜별 분할 폴더 완벽 대응)
-                final_dir = orig_path_obj.parent
-            else:
-                # 사용자가 주소를 적어두면 해당 주소 사용
-                final_dir = Path(save_path_opt.strip())
-                
-            # 지정 폴더가 가상 디렉토리라면 자동 생성
+            # 지능형 경로 해석 적용 (원본 폴더 기준)
+            final_dir = resolve_target_dir(orig_path_obj.parent, save_path_opt)
             final_dir.mkdir(parents=True, exist_ok=True)
             
             target_ext = orig_ext if extension_option == "Original" else extension_option
