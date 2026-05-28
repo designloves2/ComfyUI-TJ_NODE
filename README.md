@@ -52,6 +52,92 @@ C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결
 * **Save Image(Eclipse Suffix-TJ)**: 업스케일러 뒷단에서 이클립스 원본 풀 경로를 역추적하여 사용자가 지정한 접미사, 확장자 변경 여부, 상대/절대 경로 규칙을 적용해 최종 저장하는 마스터 노드.
     * *A master node located downstream of the upscaler that traces back to the original Eclipse full path, applying user-specified suffixes, extension conversions, and relative/absolute path rules to save the final file.*
 
+### 3. Utility Type (유틸리티형)
+* **Multi Image Loader (TJ)**: UI에서 직접 이미지를 선택·관리하여 배치 텐서로 로드하는 올인원 이미지 로더 노드.
+    * *An all-in-one image loader node that lets you select and manage images directly in the UI and loads them as a batch tensor.*
+* **Batch to Multi Image Output (TJ)**: 배치 텐서를 최대 64개의 개별 `IMAGE` 슬롯으로 분리 출력하는 배치 분할 노드.
+    * *A batch-splitting node that separates a batch tensor into up to 64 individual `IMAGE` output slots.*
+
+---
+
+## 노드 상세 (Node Details)
+
+### Multi Image Loader (TJ)
+
+UI에서 이미지를 직접 관리하고 다양한 리사이즈 옵션을 적용해 단일 배치 텐서(`IMAGE`)로 출력합니다.  
+*Manages images directly in the UI and outputs them as a single batch tensor (`IMAGE`) with various resize options.*
+
+**출력 (Outputs)**
+
+| 이름 | 타입 | 설명 |
+|------|------|------|
+| BATCH | IMAGE | 로드된 이미지 배치 텐서 / Loaded image batch tensor |
+| WIDTH | INT | 출력 이미지 너비 / Output image width |
+| HEIGHT | INT | 출력 이미지 높이 / Output image height |
+
+**파라미터 (Parameters)**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `image_paths_json` | STRING | 이미지 경로 목록 (JSON 배열, UI 자동 관리) / Image path list (JSON array, auto-managed by UI) |
+| `match_mode` | COMBO | `Keep Input Ratio` — 첫 번째 이미지 비율 기준으로 전체 통일 / `Megapixel` — 메가픽셀 예산 기준 리사이즈 |
+| `resize_input` | COMBO | `none` · `long edge` · `short edge` · `Custom` (match_mode가 Keep Input Ratio일 때 활성화) |
+| `edge_size` | INT | long/short edge 모드 기준 픽셀값 (기본 1024) |
+| `custom_width` | INT | Custom 모드 가로 픽셀 (기본 1024) |
+| `custom_height` | INT | Custom 모드 세로 픽셀 (기본 1536) |
+| `megapixel` | FLOAT | Megapixel 모드 기준 픽셀 예산 (기본 1.0 MP) |
+| `interpolation` | COMBO | 리샘플링 알고리즘 / Resampling algorithm: `lanczos` · `nearest` · `bilinear` · `bicubic` |
+| `scale_method` | COMBO | `Center Crop` — 비율 유지 후 중앙 크롭 / `Force Fit` — 강제 리사이즈 (비율 무시) |
+
+**UI 기능 (UI Features)**
+
+* **URL 다운로드**: 외부 URL을 입력해 ComfyUI input 폴더로 직접 다운로드 후 자동 등록
+    * *Enter an external URL to download directly to the ComfyUI input folder and auto-register it*
+* **이미지 파일 피커**: Input / Download / Output 폴더 탭 전환, 멀티 선택(Select All 지원), 로컬 드래그&드롭 업로드
+    * *File picker with Input / Download / Output folder tabs, multi-select (with Select All), and local drag-and-drop upload*
+* **썸네일 그리드**: 썸네일 크기·행 수 슬라이더 조절, 드래그로 순서 변경, 더블클릭 풀스크린 뷰어(키보드 ←→ 지원)
+    * *Thumbnail grid with size/row sliders, drag-to-reorder, and double-click fullscreen viewer with keyboard navigation*
+* **동적 위젯 표시**: `match_mode` / `resize_input` 값에 따라 관련 없는 위젯 자동 숨김
+    * *Irrelevant widgets are automatically hidden based on `match_mode` / `resize_input` values*
+
+**동작 방식 (How It Works)**
+
+1. 첫 번째 이미지를 기준으로 타겟 해상도(tw × th)를 결정합니다.
+2. 이후 모든 이미지를 동일한 해상도로 리사이즈합니다.
+3. 모든 이미지가 유효하지 않거나 목록이 비어 있으면 64×64 블랙 텐서를 반환합니다.
+
+*1. Determines target resolution (tw × th) based on the first image. 2. Resizes all subsequent images to the same resolution. 3. Returns a 64×64 black tensor if the list is empty or all images fail to load.*
+
+---
+
+### Batch to Multi Image Output (TJ)
+
+배치 텐서를 최대 64개의 개별 `IMAGE` 슬롯으로 분리합니다. `out_count`로 활성 슬롯 수를 지정하며, 배치 크기가 `out_count`보다 작으면 나머지 슬롯은 자동으로 64×64 블랙 이미지로 채워집니다.  
+*Splits a batch tensor into up to 64 individual `IMAGE` slots. The number of active slots is set by `out_count`; slots beyond the batch size are automatically filled with a 64×64 black image.*
+
+**입력 (Inputs)**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `images` | IMAGE | 분리할 배치 텐서 / Batch tensor to split |
+| `out_count` | INT | 출력 슬롯 수 (1–64, 기본 2) / Number of output slots (1–64, default 2) |
+
+**출력 (Outputs)**
+
+`IMAGE_1` ~ `IMAGE_64` — 개별 이미지 슬롯 (out_count 이후 슬롯은 `None` 반환)  
+*Individual image slots — slots beyond `out_count` return `None`*
+
+**동작 방식 (How It Works)**
+
+1. `out_count`개의 슬롯에 대해 배치에서 순서대로 이미지를 할당합니다.
+2. 배치 크기가 `out_count`보다 작은 경우 남은 슬롯은 64×64 블랙 이미지로 패딩합니다.
+3. `out_count`를 초과하는 슬롯은 `None`을 반환하여 다운스트림 노드와의 연결 오류를 방지합니다.
+
+*1. Assigns images from the batch sequentially to `out_count` slots. 2. Pads remaining slots with a 64×64 black image if batch size < `out_count`. 3. Slots beyond `out_count` return `None` to prevent downstream connection errors.*
+
+> 💡 **Multi Image Loader → Batch to Multi Image Output** 조합으로 이미지를 일괄 로드한 뒤 각 채널별 KSampler에 개별 이미지를 분배하는 파이프라인 구성이 가능합니다.  
+> *Combining Multi Image Loader → Batch to Multi Image Output lets you bulk-load images and distribute individual frames to per-channel KSamplers.*
+
 ---
 
 ## 설치 방법 (Installation)
@@ -67,5 +153,7 @@ C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결
    custom_nodes/comfyui-dynamic-batch/
    ├── __init__.py
    ├── dynamic_image_batch.py
+   ├── multi_image_load.py
    └── web/
+       ├── multi_image_load.js
        └── dynamic_batch.js
