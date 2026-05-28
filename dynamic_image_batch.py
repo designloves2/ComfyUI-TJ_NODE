@@ -83,6 +83,7 @@ class DynamicImageBatch:
         return (batched_images,)
 
 
+
 class TJ_SaveImage_Primary:
     def __init__(self):
         import folder_paths
@@ -94,26 +95,63 @@ class TJ_SaveImage_Primary:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "TJ_Out"}),
+                "subfolder": ("STRING", {"default": ""}),
+                "date_folder": ("BOOLEAN", {"default": False}),
             }
         }
 
     RETURN_TYPES = ("IMAGE", "STRING")
-    RETURN_NAMES = ("IMAGE", "FILENAME_STR")
+    RETURN_NAMES = ("IMAGE", "FILEPATH_JSON")
     FUNCTION = "save_images"
     CATEGORY = "TJ_Node/Image"
 
-    def save_images(self, images, filename_prefix):
+    def save_images(self, images, filename_prefix, subfolder, date_folder):
         import folder_paths
-        full_output_folder, filename, counter, subfolder, filename_prefix = folder_paths.get_save_image_path(
-            filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
-        )
-        final_filename = f"{filename}_{counter:05d}.png"
-        file_path = os.path.join(full_output_folder, final_filename)
+        import json
+        from datetime import datetime
+        from pathlib import Path
+
+        # ── 경로 조합 ──
+        prefix_with_path = filename_prefix
+
+        if date_folder:
+            today = datetime.now().strftime("%Y-%m-%d")
+            prefix_with_path = f"{today}/{prefix_with_path}"
+
+        if subfolder.strip():
+            prefix_with_path = f"{subfolder.strip('/')}/{prefix_with_path}"
+
+        full_output_folder, filename, counter, subfolder_ret, _ = \
+            folder_paths.get_save_image_path(
+                prefix_with_path, self.output_dir,
+                images[0].shape[1],  # W
+                images[0].shape[0]   # H
+            )
+
+        os.makedirs(full_output_folder, exist_ok=True)
+
+        # ── 배치 순서대로 저장 (덮어쓰기 방지) ──
+        saved_paths = []
         for image in images:
-            i = 255.0 * image.cpu().numpy()
-            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            file_path = self._find_next_path(full_output_folder, filename, counter)
+            counter = int(Path(file_path).stem.rsplit("_", 1)[-1]) + 1
+
+            arr = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
             img.save(file_path, compress_level=4)
-        return (images, file_path)
+            saved_paths.append(file_path)
+
+        return (images, json.dumps(saved_paths))
+
+    @staticmethod
+    def _find_next_path(folder, filename, start_counter):
+        """파일이 존재하지 않는 번호를 찾을 때까지 counter를 올림."""
+        counter = start_counter
+        while True:
+            candidate = os.path.join(folder, f"{filename}_{counter:05d}.png")
+            if not os.path.exists(candidate):
+                return candidate
+            counter += 1
 
 
 class TJ_SaveImage_Subsequent:
@@ -126,7 +164,7 @@ class TJ_SaveImage_Subsequent:
         return {
             "required": {
                 "images": ("IMAGE",),
-                "base_filename": ("STRING", {"forceInput": True}),
+                "filepath_json": ("STRING", {"forceInput": True}),  # Primary에서 수신
                 "filename_suffix": ("STRING", {"default": "_upscaled"}),
                 "extension_option": (["Original", "png", "jpg", "webp"], {"default": "Original"}),
                 "save_path_opt": ("STRING", {"default": ""}),
@@ -138,23 +176,40 @@ class TJ_SaveImage_Subsequent:
     FUNCTION = "save_images"
     CATEGORY = "TJ_Node/Image"
 
-    def save_images(self, images, base_filename, filename_suffix, extension_option, save_path_opt):
-        orig_path = Path(base_filename)
-        pure_name = orig_path.stem
-        orig_ext = orig_path.suffix.lower().strip('.') if orig_path.suffix else "png"
-        final_dir = resolve_target_dir(orig_path.parent, save_path_opt)
-        final_dir.mkdir(parents=True, exist_ok=True)
-        target_ext = orig_ext if extension_option == "Original" else extension_option
-        final_filename = f"{pure_name}{filename_suffix}"
+    def save_images(self, images, filepath_json, filename_suffix, extension_option, save_path_opt):
+        import json
+
+        # JSON 파싱 — 단일/배치 모두 리스트로 처리
+        try:
+            paths = json.loads(filepath_json)
+            if isinstance(paths, str):      # 혹시 단일 문자열로 왔을 때 대비
+                paths = [paths]
+        except Exception:
+            paths = [filepath_json]
+
         for idx, image in enumerate(images):
-            i = 255.0 * image.cpu().numpy()
-            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            # 이미지 인덱스에 맞는 원본 경로 (초과 시 마지막 경로 재사용)
+            orig_path = Path(paths[min(idx, len(paths) - 1)])
+
+            pure_name = orig_path.stem
+            orig_ext = orig_path.suffix.lower().strip('.') or "png"
+            target_ext = orig_ext if extension_option == "Original" else extension_option
+
+            final_dir = resolve_target_dir(orig_path.parent, save_path_opt)
+            final_dir.mkdir(parents=True, exist_ok=True)
+
+            # 배치 1장이면 suffix만, 2장 이상이면 suffix + 순번
             if len(images) > 1:
-                file_name = f"{final_filename}_{idx+1}.{target_ext}"
+                file_name = f"{pure_name}{filename_suffix}_{idx + 1}.{target_ext}"
             else:
-                file_name = f"{final_filename}.{target_ext}"
+                file_name = f"{pure_name}{filename_suffix}.{target_ext}"
+
             file_path = final_dir / file_name
+
+            arr = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
             save_image_with_quality(img, str(file_path), target_ext)
+
         return {"ui": {"images": []}}
 
 
