@@ -3,6 +3,19 @@ import { app } from "../../../scripts/app.js";
 app.registerExtension({
     name: "Comfy.TJ_Nodes_Extension",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
+
+    const myNodes = ["DynamicImageBatch", "DynamicImageBatchEclipse", "TJ_BatchToMultiOutput"];
+    const saveNodes = ["Save Image(Primary-TJ)", "Save Image(Suffix-TJ)", "Save Image(Eclipse Suffix-TJ)", "TJ_SaveImagePrimary", "TJ_SaveImageSuffix", "TJ_SaveImageEclipseSuffix"];
+
+    if (myNodes.includes(nodeData.name) || saveNodes.includes(nodeData.name) || (nodeType.title && saveNodes.includes(nodeType.title))) {
+      const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+      nodeType.prototype.onNodeCreated = function () {
+        if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+        this.bgcolor = "#000000";
+        this.color = "#7612DA";
+        this.title_text_color = "#FFFFFF";
+      };
+    }
         
         // 1. 기존 표준형 다이나믹 배치 노드 처리
         if (nodeData.name === "DynamicImageBatch") {

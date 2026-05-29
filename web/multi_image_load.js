@@ -4,7 +4,7 @@ import { app } from "../../scripts/app.js";
    Multi Image Loader (TJ) — Frontend
    ============================================================ */
 
-// ── Widget Hide / Show (DazzleNodes 검증 방식) ──
+// ── Widget Hide / Show ──
 function hideWidget(widget) {
     if (!widget || widget._hidden) return;
     widget._hidden = true;
@@ -19,21 +19,9 @@ function hideWidget(widget) {
 function showWidget(widget) {
     if (!widget || !widget._hidden) return;
     widget._hidden = false;
-    if (widget._origDraw !== undefined) {
-        widget.draw = widget._origDraw;
-    } else {
-        delete widget.draw;
-    }
-    if (widget._origComputeSize !== undefined) {
-        widget.computeSize = widget._origComputeSize;
-    } else {
-        delete widget.computeSize;
-    }
-    if (widget._origMouse !== undefined) {
-        widget.mouse = widget._origMouse;
-    } else {
-        delete widget.mouse;
-    }
+    if (widget._origDraw !== undefined) widget.draw = widget._origDraw; else delete widget.draw;
+    if (widget._origComputeSize !== undefined) widget.computeSize = widget._origComputeSize; else delete widget.computeSize;
+    if (widget._origMouse !== undefined) widget.mouse = widget._origMouse; else delete widget.mouse;
 }
 
 function findWidget(node, name) {
@@ -92,7 +80,7 @@ function updateWidgetVisibility(node) {
     });
 }
 
-// ── Helper: get thumbnail src (subfolder 분리) ──
+// ── Helper: get thumbnail src ──
 function getImageSrc(path) {
     if (!path) return "";
     const p = path.trim();
@@ -109,8 +97,6 @@ function getImageSrc(path) {
         filename = p.substring(6);
     }
 
-    // filename에 "/" 가 있으면 subfolder 분리
-    // 예: "download/abc.jpg" → subfolder="download", filename="abc.jpg"
     const slashIdx = filename.lastIndexOf("/");
     if (slashIdx !== -1) {
         subfolder = filename.substring(0, slashIdx);
@@ -138,6 +124,10 @@ app.registerExtension({
             const r = origOnNodeCreated ? origOnNodeCreated.apply(this, arguments) : undefined;
             const node = this;
 
+			node.bgcolor = "#000000";
+			node.color = "#7612DA";
+			node.title_text_color = "#FFFFFF";
+
             // ─── Widget callbacks for visibility ───
             const matchModeW = findWidget(node, "match_mode");
             const resizeInputW = findWidget(node, "resize_input");
@@ -157,7 +147,7 @@ app.registerExtension({
                 };
             }
 
-            // ─── DOM UI Widget (serialize: false) ───
+            // ─── DOM UI Widget ───
             const container = document.createElement("div");
             container.style.cssText = "display:flex;flex-direction:column;gap:6px;padding:4px;background:#000;border-radius:6px;";
 
@@ -451,7 +441,9 @@ app.registerExtension({
                 document.body.appendChild(overlay);
             }
 
-            // ── Add Images → Modal File Picker (멀티 선택 + 확인) ──
+            // ══════════════════════════════════════════════════════════
+            // ── Add Images → Modal File Picker
+            // ══════════════════════════════════════════════════════════
             addBtn.addEventListener("click", () => openFilePicker());
 
             function openFilePicker() {
@@ -459,9 +451,18 @@ app.registerExtension({
                 modal.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);z-index:99998;display:flex;align-items:center;justify-content:center;";
 
                 const box = document.createElement("div");
-                box.style.cssText = "background:#000;border:1px solid #0055bb;border-radius:8px;width:560px;height:600px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 20px #0055bb44;";
+                box.style.cssText = "background:#000;border:1px solid #0055bb;border-radius:8px;width:600px;height:660px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 20px #0055bb44;";
 
+                // ── 장바구니 ──
                 const selectedPaths = new Set();
+
+                // ── 폴더 탐색 상태 ──
+                const subfolderStack = { input: [], download: [], output: [] };
+
+                function getCurrentSubfolder(tab) {
+                    const stack = subfolderStack[tab];
+                    return stack && stack.length > 0 ? stack[stack.length - 1] : "";
+                }
 
                 // Header
                 const header = document.createElement("div");
@@ -483,6 +484,7 @@ app.registerExtension({
                 const tabNames = ["input", "download", "output", "upload"];
                 const tabLabels = ["Input", "Download", "Output", "Local Upload"];
                 let activeTab = "input";
+                const tabEls = [];
 
                 const fileList = document.createElement("div");
                 fileList.style.cssText = "flex:1;overflow-y:auto;padding:8px;background:#000;";
@@ -493,12 +495,13 @@ app.registerExtension({
                     tabEl.style.cssText = "flex:1;text-align:center;padding:8px;color:#0055bb;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;background:#000;";
                     tabEl.addEventListener("click", () => {
                         activeTab = t;
-                        tabsEl.querySelectorAll("div").forEach(d => { d.style.color = "#aaa"; d.style.borderBottomColor = "transparent"; });
+                        tabEls.forEach(d => { d.style.color = "#aaa"; d.style.borderBottomColor = "transparent"; });
                         tabEl.style.color = "#00efff";
                         tabEl.style.borderBottomColor = "#0055bb";
                         loadTabContent();
                     });
                     if (t === activeTab) { tabEl.style.color = "#fff"; tabEl.style.borderBottomColor = "#58f"; }
+                    tabEls.push(tabEl);
                     tabsEl.appendChild(tabEl);
                 });
                 box.appendChild(tabsEl);
@@ -516,6 +519,60 @@ app.registerExtension({
                 cancelBtn.textContent = "Cancel";
                 cancelBtn.style.cssText = "height:30px;padding:0 16px;border:1px solid #ff2244;border-radius:4px;background:transparent;color:#ff6677;font-size:12px;cursor:pointer;";
                 cancelBtn.addEventListener("click", () => modal.remove());
+
+                // ── Delete Selected 버튼 ──
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Delete Selected";
+                deleteBtn.style.cssText = "height:30px;padding:0 14px;border:1px solid #ff4444;border-radius:4px;background:transparent;color:#ff6666;font-size:12px;cursor:pointer;";
+                deleteBtn.addEventListener("click", async () => {
+                    if (selectedPaths.size === 0) return;
+
+                    const pathsArr = Array.from(selectedPaths);
+                    const confirmMsg = `Are you sure you want to permanently delete ${pathsArr.length} file(s) from disk?\n\nThis cannot be undone.`;
+                    if (!confirm(confirmMsg)) return;
+
+                    deleteBtn.textContent = "Deleting...";
+                    deleteBtn.style.pointerEvents = "none";
+
+                    try {
+                        const resp = await fetch("/tj_node/delete_files", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ paths: pathsArr }),
+                        });
+                        const data = await resp.json();
+
+                        if (data.success) {
+                            // 삭제된 파일을 selectedPaths에서 제거
+                            (data.deleted || []).forEach(p => selectedPaths.delete(p));
+
+                            // 이미지 스택에서도 삭제된 파일 제거
+                            const currentArr = getCurrentPaths();
+                            const deletedSet = new Set(data.deleted || []);
+                            const filtered = currentArr.filter(p => !deletedSet.has(p));
+                            if (filtered.length !== currentArr.length) {
+                                setCurrentPaths(filtered);
+                                renderThumbnails();
+                            }
+
+                            const msg = `Deleted ${data.deleted_count} file(s).` +
+                                (data.errors && data.errors.length > 0
+                                    ? `\nFailed: ${data.errors.map(e => e.path + " (" + e.error + ")").join(", ")}`
+                                    : "");
+                            alert(msg);
+                        } else {
+                            alert("Delete failed: " + (data.error || "unknown"));
+                        }
+                    } catch (e) {
+                        alert("Delete error: " + e.message);
+                    }
+
+                    deleteBtn.textContent = "Delete Selected";
+                    deleteBtn.style.pointerEvents = "";
+                    updateSelectCount();
+                    loadTabContent();
+                });
+
                 const confirmBtn = document.createElement("button");
                 confirmBtn.textContent = "Add Selected";
                 confirmBtn.style.cssText = "height:30px;padding:0 16px;border:none;border-radius:4px;background:#cc1133;color:#fff;font-size:12px;cursor:pointer;font-weight:bold;box-shadow:0 0 8px #ff224488;";
@@ -525,6 +582,7 @@ app.registerExtension({
                     modal.remove();
                 });
                 btnGroup.appendChild(cancelBtn);
+                btnGroup.appendChild(deleteBtn);
                 btnGroup.appendChild(confirmBtn);
                 footer.appendChild(selectCount);
                 footer.appendChild(btnGroup);
@@ -533,14 +591,31 @@ app.registerExtension({
                 function updateSelectCount() {
                     selectCount.textContent = `${selectedPaths.size} selected`;
                     confirmBtn.textContent = selectedPaths.size > 0 ? `Add ${selectedPaths.size} Images` : "Add Selected";
+                    // Delete 버튼 활성/비활성 시각 표시
+                    if (selectedPaths.size > 0) {
+                        deleteBtn.style.borderColor = "#ff4444";
+                        deleteBtn.style.color = "#ff6666";
+                        deleteBtn.style.cursor = "pointer";
+                    } else {
+                        deleteBtn.style.borderColor = "#553333";
+                        deleteBtn.style.color = "#664444";
+                        deleteBtn.style.cursor = "default";
+                    }
                 }
 
+                // ══════════════════════════════════════════
+                // ── loadTabContent
+                // ══════════════════════════════════════════
                 async function loadTabContent() {
                     fileList.innerHTML = "";
 
+                    // ── Upload 탭 ──
                     if (activeTab === "upload") {
+                        // Delete 버튼 숨김 (upload 탭에서는 의미 없음)
+                        deleteBtn.style.display = "none";
+
                         const uploadArea = document.createElement("div");
-                        uploadArea.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:180px;border:2px dashed #555;border-radius:8px;margin:10px;padding:20px;color:#888;font-size:13px;cursor:pointer;";
+                        uploadArea.style.cssText = "display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:140px;border:2px dashed #555;border-radius:8px;margin:10px;padding:20px;color:#888;font-size:13px;cursor:pointer;";
                         uploadArea.textContent = "Click or drag files here to upload";
                         const fileInput = document.createElement("input");
                         fileInput.type = "file";
@@ -558,6 +633,77 @@ app.registerExtension({
                         });
                         fileInput.addEventListener("change", async () => { await doUpload(fileInput.files); });
 
+                        const uploadedListLabel = document.createElement("div");
+                        uploadedListLabel.style.cssText = "color:#0099ff;font-size:11px;margin:8px 10px 4px;display:none;";
+                        uploadedListLabel.textContent = "Uploaded (click to select/deselect, × to remove):";
+
+                        const uploadedGrid = document.createElement("div");
+                        uploadedGrid.style.cssText = "display:grid;grid-template-columns:repeat(5, 90px);grid-auto-rows:110px;gap:6px;padding:0 10px;";
+
+                        const uploadedFiles = [];
+
+                        function renderUploadedGrid() {
+                            uploadedGrid.innerHTML = "";
+                            if (uploadedFiles.length === 0) {
+                                uploadedListLabel.style.display = "none";
+                                return;
+                            }
+                            uploadedListLabel.style.display = "block";
+
+                            uploadedFiles.forEach((f, fIdx) => {
+                                const cell = document.createElement("div");
+                                cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:4px;cursor:pointer;border:2px solid transparent;position:relative;";
+
+                                const checkMark = document.createElement("div");
+                                checkMark.style.cssText = "position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.5);border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;z-index:1;pointer-events:none;";
+                                checkMark.textContent = "✓";
+                                cell.appendChild(checkMark);
+
+                                const removeBtn = document.createElement("div");
+                                removeBtn.textContent = "×";
+                                removeBtn.style.cssText = "position:absolute;top:2px;right:4px;color:#f66;font-size:16px;font-weight:bold;cursor:pointer;z-index:2;line-height:1;";
+                                removeBtn.addEventListener("click", (e) => {
+                                    e.stopPropagation();
+                                    selectedPaths.delete(f.path);
+                                    uploadedFiles.splice(fIdx, 1);
+                                    updateSelectCount();
+                                    renderUploadedGrid();
+                                });
+                                cell.appendChild(removeBtn);
+
+                                const thumb = document.createElement("img");
+                                thumb.src = getImageSrc(f.path);
+                                thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
+                                thumb.onerror = function () { this.style.display = "none"; };
+
+                                const nameEl = document.createElement("div");
+                                nameEl.textContent = f.filename;
+                                nameEl.style.cssText = "color:#bbb;font-size:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:85px;";
+
+                                cell.appendChild(thumb);
+                                cell.appendChild(nameEl);
+
+                                function updateCellVisual() {
+                                    const sel = selectedPaths.has(f.path);
+                                    cell.style.borderColor = sel ? "#ff2244" : "transparent";
+                                    cell.style.background = sel ? "rgba(255,34,68,0.15)" : "";
+                                    checkMark.style.background = sel ? "#ff2244" : "rgba(0,0,0,0.5)";
+                                    checkMark.style.borderColor = sel ? "#ff2244" : "#555";
+                                    checkMark.style.color = sel ? "#fff" : "transparent";
+                                }
+
+                                cell.addEventListener("click", () => {
+                                    if (selectedPaths.has(f.path)) selectedPaths.delete(f.path);
+                                    else selectedPaths.add(f.path);
+                                    updateCellVisual();
+                                    updateSelectCount();
+                                });
+
+                                updateCellVisual();
+                                uploadedGrid.appendChild(cell);
+                            });
+                        }
+
                         async function doUpload(files) {
                             uploadArea.textContent = "Uploading...";
                             for (const file of files) {
@@ -566,117 +712,209 @@ app.registerExtension({
                                 try {
                                     const resp = await fetch("/tj_node/upload_local", { method: "POST", body: fd });
                                     const data = await resp.json();
-                                    if (data.success) addPathToList(data.path);
+                                    if (data.success) {
+                                        uploadedFiles.push({ path: data.path, filename: data.filename });
+                                        selectedPaths.add(data.path);
+                                    }
                                 } catch (e) { console.error("Upload failed:", e); }
                             }
-                            renderThumbnails();
+                            updateSelectCount();
+                            renderUploadedGrid();
                             uploadArea.textContent = "Upload complete! Click or drag more files.";
                         }
 
                         fileList.appendChild(uploadArea);
                         fileList.appendChild(fileInput);
+                        fileList.appendChild(uploadedListLabel);
+                        fileList.appendChild(uploadedGrid);
+                        renderUploadedGrid();
                         return;
                     }
 
-                    fileList.innerHTML = '<div style="color:#888;font-size:12px;padding:20px;text-align:center;">Loading...</div>';
+                    // ── input / download / output 탭 ──
+                    // Delete 버튼 표시
+                    deleteBtn.style.display = "";
+
+                    const currentSub = getCurrentSubfolder(activeTab);
+
+                    // 로딩 표시
+                    const loadingEl = document.createElement("div");
+                    loadingEl.style.cssText = "color:#888;font-size:12px;padding:20px;text-align:center;";
+                    loadingEl.textContent = "Loading...";
+                    fileList.appendChild(loadingEl);
+
                     try {
                         const resp = await fetch("/tj_node/list_dir_files", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ dir_type: activeTab }),
+                            body: JSON.stringify({ dir_type: activeTab, subfolder: currentSub }),
                         });
                         const data = await resp.json();
+
+                        // 완전히 비우고 다시 그리기
                         fileList.innerHTML = "";
 
-                        if (!data.files || data.files.length === 0) {
-                            fileList.innerHTML = '<div style="color:#666;font-size:12px;padding:20px;text-align:center;">No images found</div>';
+                        // ── 네비게이션 바 (항상 표시) ──
+                        const navBar = document.createElement("div");
+                        navBar.style.cssText = "display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:4px 2px;border-bottom:1px solid #333;flex-wrap:wrap;";
+
+                        if (currentSub) {
+                            const backBtn = document.createElement("button");
+                            backBtn.textContent = "← Back";
+                            backBtn.style.cssText = "height:22px;padding:0 10px;border:1px solid #0088cc;border-radius:3px;background:transparent;color:#00bfff;font-size:11px;cursor:pointer;flex-shrink:0;";
+                            backBtn.addEventListener("click", () => {
+                                subfolderStack[activeTab].pop();
+                                loadTabContent();
+                            });
+                            navBar.appendChild(backBtn);
+                        }
+
+                        const pathLabel = document.createElement("span");
+                        pathLabel.style.cssText = "color:#888;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+                        pathLabel.textContent = currentSub ? `/${activeTab}/${currentSub}` : `/${activeTab}`;
+                        navBar.appendChild(pathLabel);
+
+                        fileList.appendChild(navBar);
+
+                        const hasFolders = data.folders && data.folders.length > 0;
+                        const hasFiles = data.files && data.files.length > 0;
+
+                        if (!hasFolders && !hasFiles) {
+                            const emptyMsg = document.createElement("div");
+                            emptyMsg.style.cssText = "color:#666;font-size:12px;padding:20px;text-align:center;";
+                            emptyMsg.textContent = "Empty folder";
+                            fileList.appendChild(emptyMsg);
                             return;
                         }
 
-                        // Select All / Deselect All
-                        const selectBar = document.createElement("div");
-                        selectBar.style.cssText = "display:flex;gap:8px;margin-bottom:6px;";
-                        const selectAllBtn = document.createElement("button");
-                        selectAllBtn.textContent = "Select All";
-                        selectAllBtn.style.cssText = "height:22px;padding:0 10px;border:1px solid #ffffff;border-radius:3px;background:transparent;color:#ffffff;font-size:11px;cursor:pointer;";
-                        const deselectAllBtn = document.createElement("button");
-                        deselectAllBtn.textContent = "Deselect All";
-                        deselectAllBtn.style.cssText = "height:22px;padding:0 10px;border:1px solid #ffffff;border-radius:3px;background:transparent;color:#ffffff;font-size:11px;cursor:pointer;";
-                        selectBar.appendChild(selectAllBtn);
-                        selectBar.appendChild(deselectAllBtn);
-                        fileList.appendChild(selectBar);
+                        // ── Select All / Deselect All ──
+                        const cellList = [];
+                        let currentFiles = data.files || [];
+
+                        if (hasFiles) {
+                            const selectBar = document.createElement("div");
+                            selectBar.style.cssText = "display:flex;gap:8px;margin-bottom:6px;";
+
+                            const selectAllBtn = document.createElement("button");
+                            selectAllBtn.textContent = "Select All";
+                            selectAllBtn.style.cssText = "height:22px;padding:0 10px;border:1px solid #ffffff;border-radius:3px;background:transparent;color:#ffffff;font-size:11px;cursor:pointer;";
+                            selectAllBtn.addEventListener("click", () => {
+                                currentFiles.forEach(f => selectedPaths.add(f.path));
+                                cellList.forEach(c => c.updateVisual());
+                                updateSelectCount();
+                            });
+
+                            const deselectAllBtn = document.createElement("button");
+                            deselectAllBtn.textContent = "Deselect All";
+                            deselectAllBtn.style.cssText = "height:22px;padding:0 10px;border:1px solid #ffffff;border-radius:3px;background:transparent;color:#ffffff;font-size:11px;cursor:pointer;";
+                            deselectAllBtn.addEventListener("click", () => {
+                                currentFiles.forEach(f => selectedPaths.delete(f.path));
+                                cellList.forEach(c => c.updateVisual());
+                                updateSelectCount();
+                            });
+
+                            selectBar.appendChild(selectAllBtn);
+                            selectBar.appendChild(deselectAllBtn);
+                            fileList.appendChild(selectBar);
+                        }
 
                         const pickerGrid = document.createElement("div");
                         pickerGrid.style.cssText = "display:grid;grid-template-columns:repeat(5, 90px);grid-auto-rows:110px;gap:6px;";
 
-                        const cellList = [];
+                        // ── 폴더 (우선) ──
+                        if (hasFolders) {
+                            data.folders.forEach(folder => {
+                                const cell = document.createElement("div");
+                                cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:4px;cursor:pointer;border:2px solid transparent;position:relative;";
 
-                        data.files.forEach(f => {
-                            const cell = document.createElement("div");
-                            cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:4px;cursor:pointer;border:2px solid transparent;position:relative;";
+                                cell.addEventListener("mouseenter", () => { cell.style.background = "rgba(0,100,200,0.15)"; cell.style.borderColor = "#0088cc"; });
+                                cell.addEventListener("mouseleave", () => { cell.style.background = ""; cell.style.borderColor = "transparent"; });
 
-                            const checkMark = document.createElement("div");
-                            checkMark.style.cssText = "position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.5);border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;z-index:1;pointer-events:none;";
-                            checkMark.textContent = "✓";
-                            cell.appendChild(checkMark);
+                                const folderIcon = document.createElement("div");
+                                folderIcon.style.cssText = "width:80px;height:80px;background:#1a1a2e;border-radius:3px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;";
+                                const iconSvg = document.createElement("div");
+                                iconSvg.innerHTML = `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0088cc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+                                folderIcon.appendChild(iconSvg);
 
-                            const thumb = document.createElement("img");
-                            thumb.src = getImageSrc(f.path);
-                            thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
-                            thumb.onerror = function () {
-                                this.style.display = "none";
-                                const ph = document.createElement("div");
-                                ph.style.cssText = "width:80px;height:80px;background:#333;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#666;font-size:24px;";
-                                ph.textContent = "?";
-                                cell.insertBefore(ph, checkMark.nextSibling);
-                            };
+                                const nameEl = document.createElement("div");
+                                nameEl.textContent = folder.name;
+                                nameEl.style.cssText = "color:#0099ff;font-size:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:85px;";
 
-                            const nameEl = document.createElement("div");
-                            nameEl.textContent = f.filename;
-                            nameEl.style.cssText = "color:#bbb;font-size:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:85px;";
+                                cell.appendChild(folderIcon);
+                                cell.appendChild(nameEl);
 
-                            cell.appendChild(thumb);
-                            cell.appendChild(nameEl);
+                                cell.addEventListener("click", () => {
+                                    subfolderStack[activeTab].push(folder.subfolder);
+                                    loadTabContent();
+                                });
 
-                            function updateCellVisual() {
-                                const sel = selectedPaths.has(f.path);
-                                cell.style.borderColor = sel ? "#ff2244" : "transparent";
-                                cell.style.background = sel ? "rgba(255,34,68,0.15)" : "";
-                                checkMark.style.background   = sel ? "#ff2244" : "rgba(0,0,0,0.5)";
-					 checkMark.style.borderColor  = sel ? "#ff2244" : "#555";
-					 checkMark.style.color        = sel ? "#fff"    : "transparent";
-                            }
-
-                            cell.addEventListener("click", () => {
-                                if (selectedPaths.has(f.path)) { selectedPaths.delete(f.path); }
-                                else { selectedPaths.add(f.path); }
-                                updateCellVisual();
-                                updateSelectCount();
+                                pickerGrid.appendChild(cell);
                             });
+                        }
 
-                            updateCellVisual();
-                            cellList.push({ path: f.path, updateVisual: updateCellVisual });
-                            pickerGrid.appendChild(cell);
-                        });
+                        // ── 이미지 파일 ──
+                        if (hasFiles) {
+                            currentFiles.forEach(f => {
+                                const cell = document.createElement("div");
+                                cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:4px;cursor:pointer;border:2px solid transparent;position:relative;";
 
-                        selectAllBtn.addEventListener("click", () => {
-                            data.files.forEach(f => selectedPaths.add(f.path));
-                            cellList.forEach(c => c.updateVisual());
-                            updateSelectCount();
-                        });
-                        deselectAllBtn.addEventListener("click", () => {
-                            data.files.forEach(f => selectedPaths.delete(f.path));
-                            cellList.forEach(c => c.updateVisual());
-                            updateSelectCount();
-                        });
+                                const checkMark = document.createElement("div");
+                                checkMark.style.cssText = "position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,0.5);border:2px solid #555;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;z-index:1;pointer-events:none;";
+                                checkMark.textContent = "✓";
+                                cell.appendChild(checkMark);
+
+                                const thumb = document.createElement("img");
+                                thumb.src = getImageSrc(f.path);
+                                thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
+                                thumb.onerror = function () {
+                                    this.style.display = "none";
+                                    const ph = document.createElement("div");
+                                    ph.style.cssText = "width:80px;height:80px;background:#333;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#666;font-size:24px;";
+                                    ph.textContent = "?";
+                                    cell.insertBefore(ph, checkMark.nextSibling);
+                                };
+
+                                const nameEl = document.createElement("div");
+                                nameEl.textContent = f.filename;
+                                nameEl.style.cssText = "color:#bbb;font-size:10px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:85px;";
+
+                                cell.appendChild(thumb);
+                                cell.appendChild(nameEl);
+
+                                function updateCellVisual() {
+                                    const sel = selectedPaths.has(f.path);
+                                    cell.style.borderColor = sel ? "#ff2244" : "transparent";
+                                    cell.style.background = sel ? "rgba(255,34,68,0.15)" : "";
+                                    checkMark.style.background = sel ? "#ff2244" : "rgba(0,0,0,0.5)";
+                                    checkMark.style.borderColor = sel ? "#ff2244" : "#555";
+                                    checkMark.style.color = sel ? "#fff" : "transparent";
+                                }
+
+                                cell.addEventListener("click", () => {
+                                    if (selectedPaths.has(f.path)) selectedPaths.delete(f.path);
+                                    else selectedPaths.add(f.path);
+                                    updateCellVisual();
+                                    updateSelectCount();
+                                });
+
+                                updateCellVisual();
+                                cellList.push({ path: f.path, updateVisual: updateCellVisual });
+                                pickerGrid.appendChild(cell);
+                            });
+                        }
 
                         fileList.appendChild(pickerGrid);
                     } catch (e) {
-                        fileList.innerHTML = `<div style="color:#f66;font-size:12px;padding:20px;text-align:center;">Error: ${e.message}</div>`;
+                        fileList.innerHTML = "";
+                        const errEl = document.createElement("div");
+                        errEl.style.cssText = "color:#f66;font-size:12px;padding:20px;text-align:center;";
+                        errEl.textContent = "Error: " + e.message;
+                        fileList.appendChild(errEl);
                     }
                 }
 
                 loadTabContent();
+                updateSelectCount();
                 modal.appendChild(box);
                 modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
                 document.body.appendChild(modal);
