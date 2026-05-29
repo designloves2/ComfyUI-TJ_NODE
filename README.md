@@ -1,4 +1,18 @@
-# ComfyUI TJ_NODE (v0.2)
+# ComfyUI TJ_NODE (v0.21 Update: TJ_MultiRouter)
+TJ_MultiRouter 노드가 새롭게 추가되어, 복잡한 워크플로우에서 데이터를 유연하게 분기하고 라우팅할 수 있게 되었습니다.
+Dynamic Port Expansion: 노드에 입력을 연결하면 포트가 자동으로 확장되며, 최대 20개의 입/출력 슬롯을 지원합니다.
+
+Automatically expands input/output ports upon connection, supporting up to 20 slots.
+Dual Operation Modes:
+Dynamic (Auto): 연결된 입력 개수에 맞춰 포트를 실시간으로 동기화합니다.
+Manual: 사용자가 원하는 포트 개수를 직접 지정하여 고정할 수 있습니다.
+(Dynamic (Auto) mode synchronizes ports based on connections, while Manual mode allows fixed custom port counts.)
+UI Optimization: 프론트엔드에서 불필요한 여백을 제거하고 슬롯을 최적화하여, 노드 레이아웃의 가독성과 효율성을 극대화했습니다.
+Optimized UI by removing unnecessary spacing for a cleaner, more efficient node layout.
+Connection Safety: ComfyUI의 와일드카드(*) 타입을 사용하여 데이터 타입에 관계없이 안정적인 라우팅을 보장합니다.
+Ensures stable routing for any data type using ComfyUI's wildcard (*) type.
+
+# ComfyUI TJ_NODE (v0.20)
 
 ComfyUI에서 대량의 멀티 채널(최대 20개 이상) KSampler 워크플로우를 사용할 때 발생하는 이미지 배치 및 파일명 유실 문제를 해결하기 위해 설계된 커스텀 노드 세트입니다.  
 특히 **ComfyUI_Eclipse** 노드의 고급 파일 저장 기능과 완벽하게 연동되며, 중간 노드가 바이패스(Bypass)되어도 에러 없이 유연하게 작동합니다.
