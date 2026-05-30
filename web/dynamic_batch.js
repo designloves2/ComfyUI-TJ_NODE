@@ -4,18 +4,34 @@ app.registerExtension({
     name: "Comfy.TJ_Nodes_Extension",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
 
-    const myNodes = ["DynamicImageBatch", "DynamicImageBatchEclipse", "TJ_BatchToMultiOutput"];
-    const saveNodes = ["Save Image(Primary-TJ)", "Save Image(Suffix-TJ)", "Save Image(Eclipse Suffix-TJ)", "TJ_SaveImagePrimary", "TJ_SaveImageSuffix", "TJ_SaveImageEclipseSuffix"];
+        // TJ 노드 및 특정 다이나믹 배치 노드들을 모두 감지
+        const customNodes = ["DynamicImageBatch", "DynamicImageBatchEclipse", "TJ_BatchToMultiOutput"];
+        
+        const isTJNode = customNodes.includes(nodeData.name) || 
+                         (typeof nodeData.name === "string" && nodeData.name.includes("TJ")) || 
+                         (typeof nodeType.title === "string" && nodeType.title.includes("TJ"));
 
-    if (myNodes.includes(nodeData.name) || saveNodes.includes(nodeData.name) || (nodeType.title && saveNodes.includes(nodeType.title))) {
-      const origOnNodeCreated = nodeType.prototype.onNodeCreated;
-      nodeType.prototype.onNodeCreated = function () {
-        if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-        this.bgcolor = "#000000";
-        this.color = "#7612DA";
-        this.title_text_color = "#FFFFFF";
-      };
-    }
+        if (isTJNode) {
+            // ★ 핵심: 맨 앞에 공백(" ")을 하나 추가했습니다!
+            // 공백은 정렬 순위가 A보다 앞서기 때문에 무조건 리스트 최상단에 고정됩니다.
+            nodeData.category = " ✨ TJ Nodes";
+
+            const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+                
+                const applyColors = () => {
+                    this.bgcolor = "#000000";
+                    this.color = "#7612DA";
+                    this.title_text_color = "#FFFFFF";
+                };
+
+                // 즉시 적용
+                applyColors();
+                // LiteGraph 기본 테마 등에 의해 덮어씌워지는 것 방지
+                requestAnimationFrame(() => applyColors());
+            };
+        }
         
         // 1. 기존 표준형 다이나믹 배치 노드 처리
         if (nodeData.name === "DynamicImageBatch") {

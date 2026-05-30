@@ -20,6 +20,9 @@ from .dynamic_image_batch import (
     TJ_BatchToMultiOutput,
 )
 
+# ====== 무선 패러다임 Set/Get 노드 임포트 ======
+from .set_getnode_tj import TJ_SetNode, TJ_GetNode, TJ_MultiGetNode
+
 # ──────────── Node Mappings ────────────
 NODE_CLASS_MAPPINGS = {
     "TJ_MultiImageLoader": TJ_MultiImageLoader,
@@ -30,6 +33,9 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveImage_EclipseSubsequent": TJ_SaveImage_EclipseSubsequent,
     "TJ_BatchToMultiOutput": TJ_BatchToMultiOutput,
     "TJ_MultiRouter": TJ_MultiRouter,
+    "TJ_SetNode": TJ_SetNode,
+    "TJ_GetNode": TJ_GetNode,
+    "TJ_MultiGetNode": TJ_MultiGetNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -41,12 +47,17 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveImage_EclipseSubsequent": "Save Image(Eclipse Suffix-TJ)",
     "TJ_BatchToMultiOutput": "Batch to Multi Image Output(TJ)",
     "TJ_MultiRouter": "Multi Router(TJ)",
+    "TJ_SetNode": "Set Node (TJ)",
+    "TJ_GetNode": "Get Node (TJ)",
+    "TJ_MultiGetNode": "Multi Get Node (TJ)",
 }
 
 WEB_DIRECTORY = "./web"
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
+
 # ──────────── API Routes ────────────
+# (이하 다운로드 및 파일 시스템 API는 기존과 100% 동일하게 유지)
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
 
@@ -55,7 +66,6 @@ def _get_download_dir():
     os.makedirs(d, exist_ok=True)
     return d
 
-
 def _resolve_base_dir(dir_type):
     if dir_type == "download":
         return _get_download_dir()
@@ -63,7 +73,6 @@ def _resolve_base_dir(dir_type):
         return folder_paths.get_output_directory()
     else:
         return folder_paths.get_input_directory()
-
 
 def _safe_resolve(base_dir, subfolder):
     if subfolder:
@@ -74,8 +83,6 @@ def _safe_resolve(base_dir, subfolder):
         return target
     return base_dir
 
-
-# ── Download URL ──
 @server.PromptServer.instance.routes.post("/tj_node/download_url")
 async def download_url(request):
     try:
@@ -113,8 +120,6 @@ async def download_url(request):
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
-
-# ── List directory files ──
 @server.PromptServer.instance.routes.post("/tj_node/list_dir_files")
 async def list_dir_files(request):
     try:
@@ -163,8 +168,6 @@ async def list_dir_files(request):
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
-
-# ── Delete files ──
 @server.PromptServer.instance.routes.post("/tj_node/delete_files")
 async def delete_files(request):
     try:
@@ -223,8 +226,6 @@ async def delete_files(request):
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
-
-# ── Upload local file ──
 @server.PromptServer.instance.routes.post("/tj_node/upload_local")
 async def upload_local(request):
     try:

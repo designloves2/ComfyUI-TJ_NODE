@@ -47,7 +47,7 @@ class DynamicImageBatch:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_batch"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
     def do_batch(self, **kwargs):
         valid_images = []

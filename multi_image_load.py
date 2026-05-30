@@ -11,7 +11,7 @@ class TJ_MultiImageLoader:
     RETURN_TYPES = ("IMAGE", "INT", "INT")
     RETURN_NAMES = ("BATCH", "WIDTH", "HEIGHT")
     FUNCTION = "load_images"
-    CATEGORY = "TJ Nodes/Image"
+    CATEGORY = " ✨ TJ Nodes/Image"
     OUTPUT_NODE = False
 
     @classmethod

@@ -1,32 +1,57 @@
-// multi_router.js — TJ_MultiRouter 프론트엔드 (순수 라우터 버전 - 여백 제거 완료)
-// 위치: web/multi_router.js
+// web/multi_router.js — TJ_MultiRouter (아름다운 중앙 팝업창 및 라벨 더블클릭 완벽 지원)
 
 import { app } from "../../scripts/app.js";
 
 const MAX_PORTS = 20;
 
-const inSlots  = (n) => (n.inputs  || []).filter(s => s.name.startsWith("input_"));
-const outSlots = (n) => (n.outputs || []).filter(s => s.name.startsWith("output_"));
+// ── Widget Hide / Show (백엔드 에러 방지용) ──
+function hideWidget(widget) {
+    if (!widget || widget._hidden) return;
+    widget._hidden = true;
+    widget._origDraw = widget.draw;
+    widget._origComputeSize = widget.computeSize;
+    widget._origMouse = widget.mouse;
+    widget.draw = function () {};
+    widget.computeSize = function () { return [0, -4]; };
+    widget.mouse = function () { return false; };
+}
+
+function showWidget(widget) {
+    if (!widget || !widget._hidden) return;
+    widget._hidden = false;
+    if (widget._origDraw !== undefined) widget.draw = widget._origDraw; else delete widget.draw;
+    if (widget._origComputeSize !== undefined) widget.computeSize = widget._origComputeSize; else delete widget.computeSize;
+    if (widget._origMouse !== undefined) widget.mouse = widget._origMouse; else delete widget.mouse;
+}
+
+const inSlots  = (n) => (n.inputs  || []).filter(s => !["mode", "auto_set", "num_ports"].includes(s.name));
+const outSlots = (n) => (n.outputs || []);
 
 function renumber(node) {
-    let c = 1;
-    for (const s of node.inputs)  if (s.name.startsWith("input_"))  s.name = `input_${c++}`;
-    c = 1;
-    for (const s of node.outputs) if (s.name.startsWith("output_")) s.name = `output_${c++}`;
+    inSlots(node).forEach((s, i) => { s.name = `input_${i + 1}`; });
+    outSlots(node).forEach((s, i) => { s.name = `output_${i + 1}`; });
 }
 
 function syncOutputs(node) {
-    const ins = inSlots(node), outs = outSlots(node), need = ins.length;
-    for (let i = outs.length; i < need; i++) node.addOutput(`output_${i + 1}`, "*");
-    let cur = outSlots(node);
-    for (let i = cur.length - 1; i >= need; i--) {
-        const ri = node.outputs.indexOf(cur[i]);
-        if (ri === -1) continue;
-        const sl = node.outputs[ri];
-        if (sl.links?.length) [...sl.links].forEach(lid => node.graph?.removeLink(lid));
-        node.removeOutput(ri);
+    const ins = inSlots(node);
+    const need = ins.length;
+    
+    if (!node.outputs) node.outputs = [];
+
+    while (node.outputs.length < need) {
+        node.addOutput(`output_${node.outputs.length + 1}`, "*");
     }
-    outSlots(node).forEach((s, i) => { s.name = `output_${i + 1}`; });
+    
+    while (node.outputs.length > need) {
+        const lastIdx = node.outputs.length - 1;
+        const sl = node.outputs[lastIdx];
+        if (sl && sl.links?.length) {
+            [...sl.links].forEach(lid => node.graph?.removeLink(lid));
+        }
+        node.removeOutput(lastIdx);
+    }
+    
+    renumber(node);
 }
 
 function resolveColor(node, inp) {
@@ -42,50 +67,126 @@ function resolveColor(node, inp) {
             ?? LGraphCanvas?.link_type_colors?.[t] ?? null) : null);
 }
 
-// ★ 하단 여백 제거 패치: 현재 크기 유지(Math.max)를 빼고, 계산된 최적의 크기로 강제 고정!
 function applyNodeSize(node) {
     const computed = node.computeSize();
-    node.size[0] = Math.max(node.size[0], computed[0]); // 가로는 유저가 늘린 크기 유지
-    node.size[1] = computed[1]; // 세로는 빈 공간 없이 타이트하게 딱 맞춤!
+    const slots = Math.max(inSlots(node).length, outSlots(node).length);
+
+    let widgetH = 0;
+    for (const w of (node.widgets || [])) {
+        let h = LiteGraph.NODE_WIDGET_HEIGHT;
+        if (w.computeSize) {
+            const sz = w.computeSize(node.size[0]);
+            if (Array.isArray(sz)) h = sz[1];
+        }
+        widgetH += h + 4;
+    }
+
+    const minH = LiteGraph.NODE_TITLE_HEIGHT + (slots * LiteGraph.NODE_SLOT_HEIGHT) + widgetH + 12;
+    node.size[0] = Math.max(node.size[0], computed[0]);
+    node.size[1] = minH; 
 }
 
 function refreshSlots(node) {
     if (!node.graph) return;
     const ins = inSlots(node), outs = outSlots(node);
+    
+    const autoSetWidget = node.widgets?.find(w => w.name === "auto_set");
+    const isAutoSet = autoSetWidget ? autoSetWidget.value : true;
+
+    if (node.widgets) {
+        node.widgets = node.widgets.filter(w => !w.name || !w.name.startsWith("_set_label_"));
+    }
+
+    const existingSets = new Set();
+    if (isAutoSet) {
+        for (const n of node.graph._nodes) {
+            if (n.type === "TJ_SetNode" && n.widgets?.[0]?.value) existingSets.add(n.widgets[0].value);
+            if (n.type === "TJ_MultiRouter" && n !== node && n.properties?.auto_sets) {
+                const otherAutoSetW = n.widgets?.find(w => w.name === "auto_set");
+                if (!otherAutoSetW || otherAutoSetW.value) {
+                    Object.values(n.properties.auto_sets).forEach(v => existingSets.add(v));
+                }
+            }
+        }
+    }
+
+    if (!node.properties) node.properties = {};
+    node.properties.auto_sets = {};
+    if (!node.properties.custom_labels) node.properties.custom_labels = {};
 
     ins.forEach((inp, i) => {
-        let label = inp.name;
-        if (inp.link != null) {
+        let baseLabel = inp.name; 
+        
+        if (inp.link == null) {
+            if (outs[i]) outs[i].label = `output_${i+1}`;
+            inp.color_on = null; inp.color_off = null;
+            inp.type = "*"; 
+            if (outs[i]) { outs[i].color_on = null; outs[i].color_off = null; }
+            return;
+        }
+
+        if (node.properties.custom_labels[i]) {
+            baseLabel = node.properties.custom_labels[i];
+        } 
+        else {
             const link = node.graph.links?.[inp.link];
             if (link) {
                 const src = node.graph.getNodeById(link.origin_id);
                 const srcOut = src?.outputs?.[link.origin_slot];
-                if (srcOut?.type && srcOut.type !== "*") label = srcOut.type;
-                else label = src?.title || src?.type || inp.name;
+                if (srcOut?.type && srcOut.type !== "*") baseLabel = srcOut.type;
+                else baseLabel = src?.title || src?.type || inp.name;
             }
         }
         
-        inp.label = label;
-        if (outs[i]) outs[i].label = label;
+        baseLabel = baseLabel.replace(" ▸", "");
+        inp.label = baseLabel; 
+        
+        let finalName = "";
+        if (isAutoSet && baseLabel !== `input_${i+1}`) {
+            finalName = baseLabel;
+            let tries = 1;
+            while (existingSets.has(finalName)) { finalName = `${baseLabel}_${tries++}`; }
+            existingSets.add(finalName);
+            
+            node.properties.auto_sets[i] = finalName;
+            if (outs[i]) outs[i].label = finalName + " ▸";
+        } else {
+            delete node.properties.auto_sets[i]; 
+            if (outs[i]) outs[i].label = baseLabel;
+        }
 
         const color = resolveColor(node, inp);
         inp.color_on = color; inp.color_off = color;
+        inp.type = outs[i]?.type || "*"; 
         if (outs[i]) { outs[i].color_on = color; outs[i].color_off = color; }
     });
 
     node.setDirtyCanvas(true, false);
     applyNodeSize(node);
+
+    setTimeout(() => {
+        for (const n of node.graph._nodes) {
+            if (n.type === "TJ_GetNode" && n._syncWithSetNode) n._syncWithSetNode();
+            // Multi Get Node 이름 동기화 추가
+            if (n.type === "TJ_MultiGetNode") {
+                if (n._syncWithSetNodes) n._syncWithSetNodes();
+                else if (n._rebuild) n._rebuild();
+            }
+        }
+    }, 50);
 }
 
 function updateWidgetVis(node) {
     const modeW = node.widgets?.find(w => w.name === "mode");
-    const numW  = node.widgets?.find(w => w.name === "num_ports");
-    if (!numW) return;
-    if (modeW?.value === "Dynamic (Auto)") {
-        numW.type = "hidden"; numW.computeSize = () => [0, -4]; // 숨김 처리 시 여백도 제거
+    const numW = node.widgets?.find(w => w.name === "num_ports");
+    if (!modeW || !numW) return;
+
+    if (modeW.value === "Dynamic (Auto)") {
+        hideWidget(numW); // 배열에서 삭제하지 않고 보이지만 않게 숨김
     } else {
-        numW.type = "number"; numW.computeSize = null;
+        showWidget(numW);
     }
+    
     applyNodeSize(node);
     node.setDirtyCanvas(true, false);
 }
@@ -104,14 +205,27 @@ function maybeGrow(node) {
 function applyManual(node, count) {
     count = Math.max(1, Math.min(count, MAX_PORTS));
     const ins = inSlots(node);
-    for (let i = ins.length; i < count; i++) node.addInput(`input_${i + 1}`, "*");
-    const cur = inSlots(node);
-    for (let i = cur.length - 1; i >= count; i--) {
-        const sl = cur[i], ri = node.inputs.indexOf(sl);
-        if (sl.link != null) node.graph?.removeLink(sl.link);
-        node.removeInput(ri);
+    
+    if (count > ins.length) {
+        for (let i = ins.length; i < count; i++) {
+            node.addInput(`input_${i + 1}`, "*");
+        }
+    } 
+    else if (count < ins.length) {
+        for (let i = ins.length - 1; i >= count; i--) {
+            const sl = ins[i];
+            const ri = node.inputs.indexOf(sl);
+            if (sl.link != null) node.graph?.removeLink(sl.link);
+            node.removeInput(ri);
+            
+            if (node.properties?.custom_labels?.[i]) delete node.properties.custom_labels[i];
+            if (node.properties?.auto_sets?.[i]) delete node.properties.auto_sets[i];
+        }
     }
-    renumber(node); syncOutputs(node); node.setDirtyCanvas(true, true);
+    
+    renumber(node); 
+    syncOutputs(node); 
+    node.setDirtyCanvas(true, true);
 }
 
 function swapPair(node, a, b) {
@@ -138,102 +252,99 @@ function swapPair(node, a, b) {
             [node.outputs[oA], node.outputs[oB]] = [node.outputs[oB], node.outputs[oA]];
         }
     }
+
+    if (node.properties?.custom_labels) {
+        const temp = node.properties.custom_labels[a];
+        node.properties.custom_labels[a] = node.properties.custom_labels[b];
+        node.properties.custom_labels[b] = temp;
+        if (!node.properties.custom_labels[a]) delete node.properties.custom_labels[a];
+        if (!node.properties.custom_labels[b]) delete node.properties.custom_labels[b];
+    }
+
     renumber(node); syncOutputs(node);
 }
 
-function detectSlotAt(node, cx, cy) {
-    for (const [arr, isIn] of [[inSlots(node), true], [outSlots(node), false]]) {
-        for (let i = 0; i < arr.length; i++) {
-            const ri = isIn ? node.inputs.indexOf(arr[i]) : node.outputs.indexOf(arr[i]);
-            const p = node.getConnectionPos(isIn, ri);
-            if (p && Math.abs(cy - p[1]) < 14 && cx >= node.pos[0] - 15 && cx <= node.pos[0] + node.size[0] + 15) return i;
-        }
-    }
-    return -1;
+// ────────────────────────────────────────────────────────
+// ★ 화면 중앙에 뜨는 아름다운 Custom Prompt Dialog
+// ────────────────────────────────────────────────────────
+function showCenterPrompt(title, defaultValue, callback) {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10000; backdrop-filter: blur(3px);
+    `;
+
+    const box = document.createElement("div");
+    box.style.cssText = `
+        background: #1e1e1e; border: 1px solid #444; border-radius: 8px;
+        padding: 20px; width: 350px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        font-family: sans-serif; color: #fff;
+    `;
+
+    const titleEl = document.createElement("div");
+    titleEl.textContent = title;
+    titleEl.style.cssText = "font-size: 14px; font-weight: bold; margin-bottom: 12px; color: #ccc;";
+
+    const inputEl = document.createElement("input");
+    inputEl.type = "text";
+    inputEl.value = defaultValue;
+    inputEl.style.cssText = `
+        width: 100%; box-sizing: border-box; padding: 10px; background: #111;
+        border: 1px solid #555; border-radius: 4px; color: #fff; font-size: 14px;
+        margin-bottom: 20px; outline: none;
+    `;
+    inputEl.onfocus = () => { inputEl.style.borderColor = "#ff4757"; };
+    inputEl.onblur = () => { inputEl.style.borderColor = "#555"; };
+
+    const btnContainer = document.createElement("div");
+    btnContainer.style.cssText = "display: flex; justify-content: flex-end; gap: 10px;";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.style.cssText = "padding: 8px 16px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer;";
+    cancelBtn.onclick = () => { document.body.removeChild(overlay); };
+
+    const okBtn = document.createElement("button");
+    okBtn.textContent = "Apply";
+    okBtn.style.cssText = "padding: 8px 16px; background: #ff4757; color: #fff; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;";
+    
+    const applyValue = () => {
+        document.body.removeChild(overlay);
+        callback(inputEl.value);
+    };
+    
+    okBtn.onclick = applyValue;
+    inputEl.addEventListener("keydown", (e) => { if (e.key === "Enter") applyValue(); });
+
+    btnContainer.appendChild(cancelBtn);
+    btnContainer.appendChild(okBtn);
+    box.appendChild(titleEl);
+    box.appendChild(inputEl);
+    box.appendChild(btnContainer);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    
+    // 포커스 자동 지정
+    setTimeout(() => { inputEl.focus(); inputEl.select(); }, 10);
 }
 
-function installSlotMenu(node) {
-    const origGSIP = node.getSlotInPosition?.bind(node);
-    node.getSlotInPosition = function(cx, cy) {
-        const slot = origGSIP ? origGSIP(cx, cy) : null;
-        if (slot) return slot;
-        const idx = detectSlotAt(this, cx, cy);
-        if (idx >= 0) return { _tj: true, _idx: idx, output: { type: `Slot ${idx + 1}` } };
-        return null;
-    };
-    const origGSMO = node.getSlotMenuOptions?.bind(node);
-    node.getSlotMenuOptions = function(slot) {
-        if (!slot?._tj) return origGSMO ? origGSMO(slot) : null;
-        const idx = slot._idx, ins = inSlots(this), items = [];
-        if (idx > 0) items.push({ content: "⬆ Move Up", callback: () => {
-            this.graph.beforeChange(); swapPair(this, idx, idx-1); this.graph.afterChange(); refreshSlots(this); this.setDirtyCanvas(true,true);
-        }});
-        if (idx < ins.length-1) items.push({ content: "⬇ Move Down", callback: () => {
-            this.graph.beforeChange(); swapPair(this, idx, idx+1); this.graph.afterChange(); refreshSlots(this); this.setDirtyCanvas(true,true);
-        }});
-        items.push(null);
-        items.push({ content: "✕ Remove Slot", callback: () => {
-            this.graph.beforeChange();
-            const sl = ins[idx], ri = this.inputs.indexOf(sl);
-            if (sl.link != null) this.graph.removeLink(sl.link);
-            this.removeInput(ri); renumber(this); syncOutputs(this);
-            if (this.widgets?.find(w => w.name === "mode")?.value === "Manual") {
-                const nw = this.widgets.find(w => w.name === "num_ports");
-                if (nw) nw.value = Math.max(1, inSlots(this).length);
-            }
-            this.graph.afterChange(); refreshSlots(this); this.setDirtyCanvas(true,true);
-        }});
-        items.push(null);
-        if (ins.length >= 2) items.push({ content: "↕ Reorder Slots...", callback: () => openReorderModal(this) });
-        return items;
-    };
+function triggerRenamePrompt(node, idx) {
+    if (!node.properties) node.properties = {};
+    if (!node.properties.custom_labels) node.properties.custom_labels = {};
+    
+    const realIns = inSlots(node);
+    const currentLabel = node.properties.custom_labels[idx] || realIns[idx].label || "";
+    
+    showCenterPrompt("Enter custom label (Leave blank to reset to Auto):", currentLabel, (newLabel) => {
+        if (newLabel.trim() === "") delete node.properties.custom_labels[idx];
+        else node.properties.custom_labels[idx] = newLabel.trim();
+        refreshSlots(node);
+    });
 }
 
-function installDrag(node) {
-    let dragging = false, dragIdx = -1;
-    const omd = node.onMouseDown;
-    node.onMouseDown = function(e, lp, c) {
-        if (omd) { const r = omd.apply(this, arguments); if (r === true) return true; }
-        if (!e.shiftKey) return false;
-        const idx = detectSlotAt(this, this.pos[0]+lp[0], this.pos[1]+lp[1]);
-        if (idx === -1 || inSlots(this).length < 2) return false;
-        dragging = true; dragIdx = idx; e.preventDefault(); e.stopPropagation(); return true;
-    };
-    const omm = node.onMouseMove;
-    node.onMouseMove = function(e, lp) {
-        if (omm) omm.apply(this, arguments);
-        if (!dragging) return;
-        const cy = this.pos[1]+lp[1], ins = inSlots(this);
-        let cl = -1, mn = Infinity;
-        for (let i = 0; i < ins.length; i++) {
-            const p = this.getConnectionPos(true, this.inputs.indexOf(ins[i]));
-            if (p) { const d = Math.abs(cy-p[1]); if (d < mn) { mn = d; cl = i; } }
-        }
-        if (cl !== -1 && cl !== dragIdx) {
-            this.graph.beforeChange(); swapPair(this, dragIdx, cl); dragIdx = cl;
-            this.graph.afterChange(); refreshSlots(this);
-        }
-        this.setDirtyCanvas(true, false);
-    };
-    const omu = node.onMouseUp;
-    node.onMouseUp = function(e) {
-        if (omu) omu.apply(this, arguments);
-        if (dragging) { dragging = false; dragIdx = -1; refreshSlots(this); this.setDirtyCanvas(true,true); }
-    };
-    const odf = node.onDrawForeground;
-    node.onDrawForeground = function(ctx) {
-        if (odf) odf.apply(this, arguments);
-        if (!dragging || dragIdx < 0) return;
-        const ins = inSlots(this); if (dragIdx >= ins.length) return;
-        const p = this.getConnectionPos(true, this.inputs.indexOf(ins[dragIdx]));
-        if (!p) return;
-        const ly = p[1]-this.pos[1];
-        ctx.save(); ctx.fillStyle = "rgba(100,150,255,0.15)"; ctx.fillRect(0,ly-10,this.size[0],20);
-        ctx.strokeStyle = "rgba(100,150,255,0.6)"; ctx.lineWidth = 1; ctx.strokeRect(0,ly-10,this.size[0],20); ctx.restore();
-    };
-}
 
-function openReorderModal(node) {
+export function openReorderModal(node) {
     document.getElementById("tj-reorder-modal")?.remove();
     document.getElementById("tj-reorder-overlay")?.remove();
     const ins = inSlots(node); if (ins.length < 2) return;
@@ -271,63 +382,321 @@ function openReorderModal(node) {
     const ab=(t,bg,hv,cb)=>{const b=document.createElement("button");b.textContent=t;Object.assign(b.style,{background:bg,border:"none",borderRadius:"4px",color:"#e0e0ff",cursor:"pointer",fontSize:"12px",padding:"5px 14px",fontFamily:"monospace"});b.onmouseover=()=>b.style.background=hv;b.onmouseout=()=>b.style.background=bg;b.onclick=cb;return b;};
     br.appendChild(ab("Cancel","#4a3a3a","#6a4a4a",()=>{md.remove();ov.remove();}));
     br.appendChild(ab("Apply","#4a7a4a","#5a9a5a",()=>{
-        node.graph.beforeChange(); const ni=node.inputs.filter(s=>!s.name.startsWith("input_")); node.inputs=[...ni,...order.map(i=>ins[i])];
+        node.graph.beforeChange(); const ni=node.inputs.filter(s=>!["mode", "auto_set", "num_ports"].includes(s.name)); node.inputs=[...ni,...order.map(i=>ins[i])];
         renumber(node);syncOutputs(node);node.graph.afterChange();refreshSlots(node);node.setDirtyCanvas(true,true);md.remove();ov.remove();
     }));
     md.appendChild(br); ov.onclick=()=>{md.remove();ov.remove();}; document.body.appendChild(ov); document.body.appendChild(md);
 }
 
-// ─────────────────────────────────────────────────────────────
-// 메인 확장 (TJ_MultiRouter)
-// ─────────────────────────────────────────────────────────────
+function installCustomEvents(node) {
+    const origGetSlotMenuOptions = node.getSlotMenuOptions;
+    node.getSlotMenuOptions = function(slot_info) {
+        let menu = origGetSlotMenuOptions ? origGetSlotMenuOptions.apply(this, arguments) || [] : [];
+        menu = menu.filter(m => m && m.content !== "Rename Slot");
+
+        if (slot_info && slot_info.input) {
+            const realIns = inSlots(this);
+            const idx = realIns.indexOf(slot_info.input);
+            if (idx !== -1) {
+                menu.unshift(
+                    {
+                        content: "✏️ Rename Custom Label",
+                        callback: () => triggerRenamePrompt(this, idx)
+                    },
+                    null
+                );
+
+                if (idx > 0) menu.push({ content: "⬆ Move Up", callback: () => {
+                    this.graph.beforeChange(); swapPair(this, idx, idx-1); this.graph.afterChange(); refreshSlots(this);
+                }});
+                if (idx < realIns.length - 1) menu.push({ content: "⬇ Move Down", callback: () => {
+                    this.graph.beforeChange(); swapPair(this, idx, idx+1); this.graph.afterChange(); refreshSlots(this);
+                }});
+                menu.push(null, { content: "✕ Remove Slot", callback: () => {
+                    this.graph.beforeChange();
+                    const ri = this.inputs.indexOf(realIns[idx]);
+                    if (this.inputs[ri].link != null) this.graph.removeLink(this.inputs[ri].link);
+                    this.removeInput(ri);
+                    
+                    if (this.properties?.custom_labels) {
+                        for (let i = idx; i < realIns.length; i++) {
+                            this.properties.custom_labels[i] = this.properties.custom_labels[i + 1];
+                        }
+                        delete this.properties.custom_labels[realIns.length];
+                    }
+                    renumber(this); syncOutputs(this);
+                    
+                    // 위젯이 필터링 삭제되지 않고 숨겨진 상태이므로 값을 안전하게 변경
+                    const nw = this.widgets?.find(w => w.name === "num_ports");
+                    if (nw && this.widgets?.find(w => w.name === "mode")?.value === "Manual") {
+                        nw.value = Math.max(1, inSlots(this).length);
+                    }
+                    this.graph.afterChange(); refreshSlots(this);
+                }});
+            }
+        }
+        return menu;
+    };
+
+    let lastClickTime = 0;
+    const omd = node.onMouseDown;
+    node.onMouseDown = function(e, lp, c) {
+        if (omd) { const r = omd.apply(this, arguments); if (r === true) return true; }
+        
+        const now = Date.now();
+        const isDblClick = (now - lastClickTime < 300);
+        lastClickTime = now;
+
+        const cy = this.pos[1]+lp[1], cx = this.pos[0]+lp[0];
+        
+        if (isDblClick) {
+            const realIns = inSlots(this);
+            for (let i = 0; i < realIns.length; i++) {
+                const ri = this.inputs.indexOf(realIns[i]);
+                const p = this.getConnectionPos(true, ri);
+                if (p && Math.abs(cy - p[1]) < 14 && cx >= this.pos[0] && cx <= this.pos[0] + 150) {
+                    triggerRenamePrompt(this, i);
+                    return true;
+                }
+            }
+        }
+
+        if (!e.shiftKey) return false;
+        
+        let idx = -1;
+        for (const [arr, isIn] of [[inSlots(this), true], [outSlots(this), false]]) {
+            for (let i = 0; i < arr.length; i++) {
+                const ri = isIn ? this.inputs.indexOf(arr[i]) : this.outputs.indexOf(arr[i]);
+                const p = this.getConnectionPos(isIn, ri);
+                if (p && Math.abs(cy - p[1]) < 14 && cx >= this.pos[0] - 15 && cx <= this.pos[0] + this.size[0] + 15) { idx = i; break; }
+            }
+        }
+        if (idx === -1 || inSlots(this).length < 2) return false;
+        dragging = true; dragIdx = idx; e.preventDefault(); e.stopPropagation(); return true;
+    };
+    
+    let dragging = false, dragIdx = -1;
+    const ommDrag = node.onMouseMove;
+    node.onMouseMove = function(e, lp) {
+        if (ommDrag) ommDrag.apply(this, arguments);
+        if (!dragging) return;
+        const cy = this.pos[1]+lp[1], ins = inSlots(this);
+        let cl = -1, mn = Infinity;
+        for (let i = 0; i < ins.length; i++) {
+            const p = this.getConnectionPos(true, this.inputs.indexOf(ins[i]));
+            if (p) { const d = Math.abs(cy-p[1]); if (d < mn) { mn = d; cl = i; } }
+        }
+        if (cl !== -1 && cl !== dragIdx) {
+            this.graph.beforeChange(); swapPair(this, dragIdx, cl); dragIdx = cl;
+            this.graph.afterChange(); refreshSlots(this);
+        }
+        this.setDirtyCanvas(true, false);
+    };
+    
+    const omu = node.onMouseUp;
+    node.onMouseUp = function(e) {
+        if (omu) omu.apply(this, arguments);
+        if (dragging) { dragging = false; dragIdx = -1; refreshSlots(this); this.setDirtyCanvas(true,true); }
+    };
+
+    let hoverSlotIdx = -1;
+    let hoverTimer = null;
+    let showTooltipIdx = -1;
+
+    const ommTip = node.onMouseMove;
+    node.onMouseMove = function(e, lp) {
+        if (ommTip) ommTip.apply(this, arguments);
+        const cy = this.pos[1] + lp[1];
+        const cx = this.pos[0] + lp[0];
+
+        let foundIdx = -1;
+        const outs = outSlots(this);
+        for (let i = 0; i < outs.length; i++) {
+            if (!this.properties?.auto_sets?.[i]) continue;
+            
+            const p = this.getConnectionPos(false, this.outputs.indexOf(outs[i]));
+            if (p && Math.abs(cy - p[1]) < 12 && cx >= p[0] - 15 && cx <= p[0] + 15) {
+                foundIdx = i; break;
+            }
+        }
+
+        if (foundIdx !== hoverSlotIdx) {
+            hoverSlotIdx = foundIdx;
+            showTooltipIdx = -1;
+            clearTimeout(hoverTimer);
+            if (foundIdx !== -1) {
+                hoverTimer = setTimeout(() => {
+                    showTooltipIdx = foundIdx;
+                    app.canvas?.setDirty(true, true);
+                }, 1000); 
+            }
+            app.canvas?.setDirty(true, true);
+        }
+    };
+
+    const oml = node.onMouseLeave;
+    node.onMouseLeave = function(e) {
+        if (oml) oml.apply(this, arguments);
+        hoverSlotIdx = -1; showTooltipIdx = -1; clearTimeout(hoverTimer);
+        app.canvas?.setDirty(true, true);
+    };
+
+    const odf = node.onDrawForeground;
+    node.onDrawForeground = function(ctx) {
+        if (odf) odf.apply(this, arguments);
+        if (showTooltipIdx !== -1 && this.properties?.auto_sets?.[showTooltipIdx]) {
+            const autoSetW = this.widgets?.find(w => w.name === "auto_set");
+            if (!autoSetW || autoSetW.value) {
+                const p = this.getConnectionPos(false, this.outputs.indexOf(outSlots(this)[showTooltipIdx]));
+                if (p) {
+                    const text = "Auto Set: " + this.properties.auto_sets[showTooltipIdx];
+                    ctx.save();
+                    ctx.font = "bold 12px sans-serif";
+                    const w = ctx.measureText(text).width;
+                    const lx = p[0] - this.pos[0] + 12;
+                    const ly = p[1] - this.pos[1] - 8;
+                    
+                    ctx.fillStyle = "rgba(0,0,0,0.85)";
+                    ctx.fillRect(lx, ly - 14, w + 16, 22);
+                    ctx.strokeStyle = "#ff4757";
+                    ctx.strokeRect(lx, ly - 14, w + 16, 22);
+                    
+                    ctx.fillStyle = "#fff";
+                    ctx.fillText(text, lx + 8, ly + 2);
+                    ctx.restore();
+                }
+            }
+        }
+    };
+}
+
 app.registerExtension({
-    name: "TJ.MultiRouter",
-    nodeCreated(node) {
-        if (node.comfyClass !== "TJ_MultiRouter") return;
-		
-		node.bgcolor = "#000000";
-		node.color = "#7612DA";
-		node.title_text_color = "#FFFFFF";
+    name: "TJ.MultiRouter.Core",
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeData.name === "TJ_MultiRouter") {
+            
+            const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function() {
+                if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
 
-        const gm = () => node.widgets?.find(w => w.name === "mode");
-        const gn = () => node.widgets?.find(w => w.name === "num_ports");
+                this.bgcolor = "#000000";
+                this.color = "#7612DA";
+                this.title_text_color = "#FFFFFF";
 
-        setTimeout(() => {
-            if (inSlots(node).length === 0) {
-                const m = gm(); if (m) m.value = "Dynamic (Auto)";
-                node.addInput("input_1", "*"); syncOutputs(node);
-            } else { syncOutputs(node); }
-            updateWidgetVis(node); refreshSlots(node);
-            applyNodeSize(node); // 노드 생성 시 딱 맞게 조절
-        }, 0);
+                const modeW = this.widgets?.find(w => w.name === "mode");
+                if (modeW) {
+                    const origModeCb = modeW.callback;
+                    modeW.callback = (v) => {
+                        if (origModeCb) origModeCb.call(modeW, v);
+                        if (v === "Manual") {
+                            const activeLinksCount = inSlots(this).length;
+                            const numW = this.widgets?.find(w => w.name === "num_ports");
+                            if (numW) {
+                                numW.value = Math.max(1, activeLinksCount);
+                                applyManual(this, numW.value);
+                            }
+                        } else {
+                            maybeGrow(this);
+                        }
+                        updateWidgetVis(this);
+                        refreshSlots(this);
+                    };
+                }
 
-        setTimeout(() => {
-            const m = gm(); if (!m || m._tj) return; m._tj = true;
-            const o = m.callback; m.callback = function(v) { if(o) o.call(this,v);
-                if (v === "Manual") { const n = gn(); if (n) n.value = Math.max(1, inSlots(node).length); }
-                else maybeGrow(node);
-                updateWidgetVis(node); refreshSlots(node); };
-        }, 10);
+                const numW = this.widgets?.find(w => w.name === "num_ports");
+                if (numW) {
+                    const origNumCb = numW.callback;
+                    numW.callback = (v) => {
+                        if (origNumCb) origNumCb.call(numW, v);
+                        const m = this.widgets?.find(w => w.name === "mode")?.value;
+                        if (m === "Manual") {
+                            const intVal = Math.floor(v);
+                            numW.value = intVal;
+                            applyManual(this, intVal);
+                            refreshSlots(this);
+                        }
+                    };
+                }
 
-        setTimeout(() => {
-            const n = gn(); if (!n || n._tj) return; n._tj = true;
-            const o = n.callback; n.callback = function(v) { if(o) o.call(this,v);
-                if (gm()?.value === "Manual") { applyManual(node, v); refreshSlots(node); } };
-        }, 10);
+                const autoW = this.widgets?.find(w => w.name === "auto_set");
+                if (autoW) {
+                    const origAutoCb = autoW.callback;
+                    autoW.callback = (v) => {
+                        if (origAutoCb) origAutoCb.call(autoW, v);
+                        refreshSlots(this);
+                    };
+                }
 
-        const oc = node.onConnectionsChange;
-        node.onConnectionsChange = function(type) {
-            if (oc) oc.apply(this, arguments);
-            if (type === 1) { maybeGrow(node); setTimeout(() => refreshSlots(node), 50); }
-        };
+                const oc = this.onConnectionsChange;
+                this.onConnectionsChange = function(type) {
+                    if (oc) oc.apply(this, arguments);
+                    if (type === 1) { 
+                        maybeGrow(this); 
+                        setTimeout(() => refreshSlots(this), 50); 
+                    }
+                };
 
-        installSlotMenu(node);
-        installDrag(node);
+                installCustomEvents(this);
 
-        const om = node.getExtraMenuOptions;
-        node.getExtraMenuOptions = function(c, opts) {
-            if (om) om.apply(this, arguments);
-            if (inSlots(this).length >= 2) { opts.push(null); opts.push({ content: "↕ Reorder Slots...", callback: () => openReorderModal(this) }); }
-        };
-    },
+                Object.defineProperty(this, "_tj_submenu_options", {
+                    get: function() {
+                        const opts = [];
+                        const activeOuts = [];
+                        const outs = outSlots(this);
+                        outs.forEach((out, i) => {
+                            if (out.links && out.links.length > 0) {
+                                out.links.forEach(lid => {
+                                    const l = this.graph.links[lid] || (this.graph.links.get && this.graph.links.get(lid));
+                                    if (l) {
+                                        const targetNode = this.graph.getNodeById(l.target_id);
+                                        if (targetNode) {
+                                            activeOuts.push({
+                                                content: `🚀 Go to [Port ${i+1}] Get Node`,
+                                                callback: () => {
+                                                    app.canvas.centerOnNode(targetNode);
+                                                    app.canvas.selectNode(targetNode);
+                                                }
+                                            });
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                        if (activeOuts.length > 0) {
+                            opts.push({ content: "🚀 Go to Get Nodes...", has_submenu: true, submenu: { options: activeOuts } });
+                        }
+                        if (inSlots(this).length >= 2) {
+                            opts.push({ content: "↕ Reorder Slots...", callback: () => openReorderModal(this) });
+                        }
+                        return opts;
+                    }
+                });
+
+                requestAnimationFrame(() => {
+                    if (this.widgets) {
+                        this.widgets = this.widgets.filter(w => !w.name || !w.name.startsWith("_set_label_"));
+                    }
+                    if (!this.inputs || inSlots(this).length === 0) {
+                        this.addInput("input_1", "*");
+                    }
+                    syncOutputs(this);
+                    updateWidgetVis(this);
+                    refreshSlots(this);
+                });
+            };
+
+            const origOnConfigure = nodeType.prototype.onConfigure;
+            nodeType.prototype.onConfigure = function(data) {
+                if (origOnConfigure) origOnConfigure.apply(this, arguments);
+                setTimeout(() => {
+                    if (this.widgets) {
+                        this.widgets = this.widgets.filter(w => !w.name || !w.name.startsWith("_set_label_"));
+                    }
+                    syncOutputs(this);
+                    updateWidgetVis(this);
+                    refreshSlots(this);
+                }, 100);
+            };
+        }
+    }
 });
