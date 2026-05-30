@@ -73,7 +73,6 @@ C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결
 * **Get Node (TJ)**: Set Node에서 지정한 이름을 드롭다운에서 선택하여 데이터를 수신합니다. 선이 투명하게 처리되어 캔버스가 깔끔해집니다.
 * **Multi Get Node (TJ)**: 여러 개의 Set 데이터를 한 번에 가져와 순서대로 출력하는 통합 수신 노드입니다.
 * **Multi Router(TJ)**: 최대 20개의 입출력을 라우팅하며, `Auto Set` 기능을 켜면 출력 슬롯이 자체적인 Set 노드로 동작합니다.
-<img width="1504" height="651" alt="스크린샷 2026-05-28 오후 3 08 08" src="https://github.com/user-attachments/assets/e084d5c4-3edc-44fb-b78d-e1d57fdef77e" />
 
 ### 2. Standard Type (기본형 파이프라인)
 * **Dynamic Image Batch(TJ)**: 표준 가변 배치 노드 (해상도 자동 리사이즈 포함)
@@ -96,6 +95,7 @@ C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결
   * *An all-in-one image loader node that lets you select and manage images directly in the UI.*
 * **Batch to Multi Image Output (TJ)**: 배치 텐서를 최대 64개의 개별 `IMAGE` 슬롯으로 분리 출력하는 배치 분할 노드.
   * *A batch-splitting node that separates a batch tensor into up to 64 individual `IMAGE` output slots.*
+<img width="1504" height="651" alt="스크린샷 2026-05-28 오후 3 08 08" src="https://github.com/user-attachments/assets/e084d5c4-3edc-44fb-b78d-e1d57fdef77e" />
 
 ---
 
