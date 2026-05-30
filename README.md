@@ -99,8 +99,6 @@ C:\AI\output\image\2026-05-22\upscale\ 폴더를 새로 만들고 그 안에 결
 
 ---
 
-## 노드 상세 (Node Details)
-
 ## 🔍 노드 상세 (Node Details)
 
 ### Multi Image Loader (TJ)
