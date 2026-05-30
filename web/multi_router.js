@@ -164,15 +164,20 @@ function refreshSlots(node) {
     node.setDirtyCanvas(true, false);
     applyNodeSize(node);
 
+    // ★ 캔버스 전체의 Get 노드들에게 상태 갱신(혹은 자동 재연결) 신호 발송
     setTimeout(() => {
         for (const n of node.graph._nodes) {
-            if (n.type === "TJ_GetNode" && n._syncWithSetNode) n._syncWithSetNode();
-            // Multi Get Node 이름 동기화 추가
+            if (n.type === "TJ_GetNode") {
+                if (n._syncWithSetNode) n._syncWithSetNode();
+                const w = n.widgets?.find(x => x.name === "set_name");
+                if (w && n._connectToSetNode) n._connectToSetNode(w.value);
+            }
             if (n.type === "TJ_MultiGetNode") {
                 if (n._syncWithSetNodes) n._syncWithSetNodes();
-                else if (n._rebuild) n._rebuild();
+                if (n._rebuild) n._rebuild();
             }
         }
+        app.canvas?.setDirty(true, true);
     }, 50);
 }
 
@@ -182,7 +187,7 @@ function updateWidgetVis(node) {
     if (!modeW || !numW) return;
 
     if (modeW.value === "Dynamic (Auto)") {
-        hideWidget(numW); // 배열에서 삭제하지 않고 보이지만 않게 숨김
+        hideWidget(numW); // 배열에서 삭제하지 않고 렌더링만 숨김 (에러 방지)
     } else {
         showWidget(numW);
     }
@@ -265,7 +270,7 @@ function swapPair(node, a, b) {
 }
 
 // ────────────────────────────────────────────────────────
-// ★ 화면 중앙에 뜨는 아름다운 Custom Prompt Dialog
+// ★ 커스텀 중앙 팝업 다이얼로그 (프롬프트 & 알림창)
 // ────────────────────────────────────────────────────────
 function showCenterPrompt(title, defaultValue, callback) {
     const overlay = document.createElement("div");
@@ -325,8 +330,51 @@ function showCenterPrompt(title, defaultValue, callback) {
     overlay.appendChild(box);
     document.body.appendChild(overlay);
     
-    // 포커스 자동 지정
     setTimeout(() => { inputEl.focus(); inputEl.select(); }, 10);
+}
+
+// ── Auto Set OFF 경고를 위한 커스텀 중앙 컨펌창 ──
+function showCenterConfirm(message, onConfirm, onCancel) {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 10000; backdrop-filter: blur(3px);
+    `;
+
+    const box = document.createElement("div");
+    box.style.cssText = `
+        background: #1a1a1a; border: 1px solid #ff4757; border-radius: 8px;
+        padding: 24px; width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,0.9);
+        font-family: sans-serif; color: #fff; text-align: center;
+    `;
+
+    const msgEl = document.createElement("div");
+    msgEl.innerHTML = message;
+    msgEl.style.cssText = "font-size: 14px; margin-bottom: 24px; line-height: 1.6;";
+
+    const btnContainer = document.createElement("div");
+    btnContainer.style.cssText = "display: flex; justify-content: center; gap: 16px;";
+
+    const isKorean = navigator.language.startsWith('ko');
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = isKorean ? "취소" : "Cancel";
+    cancelBtn.style.cssText = "padding: 10px 24px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;";
+    cancelBtn.onclick = () => { document.body.removeChild(overlay); if(onCancel) onCancel(); };
+
+    const okBtn = document.createElement("button");
+    okBtn.textContent = isKorean ? "진행 (OFF)" : "Proceed (OFF)";
+    okBtn.style.cssText = "padding: 10px 24px; background: #ff4757; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;";
+    
+    okBtn.onclick = () => { document.body.removeChild(overlay); if(onConfirm) onConfirm(); };
+
+    btnContainer.appendChild(cancelBtn);
+    btnContainer.appendChild(okBtn);
+    box.appendChild(msgEl);
+    box.appendChild(btnContainer);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
 }
 
 function triggerRenamePrompt(node, idx) {
@@ -342,7 +390,6 @@ function triggerRenamePrompt(node, idx) {
         refreshSlots(node);
     });
 }
-
 
 export function openReorderModal(node) {
     document.getElementById("tj-reorder-modal")?.remove();
@@ -618,12 +665,74 @@ app.registerExtension({
                     };
                 }
 
+                // ★ Auto Set 스위치 끄기(OFF) 시 경고 및 링크 파괴 로직 (중앙 커스텀 팝업 & 다국어)
                 const autoW = this.widgets?.find(w => w.name === "auto_set");
                 if (autoW) {
                     const origAutoCb = autoW.callback;
                     autoW.callback = (v) => {
-                        if (origAutoCb) origAutoCb.call(autoW, v);
-                        refreshSlots(this);
+                        if (v === false) { 
+                            let hasGetConnections = false;
+                            const outs = outSlots(this);
+                            for (const out of outs) {
+                                if (out.links && out.links.length > 0) {
+                                    for (const lid of out.links) {
+                                        const l = this.graph.links[lid] || (this.graph.links.get && this.graph.links.get(lid));
+                                        if (l) {
+                                            const target = this.graph.getNodeById(l.target_id);
+                                            if (target && (target.type === "TJ_GetNode" || target.type === "TJ_MultiGetNode")) {
+                                                hasGetConnections = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                if(hasGetConnections) break;
+                            }
+
+                            if (hasGetConnections) {
+                                const isKorean = navigator.language.startsWith('ko');
+                                const msg = isKorean 
+                                    ? "<b>⚠️ 경고! (Warning)</b><br><br>Auto Set 옵션을 [OFF]로 변경하면 현재 이 노드에서 데이터를 받고 있는 <b>모든 Get/Multi Get 노드의 연결이 즉시 해제(끊어짐)됩니다.</b><br><br>진행하시겠습니까?<br><br><span style='color:#aaa; font-size:12px;'>(나중에 다시 ON으로 켜면 잃어버린 노드들을 찾아 자동으로 재연결해 줍니다.)</span>"
+                                    : "<b>⚠️ Warning!</b><br><br>Turning [OFF] the Auto Set option will <b>immediately disconnect all Get/Multi Get nodes</b> currently receiving data from this node.<br><br>Do you want to proceed?<br><br><span style='color:#aaa; font-size:12px;'>(If you turn it back ON later, it will automatically find and reconnect the lost nodes.)</span>";
+
+                                showCenterConfirm(msg, 
+                                    () => { // 진행(Proceed) 버튼 클릭 시
+                                        this.graph.beforeChange();
+                                        outs.forEach(out => {
+                                            if (out.links) {
+                                                const linksToRemove = [];
+                                                out.links.forEach(lid => {
+                                                    const l = this.graph.links[lid] || (this.graph.links.get && this.graph.links.get(lid));
+                                                    if (l) {
+                                                        const target = this.graph.getNodeById(l.target_id);
+                                                        if (target && (target.type === "TJ_GetNode" || target.type === "TJ_MultiGetNode")) {
+                                                            linksToRemove.push(lid);
+                                                        }
+                                                    }
+                                                });
+                                                linksToRemove.forEach(lid => this.graph.removeLink(lid));
+                                            }
+                                        });
+                                        this.graph.afterChange();
+                                        if (origAutoCb) origAutoCb.call(autoW, false);
+                                        refreshSlots(this);
+                                    },
+                                    () => { // 취소(Cancel) 버튼 클릭 시
+                                        autoW.value = true; // 스위치 원상복구
+                                        app.canvas?.setDirty(true, false);
+                                    }
+                                );
+                                return; // 모달 응답을 기다리기 위해 여기서 실행 중지
+                            } else {
+                                // Get 노드 연결이 없으면 바로 진행
+                                if (origAutoCb) origAutoCb.call(autoW, false);
+                                refreshSlots(this);
+                            }
+                        } else {
+                            // ON으로 켰을 때
+                            if (origAutoCb) origAutoCb.call(autoW, true);
+                            refreshSlots(this);
+                        }
                     };
                 }
 

@@ -212,7 +212,7 @@ app.registerExtension({
 				if (w) {
 					w.options = { values: ["(none)"] }; 
 					w.callback = (val) => {
-						this.title = "GET: " + val;
+						this.title = "(TJ) GET: " + val;
 						this._connectToSetNode(val); 
 					};
 				}
@@ -597,7 +597,7 @@ app.registerExtension({
 
 						const autoName = `${this.type}_${out.name}`;
 						setNode.widgets.find(w => w.name === "set_name").value = autoName;
-						setNode.title = "SET: " + autoName;
+						setNode.title = "(TJ) SET: " + autoName;
 
 						offsetY += 80;
 					});
