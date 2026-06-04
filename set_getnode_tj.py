@@ -21,7 +21,7 @@ class TJ_SetNode:
 	RETURN_TYPES = (any_type,)
 	RETURN_NAMES = ("value",)
 	FUNCTION = "execute"
-	CATEGORY = " ✨ TJ Node/Wireless"
+	CATEGORY = " ✨ TJ_Node/Wireless"
 
 	def execute(self, value, set_name):
 		return (value,)
@@ -32,8 +32,8 @@ class TJ_GetNode:
 	def INPUT_TYPES(cls):
 		return {
 			"required": {
-				# 리스트 형태([])로 정의하여 텍스트가 아닌 '콤보박스'로 강제 인식시킴
-				"set_name": (["(none)"],), 
+				# Get Node 전용 선택 위젯. 기존 set_name과 구분해 UI 혼동을 줄입니다.
+				"get_name": (["(none)"],), 
 			},
 			"optional": {
 				"wire": (any_type,),
@@ -43,14 +43,14 @@ class TJ_GetNode:
 	RETURN_TYPES = (any_type,)
 	RETURN_NAMES = ("value",)
 	FUNCTION = "execute"
-	CATEGORY = "TJ Node/Wireless"
+	CATEGORY = " ✨ TJ_Node/Wireless"
 
 	# ★ ComfyUI가 "(none) 외에 다른 이름은 안 돼!"라고 에러 뱉는 것을 방지
 	@classmethod
 	def VALIDATE_INPUTS(cls, **kwargs):
 		return True
 
-	def execute(self, set_name="(none)", wire=None):
+	def execute(self, get_name="(none)", wire=None):
 		return (wire,)
 
 
@@ -68,7 +68,7 @@ class TJ_MultiGetNode:
 	RETURN_TYPES = tuple([any_type] * MAX_PORTS)
 	RETURN_NAMES = tuple([f"output_{i}" for i in range(1, MAX_PORTS + 1)])
 	FUNCTION = "execute"
-	CATEGORY = "TJ Node/Wireless"
+	CATEGORY = " ✨ TJ_Node/Wireless"
 
 	def execute(self, **kwargs):
 		outputs = []

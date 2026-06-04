@@ -1,0 +1,284 @@
+import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
+
+const NODE_NAME = "TJ_SaveAndPreviewVideo";
+const WIDGET_NAME = "tj_savepreview_video_viewer_force";
+const CSS_ID = "tj-savepreview-video-viewer-force-css-v66";
+const MIN_W = 340;
+const DEFAULT_H = 360;
+const PREVIEW_MIN_H = 160;
+const CHROME = 150;
+
+function ensureCss() {
+  if (document.getElementById(CSS_ID)) return;
+  const s = document.createElement("style");
+  s.id = CSS_ID;
+  s.textContent = `
+.tjvforce{position:absolute;inset:0;overflow:hidden;background:#000;border-radius:4px;font:11px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+.tjvforce video{display:block;width:100%;height:100%;object-fit:contain;background:#000;}
+.tjvforce .audioBox{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;padding:18px;box-sizing:border-box;background:#000;}
+.tjvforce .audioBox audio{width:min(92%,520px);height:36px;}
+.tjvforce .info{position:absolute;left:0;right:0;bottom:0;padding:5px 38px 5px 8px;color:#dfffea;text-align:center;background:rgba(0,0,0,.72);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tjvforce .info:empty{display:none;}
+.tjvforce .warn{position:absolute;right:8px;bottom:4px;width:24px;height:24px;border-radius:50%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);color:#ffd24a;font-size:15px;cursor:help;z-index:4;}
+.tjvforce .warn[hidden]{display:none;}
+`;
+  document.head.appendChild(s);
+}
+
+function nativeHeight(node) {
+  const rowH = (window.LiteGraph && window.LiteGraph.NODE_WIDGET_HEIGHT) || 20;
+  let h = 0;
+  for (const w of node.widgets || []) {
+    if (w.name === WIDGET_NAME || w === node.__tjvforce?.widget) continue;
+    if (w.hidden || w._hidden) continue;
+    let wh = rowH;
+    if (typeof w.computeSize === "function") {
+      const c = w.computeSize(node.size?.[0] || MIN_W);
+      wh = c && c[1] > 0 ? c[1] : 0;
+    }
+    if (wh > 0) h += wh + 4;
+  }
+  return h;
+}
+
+function findMetas(obj, out = []) {
+  if (!obj) return out;
+  if (Array.isArray(obj)) {
+    for (const x of obj) findMetas(x, out);
+    return out;
+  }
+  if (typeof obj === "object") {
+    if (obj.filename && (obj.type || obj.media_type)) out.push(obj);
+    for (const v of Object.values(obj)) findMetas(v, out);
+  }
+  return out;
+}
+
+function fmt(meta, video) {
+  const parts = [];
+  const w = Number(meta?.width || video?.videoWidth || 0);
+  const h = Number(meta?.height || video?.videoHeight || 0);
+  const fps = Number(meta?.frame_rate || meta?.fps || 0);
+  const fc = Number(meta?.frame_count || 0);
+  if (w && h) parts.push(`${Math.round(w)}x${Math.round(h)}`);
+  if (fps) parts.push(`${Math.round(fps * 100) / 100}fps`);
+  if (fc) parts.push(`${Math.round(fc)}f`);
+  return parts.join(" | ");
+}
+
+function metaUrl(meta) {
+  const params = new URLSearchParams({
+    filename: meta.filename,
+    subfolder: meta.subfolder || "",
+    type: meta.type || "temp",
+    rand: String(Date.now()),
+  });
+  return api.apiURL("/view?" + params.toString());
+}
+
+function fallbackTitle(meta) {
+  const list = Array.isArray(meta?.fallback_outputs) ? meta.fallback_outputs : [];
+  if (!list.length) return "";
+  return "Fallback outputs active\n\n" + list.map(x => `${x.slot || "output"} -> ${x.fallback || "fallback"}`).join("\n");
+}
+
+function updateFallbackWarning(state, meta) {
+  if (!state?.warn) return;
+  const title = fallbackTitle(meta);
+  if (!title) {
+    state.warn.hidden = true;
+    state.warn.style.display = "none";
+    state.warn.title = "";
+    return;
+  }
+  state.warn.hidden = false;
+  state.warn.style.display = "flex";
+  state.warn.title = title;
+}
+
+function build(node) {
+  if (node.__tjvforce) return node.__tjvforce;
+  ensureCss();
+
+  const root = document.createElement("div");
+  root.className = "tjvforce";
+
+  const video = document.createElement("video");
+  video.controls = true;
+  video.loop = true;
+  video.preload = "metadata";
+  video.playsInline = true;
+
+  const audioBox = document.createElement("div");
+  audioBox.className = "audioBox";
+
+  const info = document.createElement("div");
+  info.className = "info";
+  info.textContent = "Run to preview the encoded video.";
+
+  const warn = document.createElement("div");
+  warn.className = "warn";
+  warn.textContent = "⚠";
+  warn.hidden = true;
+
+  root.appendChild(video);
+  root.appendChild(audioBox);
+  root.appendChild(info);
+  root.appendChild(warn);
+
+  const widget = node.addDOMWidget(WIDGET_NAME, "div", root, { serialize: false, hideOnZoom: false });
+  const state = node.__tjvforce = { root, video, audioBox, info, warn, widget, currentMeta: null };
+
+  widget.computeSize = function(width) {
+    const nh = Number(node.size?.[1]) || DEFAULT_H;
+    return [Math.max(Number(width) || MIN_W, MIN_W), Math.max(PREVIEW_MIN_H, nh - CHROME - nativeHeight(node))];
+  };
+
+  video.addEventListener("loadedmetadata", () => {
+    info.textContent = fmt(state.currentMeta, video) || "preview ready";
+    node.setDirtyCanvas?.(true,true);
+  });
+  video.addEventListener("error", () => {
+    info.textContent = "Preview load failed.";
+    node.setDirtyCanvas?.(true,true);
+  });
+  root.addEventListener("wheel", (e) => {
+    const cv = app.canvas?.canvas; if (!cv) return;
+    e.preventDefault();
+    cv.dispatchEvent(new WheelEvent("wheel", { deltaX:e.deltaX, deltaY:e.deltaY, deltaZ:e.deltaZ, deltaMode:e.deltaMode, clientX:e.clientX, clientY:e.clientY, bubbles:true, cancelable:true }));
+  }, { passive:false });
+
+  if ((node.size?.[0] || 0) < MIN_W || (node.size?.[1] || 0) < DEFAULT_H) {
+    node.setSize?.([Math.max(node.size?.[0] || 0, MIN_W), Math.max(node.size?.[1] || 0, DEFAULT_H)]);
+  }
+  node.setDirtyCanvas?.(true,true);
+  app.canvas?.setDirty(true,true);
+  console.log("[TJ_NODE] Save & Preview Video viewer attached", node.id);
+  return state;
+}
+
+function setVideoPreview(node, meta) {
+  const st = build(node);
+  st.currentMeta = meta;
+  st.audioBox.style.display = "none";
+  st.audioBox.innerHTML = "";
+  st.video.style.display = "block";
+  st.info.textContent = `Loading preview: ${meta.filename}`;
+  st.video.pause();
+  st.video.removeAttribute("src");
+  st.video.src = metaUrl(meta);
+  st.video.load();
+  updateFallbackWarning(st, meta);
+}
+
+function setAudioPreview(node, metas) {
+  const st = build(node);
+  st.currentMeta = metas[0] || null;
+  st.video.pause();
+  st.video.removeAttribute("src");
+  st.video.style.display = "none";
+  st.audioBox.innerHTML = "";
+  st.audioBox.style.display = "flex";
+  for (const meta of metas) {
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.preload = "metadata";
+    audio.src = metaUrl(meta);
+    audio.title = meta.label ? `Audio ${meta.label}` : meta.filename;
+    st.audioBox.appendChild(audio);
+  }
+  st.info.textContent = metas.map(m => m.label ? `Audio ${m.label}` : m.filename).join("  |  ") || "audio preview";
+  updateFallbackWarning(st, metas.find(m => Array.isArray(m.fallback_outputs)) || metas[0]);
+  node.setDirtyCanvas?.(true,true);
+}
+
+function getTJGraphLink(graph, linkId) {
+  if (!graph || linkId == null) return null;
+  return graph.links?.[linkId] || graph.links?.get?.(linkId) || null;
+}
+
+function armImageVideoMutex(node, delay = 300) {
+  if (!node) return;
+  node.__tjv_mutex_ready = false;
+  clearTimeout(node.__tjv_mutex_timer);
+  node.__tjv_mutex_timer = setTimeout(() => {
+    node.__tjv_mutex_ready = true;
+  }, delay);
+}
+
+function enforceImageVideoMutex(node, changedIndex, connected) {
+  // Only enforce this during real user-side connection changes.
+  // During workflow load / refresh, ComfyUI replays existing links through
+  // onConnectionsChange; removing the opposite slot there breaks saved image links.
+  if (!connected || !node?.__tjv_mutex_ready || !node?.graph || !node.inputs) return;
+
+  const imageInput = node.inputs[0];
+  const videoInput = node.inputs[1];
+  if (!imageInput || !videoInput) return;
+
+  const otherIndex = changedIndex === 0 ? 1 : (changedIndex === 1 ? 0 : -1);
+  if (otherIndex < 0) return;
+
+  const changed = node.inputs[changedIndex];
+  const other = node.inputs[otherIndex];
+  const changedLink = getTJGraphLink(node.graph, changed?.link);
+  const otherLink = getTJGraphLink(node.graph, other?.link);
+
+  // Do not let the image/video mutex touch TJ fake-wire links.
+  // Embedded get wiring is managed by the TJ wireless core.
+  if (changedLink?._tj_wireless || otherLink?._tj_wireless) return;
+
+  if (other?.link != null) {
+    try { node.graph.removeLink(other.link); } catch (_) {}
+    if (node.inputs?.[otherIndex]) node.inputs[otherIndex].link = null;
+  }
+}
+
+app.registerExtension({
+  name: "TJ.SaveAndPreviewVideo.ForceViewer",
+  async beforeRegisterNodeDef(nodeType, nodeData) {
+    if (nodeData.name !== NODE_NAME) return;
+
+    const created = nodeType.prototype.onNodeCreated;
+    nodeType.prototype.onNodeCreated = function() {
+      const r = created?.apply(this, arguments);
+      try { build(this); armImageVideoMutex(this, 300); } catch (e) { console.warn("[TJ_NODE] video viewer create failed", e); }
+      return r;
+    };
+
+    const configured = nodeType.prototype.onConfigure;
+    nodeType.prototype.onConfigure = function() {
+      this.__tjv_mutex_ready = false;
+      const r = configured?.apply(this, arguments);
+      queueMicrotask(() => {
+        try { build(this); armImageVideoMutex(this, 500); }
+        catch (e) { console.warn("[TJ_NODE] video viewer configure failed", e); }
+      });
+      return r;
+    };
+
+    const conn = nodeType.prototype.onConnectionsChange;
+    nodeType.prototype.onConnectionsChange = function(type, index, connected) {
+      const r = conn?.apply(this, arguments);
+      try {
+        if (type === LiteGraph.INPUT && (index === 0 || index === 1)) enforceImageVideoMutex(this, index, connected);
+      } catch (e) { console.warn("[TJ_NODE] image/video mutex failed", e); }
+      return r;
+    };
+
+    const executed = nodeType.prototype.onExecuted;
+    nodeType.prototype.onExecuted = function(output) {
+      const r = executed?.apply(this, arguments);
+      try {
+        const metas = findMetas(output?.tj_video || output?.ui?.tj_video || output);
+        const audioMetas = metas.filter(m => m.media_type === "audio_file");
+        const videoMeta = metas.find(m => m.media_type !== "audio_file");
+        if (audioMetas.length && !videoMeta) setAudioPreview(this, audioMetas);
+        else if (videoMeta) setVideoPreview(this, videoMeta);
+        else build(this).info.textContent = "No tj_video metadata returned.";
+      } catch (e) { console.warn("[TJ_NODE] video viewer executed failed", e); }
+      return r;
+    };
+  }
+});

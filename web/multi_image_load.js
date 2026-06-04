@@ -28,6 +28,106 @@ function findWidget(node, name) {
     return node.widgets ? node.widgets.find(w => w.name === name) : null;
 }
 
+function getAutoSetWidget(node) {
+    return findWidget(node, "auto_set");
+}
+
+function _tjStripNumericSuffix(name) {
+    return String(name || "TJ_Set").trim().replace(/_\d+$/, "") || "TJ_Set";
+}
+
+function _tjCollectProviderNames(graph, excludeNode=null) {
+    const names = new Set();
+    if (!graph) return names;
+    graph._nodes?.forEach(n => {
+        if (!n || n === excludeNode) return;
+        if (n.type === "TJ_GetNode" || n.type === "TJ_MultiGetNode") return;
+        (n.widgets || []).forEach(w => {
+            if (w.name === "set_name" || w.name === "setnode_name") {
+                const v = String(w.value || "").trim();
+                if (v) names.add(v);
+            }
+        });
+        if (n.properties?.auto_sets) {
+            const aw = n.widgets?.find(w => w.name === "auto_set");
+            if (!aw || aw.value) {
+                Object.values(n.properties.auto_sets).forEach(v => {
+                    v = String(v || "").trim();
+                    if (v) names.add(v);
+                });
+            }
+        }
+    });
+    return names;
+}
+
+function _tjUniqueAutoSetName(graph, desired, existing, excludeNode=null) {
+    const base = _tjStripNumericSuffix(desired);
+    let name = base;
+    let i = 1;
+    while (existing.has(name)) name = `${base}_${i++}`;
+    existing.add(name);
+    return name;
+}
+
+function syncGetNodesForAutoSets(graph) {
+    if (!graph) return;
+    if (window.TJ_NODE_syncAllGetNodes) {
+        window.TJ_NODE_syncAllGetNodes(graph);
+        return;
+    }
+    graph._nodes?.forEach(n => {
+        if (!n) return;
+        try {
+            if (n.type === "TJ_GetNode") {
+                if (n._syncWithSetNode) n._syncWithSetNode();
+                const w = n.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
+                if (w && n._connectToSetNode) n._connectToSetNode(w.value);
+            } else if (n.type === "TJ_MultiGetNode") {
+                if (n._syncWithSetNodes) n._syncWithSetNodes();
+                if (n._rebuild) n._rebuild();
+            } else {
+                const w = n.widgets?.find(x => x.name === "get_name");
+                if (w && n._tjConnectGetReceiver) n._tjConnectGetReceiver(w.value);
+            }
+        } catch (err) {
+            console.warn("[TJ_NODE] AutoSet sync skipped stale node/link", err);
+        }
+    });
+    app.canvas?.setDirty(true, true);
+}
+
+function refreshMultiImageLoaderAutoSets(node) {
+    if (!node) return;
+    if (!node.properties) node.properties = {};
+    const autoW = getAutoSetWidget(node);
+    const enabled = autoW ? !!autoW.value : false;
+    const baseNames = ["BATCH", "WIDTH", "HEIGHT"];
+
+    if (!enabled) {
+        node.properties.auto_sets = {};
+        node.outputs?.forEach((out, i) => {
+            const base = baseNames[i] || out.name || `output_${i + 1}`;
+            out.label = base;
+        });
+        syncGetNodesForAutoSets(node.graph);
+        node.setDirtyCanvas?.(true, true);
+        return;
+    }
+
+    const existing = _tjCollectProviderNames(node.graph, node);
+    node.properties.auto_sets = {};
+    node.outputs?.forEach((out, i) => {
+        if (i > 2) return;
+        const base = baseNames[i] || out.name || `output_${i + 1}`;
+        const name = _tjUniqueAutoSetName(node.graph, base, existing, node);
+        node.properties.auto_sets[i] = name;
+        out.label = `${name} ▶`;
+    });
+    syncGetNodesForAutoSets(node.graph);
+    node.setDirtyCanvas?.(true, true);
+}
+
 // ── Widget Visibility Logic ──
 function updateWidgetVisibility(node) {
     const matchMode = findWidget(node, "match_mode");
@@ -144,6 +244,15 @@ app.registerExtension({
                 resizeInputW.callback = function (v) {
                     if (origCb2) origCb2.call(this, v);
                     updateWidgetVisibility(node);
+                };
+            }
+
+            const autoSetW = getAutoSetWidget(node);
+            if (autoSetW) {
+                const origAutoCb = autoSetW.callback;
+                autoSetW.callback = function(v) {
+                    if (origAutoCb) origAutoCb.call(this, v);
+                    refreshMultiImageLoaderAutoSets(node);
                 };
             }
 
@@ -924,6 +1033,7 @@ app.registerExtension({
             setTimeout(() => {
                 updateWidgetVisibility(node);
                 renderThumbnails();
+                refreshMultiImageLoaderAutoSets(node);
             }, 100);
 
             // ── Handle workflow load ──
@@ -933,6 +1043,7 @@ app.registerExtension({
                 setTimeout(() => {
                     updateWidgetVisibility(node);
                     renderThumbnails();
+                    refreshMultiImageLoaderAutoSets(node);
                 }, 100);
             };
 

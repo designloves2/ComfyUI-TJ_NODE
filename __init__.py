@@ -23,6 +23,15 @@ from .dynamic_image_batch import (
 # ====== 무선 패러다임 Set/Get 노드 임포트 ======
 from .set_getnode_tj import TJ_SetNode, TJ_GetNode, TJ_MultiGetNode
 
+# ====== 신규 유틸리티 노드 임포트 ======
+from .utility_node_tj import (
+    TJ_SaveAndPreviewImage,
+    TJ_PromptText,
+    TJ_TextConcatenate,
+    TJ_SmartShow,
+    TJ_SaveAndPreviewVideo
+)
+
 # ──────────── Node Mappings ────────────
 NODE_CLASS_MAPPINGS = {
     "TJ_MultiImageLoader": TJ_MultiImageLoader,
@@ -36,6 +45,13 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SetNode": TJ_SetNode,
     "TJ_GetNode": TJ_GetNode,
     "TJ_MultiGetNode": TJ_MultiGetNode,
+    
+    # Utilities
+    "TJ_SaveAndPreviewImage": TJ_SaveAndPreviewImage,
+    "TJ_PromptText": TJ_PromptText,
+    "TJ_TextConcatenate": TJ_TextConcatenate,
+    "TJ_SmartShow": TJ_SmartShow,
+    "TJ_SaveAndPreviewVideo": TJ_SaveAndPreviewVideo,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -50,6 +66,13 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SetNode": "Set Node (TJ)",
     "TJ_GetNode": "Get Node (TJ)",
     "TJ_MultiGetNode": "Multi Get Node (TJ)",
+    
+    # Utilities
+    "TJ_SaveAndPreviewImage": "Save & Preview Image (TJ)",
+    "TJ_PromptText": "Prompt Text (TJ)",
+    "TJ_TextConcatenate": "Text Concatenate (TJ)",
+    "TJ_SmartShow": "Smart show (TJ)",
+    "TJ_SaveAndPreviewVideo": "Save & Preview Video (TJ)",
 }
 
 WEB_DIRECTORY = "./web"
@@ -58,7 +81,6 @@ __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS", "WEB_DIRECTORY"]
 
 # ──────────── API Routes ────────────
 # (이하 다운로드 및 파일 시스템 API는 기존과 100% 동일하게 유지)
-
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
 
 def _get_download_dir():

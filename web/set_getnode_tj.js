@@ -5,8 +5,119 @@ import { app } from "../../scripts/app.js";
 
 const LGraphNode = LiteGraph.LGraphNode;
 const MAX_PORTS = 20;
+const AUTO_SET_PROVIDER_TYPES = new Set(["TJ_MultiRouter", "TJ_BatchToMultiOutput", "TJ_MultiImageLoader"]);
+const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
+const TJ_PROVIDER_PREFIX = "TJ / ";
+const ECLIPSE_PROVIDER_PREFIX = "Eclipse / ";
+const ECLIPSE_SEPARATOR = "──────── Eclipse ────────";
 
-let globalShowWire = false; 
+function isAutoSetProviderNode(node) {
+    return !!(node && AUTO_SET_PROVIDER_TYPES.has(node.type));
+}
+
+function getGraphLink(graph, linkId) {
+    if (!graph || linkId == null) return null;
+    return graph.links?.[linkId] || graph.links?.get?.(linkId) || null;
+}
+
+function getOutputSlot(node, slot) {
+    if (!node || slot == null || slot < 0) return null;
+    return node.outputs?.[slot] || null;
+}
+
+function canConnectWireless(sourceInfo, target, targetSlot) {
+    if (!sourceInfo || !sourceInfo.node || !target || !target.inputs?.[targetSlot]) return false;
+    if (sourceInfo.connectable === false) return false;
+    if (!getOutputSlot(sourceInfo.node, sourceInfo.slot)) return false;
+    return true;
+}
+
+
+
+function isEmbeddedGetReceiverNode(node) {
+    return !!(node && node.type !== "TJ_GetNode" && node.type !== "TJ_MultiGetNode" && node.widgets?.some(w => w.name === "get_name"));
+}
+
+function hasDirectNonWirelessInput(node, inputIndex = 0) {
+    if (!isEmbeddedGetReceiverNode(node) || !node.graph || !node.inputs?.[inputIndex]) return false;
+    const lid = node.inputs[inputIndex].link;
+    const link = getGraphLink(node.graph, lid);
+    return !!(link && !link._tj_wireless);
+}
+
+function getConsumerWidget(node) {
+    return node?.widgets?.find(x => x.name === "get_name" || (node?.type === "TJ_GetNode" && x.name === "set_name")) || null;
+}
+
+function isWirelessProviderNode(node) {
+    if (!node) return false;
+    if (ECLIPSE_SET_TYPES.has(node.type)) return true;
+    if (node.type === "TJ_GetNode" || node.type === "TJ_MultiGetNode") return false;
+    if (providerNameWidgets(node).some(w => String(w.value || "").trim())) return true;
+    if (isAutoSetProviderNode(node)) return true;
+    return false;
+}
+
+function isProviderInputDisconnectLink(graph, link) {
+    if (!graph || !link) return false;
+    const target = graph.getNodeById(link.target_id);
+    if (!isWirelessProviderNode(target)) return false;
+    // Set-like provider input links should never be rerouted directly into consumers.
+    // For named/embedded providers we still repair after any input slot disconnect because
+    // LiteGraph may auto-reconnect the old source to hidden consumers.
+    return true;
+}
+
+function markWirelessLink(graph, target, targetSlot, providerValue) {
+    if (!graph || !target?.inputs?.[targetSlot]) return null;
+    const lid = target.inputs[targetSlot].link;
+    const link = getGraphLink(graph, lid);
+    if (link) {
+        link._tj_wireless = true;
+        link._tj_provider_value = providerValue || "";
+    }
+    return link;
+}
+
+function linkMatchesProvider(graph, link, provider) {
+    if (!graph || !link || !provider || provider.connectable === false) return false;
+    return link.origin_id === provider.node?.id && link.origin_slot === provider.slot;
+}
+
+function removeConsumerInputLink(node, inputIndex = 0) {
+    if (!node?.graph || !node.inputs?.[inputIndex]) return;
+    const lid = node.inputs[inputIndex].link;
+    if (lid != null && getGraphLink(node.graph, lid)) node.graph.removeLink(lid);
+    if (node.inputs?.[inputIndex]) {
+        node.inputs[inputIndex].link = null;
+        node.inputs[inputIndex].label = "";
+    }
+}
+
+function scheduleWirelessRepair(graph, delay = 0) {
+    graph = graph || app.graph;
+    if (!graph) return;
+
+    // Coalesce repair calls. Without this, connect/removeLink hooks can create
+    // timer storms or recursive repair loops that freeze ComfyUI.
+    if (graph._tj_wireless_repair_running) return;
+    if (graph._tj_wireless_repair_timer) {
+        clearTimeout(graph._tj_wireless_repair_timer);
+        graph._tj_wireless_repair_timer = null;
+    }
+
+    graph._tj_wireless_repair_timer = setTimeout(() => {
+        graph._tj_wireless_repair_timer = null;
+        if (graph._tj_wireless_repair_running) return;
+        graph._tj_wireless_repair_running = true;
+        try { syncAllGetNodes(graph); }
+        catch (err) { console.warn("[TJ_NODE] wireless repair failed", err); }
+        finally { graph._tj_wireless_repair_running = false; }
+    }, Math.max(0, delay || 0));
+}
+
+let globalShowWire = false;
+let realtimeWireHoverEnabled = true; 
 
 const origRenderLink = LGraphCanvas.prototype.renderLink;
 LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow, color, start_dir, end_dir, num_sublines) {
@@ -14,11 +125,27 @@ LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow,
 		const origin = this.graph.getNodeById(link.origin_id);
 		const target = this.graph.getNodeById(link.target_id);
 		
-		const isSetSource = origin && (origin.type === "TJ_SetNode" || origin.type === "TJ_MultiRouter");
-		const isGetter = target && (target.type === "TJ_GetNode" || target.type === "TJ_MultiGetNode");
+        const originW = origin?.widgets?.find(w => w.name === "set_name" || w.name === "setnode_name");
+        const autoSetW = origin?.widgets?.find(w => w.name === "auto_set");
+        const hasNamedProvider = !!(originW && originW.value && originW.value.trim() !== "");
+        const hasAutoSetOutput = !!(isAutoSetProviderNode(origin) && (!autoSetW || autoSetW.value) && origin?.properties?.auto_sets && String(origin.properties.auto_sets[link.origin_slot] || "").trim() !== "");
+        let selectedValue = null;
+        const targetGetW = target?.widgets?.find(w => w.name === "get_name" || (target?.type === "TJ_GetNode" && w.name === "set_name"));
+        if (targetGetW) selectedValue = targetGetW.value;
+        if (!selectedValue && target?.type === "TJ_MultiGetNode" && target._selectors) {
+            selectedValue = target._selectors()?.[link.target_slot]?.value || null;
+        }
+        const selectedProvider = selectedValue ? findProviderByValue(this.graph, selectedValue) : null;
+        const isEclipseWire = !!(selectedProvider?.source === "eclipse" && selectedProvider.node === origin && selectedProvider.slot === link.origin_slot);
+		const isMarkedWireless = !!link._tj_wireless;
+		const isSetSource = origin && origin.type !== "TJ_GetNode" && origin.type !== "TJ_MultiGetNode" && (hasNamedProvider || hasAutoSetOutput || isEclipseWire || isMarkedWireless);
+		const isEmbeddedGetter = !!(targetGetW && targetGetW.value && targetGetW.value !== "(none)");
+		const isGetter = target && (target.type === "TJ_GetNode" || target.type === "TJ_MultiGetNode" || isEmbeddedGetter);
 		
 		if (isSetSource && isGetter) {
-			if (globalShowWire || origin.properties?.show_wire || target.properties?.show_wire) {
+            const hoverNode = this.node_over || app.canvas?.node_over || null;
+            const hoverWire = !!(hoverNode && (hoverNode === origin || hoverNode === target));
+			if (globalShowWire || (realtimeWireHoverEnabled && hoverWire) || origin.properties?.show_wire || target.properties?.show_wire) {
 				ctx.save();
 				ctx.setLineDash([2, 5]); 
 				
@@ -47,56 +174,188 @@ LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow,
 
 const origDrawNode = LGraphCanvas.prototype.drawNode;
 LGraphCanvas.prototype.drawNode = function(node, ctx) {
-	if (node.type === "TJ_GetNode" || node.type === "TJ_MultiGetNode") {
-		if (node.inputs) {
-			node.inputs.forEach(inp => {
-				if (!inp._tj_real_name) inp._tj_real_name = inp.name;
-				inp.label = ""; 
-			});
-		}
-	}
+    if (node.type === "TJ_GetNode") {
+        const w = node.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
+        markWirelessInputLabel(node, 0, getProviderLabelName(node.graph, w?.value));
+    } else if (node.type === "TJ_MultiGetNode") {
+        const sels = node._selectors ? node._selectors() : [];
+        node.inputs?.forEach((inp, i) => markWirelessInputLabel(node, i, getProviderLabelName(node.graph, sels[i]?.value)));
+    } else {
+        if (providerNameWidgets(node).length) updateProviderLabels(node);
+    }
 	return origDrawNode.apply(this, arguments);
 };
 
+
+function getProviderWidgetName(node) {
+    const w = node?.widgets?.find(x => x.name === "set_name" || x.name === "setnode_name");
+    return String(w?.value || "").trim();
+}
+
+function resolveEclipseSetLink(setNode) {
+    const graph = setNode?.graph || app.graph;
+    if (!graph || !setNode?.inputs?.length) return null;
+    const linkId = setNode.inputs[0]?.link;
+    const link = getGraphLink(graph, linkId);
+    if (!link) return null;
+    const origin = graph.getNodeById(link.origin_id);
+    if (!origin || !getOutputSlot(origin, link.origin_slot)) return null;
+    return {
+        node: origin,
+        slot: link.origin_slot,
+        origin_id: link.origin_id,
+        origin_slot: link.origin_slot,
+        link
+    };
+}
+
+function collectTJProviders(graph) {
+    const providers = [];
+    if (!graph) return providers;
+    graph._nodes?.forEach(n => {
+        if (!n || n.type === "TJ_GetNode" || n.type === "TJ_MultiGetNode") return;
+
+        const name = getProviderWidgetName(n);
+        // TJ_SetNode remains a provider by name even if its input is disconnected.
+        if (name && getOutputSlot(n, 0)) {
+            providers.push({
+                source: "tj",
+                kind: "named",
+                node: n,
+                slot: 0,
+                name,
+                labelName: name,
+                displayName: `${TJ_PROVIDER_PREFIX}${name}`
+            });
+        }
+
+        if (isAutoSetProviderNode(n) && n.properties?.auto_sets) {
+            const autoSetW = n.widgets?.find(w => w.name === "auto_set");
+            if (autoSetW && !autoSetW.value) return;
+            for (const [idxStr, autoNameRaw] of Object.entries(n.properties.auto_sets)) {
+                const autoName = String(autoNameRaw || "").trim();
+                const slot = parseInt(idxStr);
+                if (!autoName || !getOutputSlot(n, slot)) continue;
+                providers.push({
+                    source: "tj",
+                    kind: "auto",
+                    node: n,
+                    slot,
+                    name: autoName,
+                    labelName: autoName,
+                    displayName: `${TJ_PROVIDER_PREFIX}${autoName}`
+                });
+            }
+        }
+    });
+    return providers;
+}
+
+function collectEclipseProviders(graph) {
+    const providers = [];
+    if (!graph) return providers;
+    graph._nodes?.forEach(n => {
+        if (!n || !ECLIPSE_SET_TYPES.has(n.type)) return;
+        const name = String(n.widgets?.[0]?.value || "").trim();
+        if (!name) return;
+
+        // IMPORTANT:
+        // Eclipse SetNode has its own OUTPUT slot. Treat it like a TJ SetNode endpoint.
+        // Do NOT resolve to inputs[0].link/original source. If we connect consumers to
+        // the original source, changing the Eclipse input leaves stale/ghost links.
+        // Stable rule: Eclipse / name -> Eclipse SetNode output[0].
+        const outSlot = getOutputSlot(n, 0) ? 0 : null;
+        providers.push({
+            source: "eclipse",
+            kind: "eclipse",
+            node: n,
+            slot: outSlot ?? 0,
+            setNode: n,
+            name,
+            labelName: name,
+            displayName: `${ECLIPSE_PROVIDER_PREFIX}${name}`,
+            connectable: outSlot != null
+        });
+    });
+    return providers;
+}
+
+function collectAllProviders(graph) {
+    graph = graph || app.graph;
+    const seen = new Set();
+    const dedupe = (items) => items.filter(p => {
+        const key = `${p.source}:${p.node?.id}:${p.slot}:${p.name}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    return [...dedupe(collectTJProviders(graph)), ...dedupe(collectEclipseProviders(graph))];
+}
+
+function getProviderDropdownValues(graph) {
+    const providers = collectAllProviders(graph);
+    const tjSets = providers.filter(p => p.source === "tj");
+    const eclipseSets = providers.filter(p => p.source === "eclipse");
+    const values = ["(none)"];
+    values.push(...tjSets.map(v => v.displayName));
+    if (tjSets.length && eclipseSets.length) values.push(ECLIPSE_SEPARATOR);
+    values.push(...eclipseSets.map(v => v.displayName));
+    return values;
+}
+
+function isProviderSeparator(value) {
+    return value === ECLIPSE_SEPARATOR;
+}
+
+function findProviderByValue(graph, value) {
+    if (!graph || !value || value === "(none)" || isProviderSeparator(value)) return null;
+    const providers = collectAllProviders(graph);
+    return providers.find(p => p.displayName === value)
+        || providers.find(p => p.name === value && p.source === "tj")
+        || providers.find(p => p.name === value)
+        || null;
+}
+
+function getProviderLabelName(graph, value) {
+    if (!value || value === "(none)" || isProviderSeparator(value)) return "";
+    return findProviderByValue(graph || app.graph, value)?.labelName || String(value).replace(/^TJ \/ /, "").replace(/^Eclipse \/ /, "");
+}
+
+function normalizeProviderValue(graph, value) {
+    if (!value || value === "(none)" || isProviderSeparator(value)) return "(none)";
+    const provider = findProviderByValue(graph || app.graph, value);
+    return provider?.displayName || value;
+}
+
+function setWidgetValueSilent(widget, value) {
+    if (widget && widget.value !== value) widget.value = value;
+}
+
 function getAllSetNames(graph) {
-	if (!graph) return ["(none)"];
-	const names = [];
-	graph._nodes.forEach(n => {
-		if (n.type === "TJ_SetNode") {
-			const val = n.widgets?.find(x => x.name === "set_name")?.value;
-			if (val) names.push(val);
-		} else if (n.type === "TJ_MultiRouter" && n.properties && n.properties.auto_sets) {
-			const autoSetW = n.widgets?.find(w => w.name === "auto_set");
-			if (!autoSetW || autoSetW.value) { 
-				Object.values(n.properties.auto_sets).forEach(val => { 
-					if (val && val.trim() !== "") names.push(val); 
-				});
-			}
-		}
-	});
-	return ["(none)", ...new Set(names)].sort();
+    return getProviderDropdownValues(graph);
 }
 
 function findSetterSourceInfo(graph, setName) {
-	if (!setName || setName === "(none)") return null;
-	for (const n of graph._nodes) {
-		if (n.type === "TJ_SetNode") {
-			if (n.widgets?.find(w => w.name === "set_name")?.value === setName) {
-				return { node: n, slot: 0 };
-			}
-		}
-		else if (n.type === "TJ_MultiRouter" && n.properties?.auto_sets) {
-			const autoSetW = n.widgets?.find(w => w.name === "auto_set");
-			if (autoSetW && !autoSetW.value) continue;
-			
-			for (const [idxStr, autoName] of Object.entries(n.properties.auto_sets)) {
-				if (autoName === setName) {
-					return { node: n, slot: parseInt(idxStr) }; 
-				}
-			}
-		}
-	}
-	return null;
+    const provider = findProviderByValue(graph, setName);
+    if (!provider) return null;
+    return {
+        source: provider.source,
+        kind: provider.kind,
+        node: provider.node,
+        slot: provider.slot,
+        name: provider.name,
+        labelName: provider.labelName,
+        displayName: provider.displayName,
+        setNode: provider.setNode,
+        connectable: provider.connectable !== false
+    };
+}
+
+function findProviderValueForLink(graph, originNode, originSlot) {
+    if (!graph || !originNode || originSlot == null) return null;
+    const providers = collectAllProviders(graph);
+    const found = providers.find(p => p.node === originNode && p.slot === originSlot);
+    return found?.displayName || null;
 }
 
 function getTypeColor(type) {
@@ -114,6 +373,569 @@ function darkenHex(hex, factor) {
 	return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
+
+function applyTJTheme(node) {
+    if (!node) return;
+    node.bgcolor = "#000000";
+    node.color = "#7612DA";
+    node.title_text_color = "#FFFFFF";
+}
+
+function forceReconnectConsumer(node, value, slot = 0) {
+    if (!node || !node.graph) return;
+    if (!value || value === "(none)" || isProviderSeparator(value)) return;
+
+    const provider = findProviderByValue(node.graph, value);
+    if (!provider) return;
+    const normalized = provider.displayName || normalizeProviderValue(node.graph, value);
+    const labelName = provider.labelName || getProviderLabelName(node.graph, normalized) || getProviderLabelName(node.graph, value) || value;
+    const inputIndex = slot || 0;
+
+    // Always rebuild the real LiteGraph link from scratch.
+    // TJ providers connect to their output. Eclipse providers also connect to the
+    // Eclipse SetNode output[0], not to the original input source.
+    node._tj_connecting_wireless = true;
+    try {
+        if (node.inputs?.[inputIndex]?.link != null) {
+            const lid = node.inputs[inputIndex].link;
+            if (getGraphLink(node.graph, lid)) node.graph.removeLink(lid);
+            if (node.inputs?.[inputIndex]) node.inputs[inputIndex].link = null;
+        }
+
+        const w = getConsumerWidget(node);
+        if (w) w.value = normalized;
+        markWirelessInputLabel(node, inputIndex, labelName);
+
+        const sourceInfo = findSetterSourceInfo(node.graph, normalized);
+        if (!canConnectWireless(sourceInfo, node, inputIndex)) {
+            // Provider name exists but has no valid source now, e.g. Eclipse Set input disconnected.
+            // Keep the selected get_name, but no real wire should remain.
+            if (node.type === "TJ_GetNode" && node.outputs?.[inputIndex]) {
+                node.inputs[inputIndex].type = "*";
+                node.inputs[inputIndex].name = "wire";
+                node.outputs[inputIndex].type = "*";
+                node.outputs[inputIndex].name = labelName || "value";
+                node.outputs[inputIndex].label = labelName ? `${labelName} ▶` : "";
+                node.title = labelName ? `(TJ) GET: ${labelName}` : "GET:";
+            }
+            return;
+        }
+
+        sourceInfo.node.connect(sourceInfo.slot, node, inputIndex);
+        markWirelessLink(node.graph, node, inputIndex, normalized);
+
+        const t = getOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
+        if (node.inputs?.[inputIndex]) {
+            node.inputs[inputIndex].type = t;
+            if (node.type === "TJ_GetNode") node.inputs[inputIndex].name = "wire";
+        }
+        if (node.type === "TJ_GetNode" && node.outputs?.[inputIndex]) {
+            node.outputs[inputIndex].type = t;
+            node.outputs[inputIndex].name = labelName;
+            node.outputs[inputIndex].label = `${labelName} ▶`;
+            node.title = `(TJ) GET: ${labelName}`;
+        }
+        applyTJTheme(node);
+    } finally {
+        node._tj_connecting_wireless = false;
+    }
+}
+
+function forceReconnectConsumersForProviderValues(graph, providerValues, delay = 0) {
+    graph = graph || app.graph;
+    if (!graph || !providerValues?.length) return;
+    const values = [...new Set(providerValues.filter(v => v && v !== "(none)" && !isProviderSeparator(v)))];
+    if (!values.length) return;
+    setTimeout(() => {
+        graph._nodes?.forEach(n => {
+            if (!n) return;
+            try {
+                if (n.type === "TJ_MultiGetNode" && n._selectors && n._rebuild) {
+                    const uses = n._selectors().some(w => values.includes(w?.value));
+                    if (uses) n._rebuild();
+                    return;
+                }
+                const w = getConsumerWidget(n);
+                if (w && values.includes(w.value) && !hasDirectNonWirelessInput(n, 0)) forceReconnectConsumer(n, w.value, 0);
+            } catch (err) {
+                console.warn("[TJ_NODE] force provider reconnect skipped", err);
+            }
+        });
+        app.canvas?.setDirty(true, true);
+    }, Math.max(0, delay || 0));
+}
+
+function syncAllGetNodes(graph) {
+    graph = graph || app.graph;
+    if (!graph) return;
+    try { ensureUniqueAutoSetNames(graph); } catch (err) { console.warn("[TJ_NODE] autoset unique skipped", err); }
+
+    // First pass: remove stale selections and wrong ghost/direct links.
+    try { cleanupInvalidGetSelections(graph); } catch (err) { console.warn("[TJ_NODE] cleanup skipped", err); }
+
+    // Second pass: force reconnect valid selections even if the widget value did not change.
+    // This is the important part: Refresh must behave like re-selecting the same get_name.
+    graph._nodes?.forEach(n => {
+        if (!n) return;
+        try {
+            if (n.type === "TJ_GetNode") {
+                const w = getConsumerWidget(n);
+                if (w?.options) w.options.values = getAllSetNames(graph);
+                const selected = w?.value;
+                if (selected && selected !== "(none)" && !isProviderSeparator(selected)) {
+                    forceReconnectConsumer(n, selected, 0);
+                } else if (n._connectToSetNode) {
+                    n._connectToSetNode("(none)");
+                }
+                return;
+            }
+
+            if (n.type === "TJ_MultiGetNode") {
+                if (n._selectors) {
+                    n._selectors().forEach(w => {
+                        if (w?.options) w.options.values = getAllSetNames(graph);
+                    });
+                }
+                if (n._rebuild) n._rebuild();
+                return;
+            }
+
+            const w = getConsumerWidget(n);
+            if (n._tjUpdateGetReceiverOptions) n._tjUpdateGetReceiverOptions();
+            if (w?.options) w.options.values = getAllSetNames(graph);
+            if (w && n._tjConnectGetReceiver) {
+                // Direct user wire wins. Do not rebuild wireless over a direct input.
+                if (hasDirectNonWirelessInput(n, 0)) return;
+                const selected = w.value;
+                if (selected && selected !== "(none)" && !isProviderSeparator(selected)) {
+                    forceReconnectConsumer(n, selected, 0);
+                } else {
+                    n._tj_connecting_wireless = true;
+                    try { n._tjConnectGetReceiver("(none)"); }
+                    finally { n._tj_connecting_wireless = false; }
+                }
+            }
+        } catch (err) {
+            console.warn("[TJ_NODE] skipped stale wireless sync", err);
+        }
+    });
+    app.canvas?.setDirty(true, true);
+}
+
+function providerNameWidgets(node) {
+    return (node.widgets || []).filter(w => w.name === "set_name" || w.name === "setnode_name");
+}
+
+function stripNumericSuffix(name) {
+    return String(name || "TJ_Set").trim().replace(/_\d+$/, "") || "TJ_Set";
+}
+
+function collectProviderNames(graph, excludeNode=null) {
+    const names = new Set();
+    if (!graph) return names;
+    graph._nodes?.forEach(n => {
+        if (!n || n === excludeNode) return;
+        if (n.type === "TJ_GetNode" || n.type === "TJ_MultiGetNode") return;
+        providerNameWidgets(n).forEach(w => {
+            const v = String(w.value || "").trim();
+            if (v) names.add(v);
+        });
+        if (ECLIPSE_SET_TYPES.has(n.type)) {
+            const v = String(n.widgets?.[0]?.value || "").trim();
+            if (v) names.add(v);
+        }
+        if (isAutoSetProviderNode(n) && n.properties?.auto_sets) {
+            const autoSetW = n.widgets?.find(w => w.name === "auto_set");
+            if (!autoSetW || autoSetW.value) {
+                Object.values(n.properties.auto_sets).forEach(v => {
+                    v = String(v || "").trim();
+                    if (v) names.add(v);
+                });
+            }
+        }
+    });
+    return names;
+}
+
+function makeUniqueProviderName(graph, desired, excludeNode=null) {
+    const existing = collectProviderNames(graph, excludeNode);
+    const base = stripNumericSuffix(desired);
+    let name = String(desired || base).trim() || base;
+    if (!existing.has(name)) return name;
+    let i = 1;
+    while (existing.has(`${base}_${i}`)) i++;
+    return `${base}_${i}`;
+}
+
+function ensureUniqueAutoSetNames(graph) {
+    graph = graph || app.graph;
+    if (!graph) return false;
+    let changed = false;
+    const used = new Set();
+
+    // Names from normal providers and Eclipse Sets are reserved first.
+    graph._nodes?.forEach(n => {
+        if (!n) return;
+        if (ECLIPSE_SET_TYPES.has(n.type)) {
+            const v = String(n.widgets?.[0]?.value || "").trim();
+            if (v) used.add(v);
+        }
+        if (n.type !== "TJ_GetNode" && n.type !== "TJ_MultiGetNode") {
+            providerNameWidgets(n).forEach(w => {
+                const v = String(w.value || "").trim();
+                if (v) used.add(v);
+            });
+        }
+    });
+
+    graph._nodes?.forEach(n => {
+        if (!isAutoSetProviderNode(n) || !n.properties?.auto_sets) return;
+        const autoSetW = n.widgets?.find(w => w.name === "auto_set");
+        if (autoSetW && !autoSetW.value) return;
+        const entries = Object.entries(n.properties.auto_sets).sort((a,b) => parseInt(a[0]) - parseInt(b[0]));
+        for (const [idx, raw] of entries) {
+            const desired = String(raw || "").trim();
+            if (!desired) continue;
+            const base = stripNumericSuffix(desired);
+            let finalName = desired;
+            if (used.has(finalName)) {
+                let i = 1;
+                while (used.has(`${base}_${i}`)) i++;
+                finalName = `${base}_${i}`;
+            }
+            used.add(finalName);
+            if (finalName !== desired) {
+                n.properties.auto_sets[idx] = finalName;
+                const out = n.outputs?.[parseInt(idx)];
+                if (out) out.label = finalName + " ▶";
+                changed = true;
+            }
+        }
+    });
+    return changed;
+}
+
+function updateProviderLabels(node) {
+    if (!node) return;
+    const w = providerNameWidgets(node)[0];
+    const name = String(w?.value || "").trim();
+    if (node.type === "TJ_SetNode") node.title = "SET: " + (name || "TJ_Set_1");
+    if (node.outputs?.[0]) {
+        if (node.outputs[0]._tj_original_label === undefined) {
+            node.outputs[0]._tj_original_label = node.outputs[0].label || "";
+            node.outputs[0]._tj_original_name = node.outputs[0].name || "";
+        }
+        if (name) {
+            node.outputs[0].label = `${name} ▶`;
+        } else {
+            // When set_name / setnode_name is cleared, fully restore the output slot.
+            // Do not leave the previous provider label cached on the slot.
+            node.outputs[0].name = node.outputs[0]._tj_original_name || "output";
+            node.outputs[0].label = "";
+        }
+    }
+}
+
+function ensureUniqueProviderNames(node) {
+    if (!node?.graph) return false;
+    let changed = false;
+    providerNameWidgets(node).forEach(w => {
+        const oldVal = String(w.value || "").trim();
+        if (!oldVal) return;
+        const unique = makeUniqueProviderName(node.graph, oldVal, node);
+        if (unique !== oldVal) {
+            w.value = unique;
+            changed = true;
+        }
+    });
+    updateProviderLabels(node);
+    return changed;
+}
+
+function attachProviderNameSync(node) {
+    if (!node || node._tj_provider_name_sync_attached) return;
+    node._tj_provider_name_sync_attached = true;
+    providerNameWidgets(node).forEach(w => {
+        const origCb = w.callback;
+        w.callback = function(v) {
+            if (origCb) origCb.apply(this, arguments);
+            ensureUniqueProviderNames(node);
+            syncAllGetNodes(node.graph);
+        };
+    });
+    setTimeout(() => {
+        ensureUniqueProviderNames(node);
+        syncAllGetNodes(node.graph);
+    }, 0);
+}
+
+function disconnectWirelessLinksFromProvider(node) {
+    if (!node?.graph || !node.outputs) return;
+    const ids = [];
+    node.outputs.forEach(out => {
+        if (out?.links?.length) ids.push(...out.links);
+    });
+    [...new Set(ids)].forEach(lid => {
+        const l = getGraphLink(node.graph, lid);
+        const target = l ? node.graph.getNodeById(l.target_id) : null;
+        if (target && (target.type === "TJ_GetNode" || target.type === "TJ_MultiGetNode" || isEmbeddedGetNode(target))) {
+            if (target.type !== "TJ_MultiGetNode") resetGetWidgetNode(target, l.target_slot || 0);
+            else if (getGraphLink(node.graph, lid)) node.graph.removeLink(lid);
+        }
+    });
+}
+
+function markWirelessInputLabel(node, slot, name) {
+    if (!node?.inputs?.[slot]) return;
+    node.inputs[slot].label = name && name !== "(none)" ? `◀ ${name}` : "";
+}
+
+function isEmbeddedGetNode(node) {
+    const w = node?.widgets?.find(x => x.name === "get_name");
+    return !!(w && w.value && w.value !== "(none)");
+}
+
+function resetGetWidgetNode(node, inputIndex = 0) {
+    const w = node?.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
+    if (w) w.value = "(none)";
+    if (node?.inputs?.[inputIndex]) {
+        if (node.inputs[inputIndex].link != null && node.graph) {
+            const lid = node.inputs[inputIndex].link;
+            if (getGraphLink(node.graph, lid)) node.graph.removeLink(lid);
+        }
+        node.inputs[inputIndex].link = null;
+        node.inputs[inputIndex].label = "";
+    }
+    if (node?._tjConnectGetReceiver) node._tjConnectGetReceiver("(none)");
+    if (node?._connectToSetNode) node._connectToSetNode("(none)");
+}
+
+function resetConsumersForProviderValue(graph, providerValue) {
+    graph = graph || app.graph;
+    if (!graph || !providerValue || providerValue === "(none)" || isProviderSeparator(providerValue)) return;
+
+    graph._nodes?.forEach(n => {
+        if (!n) return;
+        try {
+            if (n.type === "TJ_MultiGetNode" && n._selectors) {
+                let changed = false;
+                n._selectors().forEach((w, i) => {
+                    if (w?.value === providerValue) {
+                        w.value = "(none)";
+                        removeConsumerInputLink(n, i);
+                        changed = true;
+                    }
+                });
+                if (changed && n._rebuild) n._rebuild();
+                return;
+            }
+
+            const w = getConsumerWidget(n);
+            if (w?.value === providerValue) resetGetWidgetNode(n, 0);
+        } catch (err) {
+            console.warn("[TJ_NODE] reset stale provider consumer skipped", err);
+        }
+    });
+    app.canvas?.setDirty(true, true);
+}
+
+function resetConsumersForEclipseSet(setNode) {
+    if (!setNode) return;
+    const graph = setNode.graph || app.graph;
+    const name = String(setNode.widgets?.[0]?.value || "").trim();
+    if (!graph || !name) return;
+    resetConsumersForProviderValue(graph, `${ECLIPSE_PROVIDER_PREFIX}${name}`);
+}
+
+function installWirelessGraphRemoveHook() {
+    const GraphCtor = LiteGraph?.LGraph;
+    if (!GraphCtor?.prototype || GraphCtor.prototype._tj_wireless_remove_hooked) return;
+    GraphCtor.prototype._tj_wireless_remove_hooked = true;
+    const origRemove = GraphCtor.prototype.remove;
+    GraphCtor.prototype.remove = function(node) {
+        const isEclipse = !!(node && ECLIPSE_SET_TYPES.has(node.type));
+        const eclipseName = isEclipse ? String(node.widgets?.[0]?.value || "").trim() : "";
+        const providerValues = [];
+        if (isEclipse && eclipseName) providerValues.push(`${ECLIPSE_PROVIDER_PREFIX}${eclipseName}`);
+        if (node && providerNameWidgets(node).length) {
+            providerNameWidgets(node).forEach(w => {
+                const v = String(w.value || "").trim();
+                if (v) providerValues.push(`${TJ_PROVIDER_PREFIX}${v}`, v);
+            });
+        }
+        const res = origRemove ? origRemove.apply(this, arguments) : undefined;
+        providerValues.forEach(v => resetConsumersForProviderValue(this, v));
+        scheduleWirelessRepair(this, 80);
+        return res;
+    };
+}
+installWirelessGraphRemoveHook();
+
+
+function getProviderValuesForNode(node) {
+    const values = [];
+    if (!node) return values;
+    if (ECLIPSE_SET_TYPES.has(node.type)) {
+        const name = String(node.widgets?.[0]?.value || "").trim();
+        if (name) values.push(`${ECLIPSE_PROVIDER_PREFIX}${name}`, name);
+    }
+    providerNameWidgets(node).forEach(w => {
+        const name = String(w.value || "").trim();
+        if (name) values.push(`${TJ_PROVIDER_PREFIX}${name}`, name);
+    });
+    if (isAutoSetProviderNode(node) && node.properties?.auto_sets) {
+        Object.values(node.properties.auto_sets).forEach(v => {
+            const name = String(v || "").trim();
+            if (name) values.push(`${TJ_PROVIDER_PREFIX}${name}`, name);
+        });
+    }
+    return [...new Set(values)];
+}
+
+function consumerUsesProviderValue(node, providerValues, inputSlot = 0) {
+    if (!node || !providerValues?.length) return false;
+    if (node.type === "TJ_MultiGetNode" && node._selectors) {
+        const w = node._selectors()?.[inputSlot];
+        return !!(w && providerValues.includes(w.value));
+    }
+    const w = getConsumerWidget(node);
+    return !!(w && providerValues.includes(w.value));
+}
+
+function removeBypassLinksFromOldProviderInput(graph, oldLink, providerValues) {
+    if (!graph || !oldLink || !providerValues?.length) return;
+    const ids = [];
+    const allLinks = graph.links instanceof Map ? Array.from(graph.links.values()) : Object.values(graph.links || {});
+    for (const l of allLinks) {
+        if (!l) continue;
+        if (l.origin_id !== oldLink.origin_id || l.origin_slot !== oldLink.origin_slot) continue;
+        const target = graph.getNodeById(l.target_id);
+        if (!target) continue;
+        if (consumerUsesProviderValue(target, providerValues, l.target_slot)) ids.push(l.id);
+    }
+    ids.forEach(id => { if (getGraphLink(graph, id)) graph.removeLink(id); });
+}
+
+function installWirelessRemoveLinkHook() {
+    const GraphCtor = LiteGraph?.LGraph;
+    if (!GraphCtor?.prototype || GraphCtor.prototype._tj_wireless_remove_link_hooked) return;
+    GraphCtor.prototype._tj_wireless_remove_link_hooked = true;
+    const origRemoveLink = GraphCtor.prototype.removeLink;
+    GraphCtor.prototype.removeLink = function(linkId) {
+        const link = getGraphLink(this, linkId);
+        const targetBefore = link ? this.getNodeById(link.target_id) : null;
+        const providerInputDisconnect = !!(link && isProviderInputDisconnectLink(this, link));
+        const providerValues = providerInputDisconnect ? getProviderValuesForNode(targetBefore) : [];
+        const needsWirelessRepair = !!(link && (link._tj_wireless || providerInputDisconnect));
+        const oldLink = link ? { ...link } : null;
+        const res = origRemoveLink ? origRemoveLink.apply(this, arguments) : undefined;
+        if (providerInputDisconnect) {
+            // LiteGraph may auto-bypass old source directly into Get/embedded consumers.
+            // Wireless providers are not reroute nodes, so remove that bypass immediately.
+            setTimeout(() => removeBypassLinksFromOldProviderInput(this, oldLink, providerValues), 0);
+            setTimeout(() => removeBypassLinksFromOldProviderInput(this, oldLink, providerValues), 60);
+            // Keep get_name values but rebuild/remove the actual hidden wires from scratch.
+            forceReconnectConsumersForProviderValues(this, providerValues, 120);
+            forceReconnectConsumersForProviderValues(this, providerValues, 260);
+        }
+        if (needsWirelessRepair) {
+            scheduleWirelessRepair(this, 90);
+            scheduleWirelessRepair(this, 240);
+        }
+        return res;
+    };
+}
+installWirelessRemoveLinkHook();
+
+function installWirelessConnectHook() {
+    // Safe narrow hook: only reacts when a user connects INTO a provider input.
+    // It does not react to repair-created provider->consumer links, avoiding recursion.
+    if (!LGraphNode?.prototype || LGraphNode.prototype._tj_wireless_connect_hooked) return;
+    LGraphNode.prototype._tj_wireless_connect_hooked = true;
+    const origConnect = LGraphNode.prototype.connect;
+    LGraphNode.prototype.connect = function(slot, targetNode, targetSlot) {
+        const res = origConnect ? origConnect.apply(this, arguments) : undefined;
+        const graph = targetNode?.graph || this.graph || app.graph;
+        if (graph && !graph._tj_wireless_repair_running && targetNode && isWirelessProviderNode(targetNode)) {
+            scheduleWirelessRepair(graph, 30);
+            scheduleWirelessRepair(graph, 120);
+            scheduleWirelessRepair(graph, 300);
+        }
+        return res;
+    };
+}
+installWirelessConnectHook();
+
+function cleanupInvalidGetSelections(graph) {
+    graph = graph || app.graph;
+    if (!graph) return;
+    const values = new Set(getAllSetNames(graph));
+
+    graph._nodes?.forEach(n => {
+        if (!n) return;
+
+        if (n.type === "TJ_MultiGetNode" && n._selectors) {
+            const sels = n._selectors();
+            let changed = false;
+            sels.forEach((w, i) => {
+                if (!w || !w.value || w.value === "(none)" || isProviderSeparator(w.value)) return;
+                const provider = findProviderByValue(graph, w.value);
+                if (!provider || !values.has(provider.displayName)) {
+                    w.value = "(none)";
+                    removeConsumerInputLink(n, i);
+                    changed = true;
+                    return;
+                }
+                const link = getGraphLink(graph, n.inputs?.[i]?.link);
+                if (link && !linkMatchesProvider(graph, link, provider)) {
+                    removeConsumerInputLink(n, i);
+                    changed = true;
+                }
+            });
+            if (changed && n._rebuild) n._rebuild();
+            return;
+        }
+
+        const w = getConsumerWidget(n);
+        if (!w || !w.value || w.value === "(none)" || isProviderSeparator(w.value)) return;
+
+        // Direct user wires have priority over embedded get_name wireless mode.
+        // If a real non-wireless link is plugged into an embedded Get receiver,
+        // never remove it during wireless cleanup/repair.
+        if (hasDirectNonWirelessInput(n, 0)) return;
+
+        const provider = findProviderByValue(graph, w.value);
+        if (!provider || !values.has(provider.displayName)) {
+            resetGetWidgetNode(n, 0);
+            return;
+        }
+
+        const link = getGraphLink(graph, n.inputs?.[0]?.link);
+        if (link && !linkMatchesProvider(graph, link, provider)) {
+            removeConsumerInputLink(n, 0);
+        }
+    });
+}
+
+window.TJ_NODE_applyTheme = applyTJTheme;
+window.TJ_NODE_attachProviderNameSync = attachProviderNameSync;
+window.TJ_NODE_syncAllGetNodes = syncAllGetNodes;
+window.TJ_NODE_getAllSetNames = getAllSetNames;
+window.TJ_NODE_findSetterSourceInfo = findSetterSourceInfo;
+window.TJ_NODE_collectAllProviders = collectAllProviders;
+window.TJ_NODE_findProviderByValue = findProviderByValue;
+window.TJ_NODE_getProviderLabelName = getProviderLabelName;
+window.TJ_NODE_PROVIDER_SEPARATOR = ECLIPSE_SEPARATOR;
+window.TJ_NODE_cleanupInvalidGetSelections = cleanupInvalidGetSelections;
+window.TJ_NODE_resetConsumersForProviderValue = resetConsumersForProviderValue;
+window.TJ_NODE_resetConsumersForEclipseSet = resetConsumersForEclipseSet;
+window.TJ_NODE_ensureUniqueProviderNames = ensureUniqueProviderNames;
+window.TJ_NODE_ensureUniqueAutoSetNames = ensureUniqueAutoSetNames;
+window.TJ_NODE_markWirelessLink = markWirelessLink;
+window.TJ_NODE_scheduleWirelessRepair = scheduleWirelessRepair;
+window.TJ_NODE_forceReconnectConsumer = forceReconnectConsumer;
+window.TJ_NODE_forceReconnectConsumersForProviderValues = forceReconnectConsumersForProviderValues;
+
 app.registerExtension({
 	name: "TJ.SetNode.Wireless",
 	async beforeRegisterNodeDef(nodeType, nodeData, app) {
@@ -122,27 +944,27 @@ app.registerExtension({
 			nodeType.prototype.onNodeCreated = function() {
 				if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
 
-                this.bgcolor = "#000000";
-                this.color = "#7612DA";
-                this.title_text_color = "#FFFFFF";
+                applyTJTheme(this);
+                attachProviderNameSync(this);
 
-				const w = this.widgets.find(w => w.name === "set_name");
+				const w = this.widgets.find(w => w.name === "get_name" || w.name === "set_name");
 				if (w) {
 					w.callback = () => {
+                        ensureUniqueProviderNames(this);
 						this.title = "SET: " + w.value;
-						app.graph._nodes.forEach(n => {
-							if (n.type === "TJ_GetNode" && n._syncWithSetNode) n._syncWithSetNode();
-							// Set 노드 이름 변경 시 Multi Get 노드 동기화 호출
-							if (n.type === "TJ_MultiGetNode") {
-								if (n._syncWithSetNodes) n._syncWithSetNodes();
-								else if (n._rebuild) n._rebuild();
-							}
-						});
-						app.canvas.setDirty(true, true);
+                        updateProviderLabels(this);
+                        syncAllGetNodes(this.graph);
 					};
 				}
 				this.title = "SET: " + (w ? w.value : "TJ_Set_1");
 			};
+
+            const origOnRemoved = nodeType.prototype.onRemoved;
+            nodeType.prototype.onRemoved = function() {
+                disconnectWirelessLinksFromProvider(this);
+                scheduleWirelessRepair(this.graph, 0);
+                if (origOnRemoved) origOnRemoved.apply(this, arguments);
+            };
 
 			const origOnConnectionsChange = nodeType.prototype.onConnectionsChange;
 			nodeType.prototype.onConnectionsChange = function(type, index, connected, link_info) {
@@ -150,43 +972,37 @@ app.registerExtension({
 				if (type === LiteGraph.INPUT && index === 0) {
 					if (connected && link_info) {
 						const srcNode = this.graph.getNodeById(link_info.origin_id);
-						if (srcNode) {
-							const srcType = srcNode.outputs[link_info.origin_slot].type;
+                        const srcOut = getOutputSlot(srcNode, link_info.origin_slot);
+						if (srcNode && srcOut) {
+							const srcType = srcOut.type || "*";
 							this.inputs[0].type = srcType; this.inputs[0].name = "value";
-							this.outputs[0].type = srcType; this.outputs[0].name = srcType;
-							
-							const color = getTypeColor(srcType);
-							if (color) {
-								this.color = darkenHex(color, 0.6);
-								this.bgcolor = darkenHex(color, 0.4);
-							} else {
-								this.color = "#7612DA";
-								this.bgcolor = "#000000";
-							}
+							this.outputs[0].type = srcType; this.outputs[0].name = srcType; updateProviderLabels(this);
+							applyTJTheme(this);
+                            scheduleWirelessRepair(this.graph, 0);
+                            scheduleWirelessRepair(this.graph, 80);
 						}
 					} else {
+                        // Provider input changed/disconnected does NOT mean the provider died.
+                        // Keep existing Get/get_name selections alive and let repair rebind them when a new input arrives.
 						this.inputs[0].type = "*"; this.inputs[0].name = "value";
-						this.outputs[0].type = "*"; this.outputs[0].name = "value";
-						this.color = "#7612DA";
-						this.bgcolor = "#000000";
+						this.outputs[0].type = "*"; this.outputs[0].name = "value"; updateProviderLabels(this);
+						applyTJTheme(this);
+                        scheduleWirelessRepair(this.graph, 0);
+                        scheduleWirelessRepair(this.graph, 120);
 					}
 					
-					if (this.outputs[0].links) {
-						this.outputs[0].links.forEach(lid => {
-							const l = this.graph.links[lid] || (this.graph.links.get && this.graph.links.get(lid));
-							if (l) {
-								const getn = this.graph.getNodeById(l.target_id);
-								if (getn && (getn.type === "TJ_GetNode" || getn.type === "TJ_MultiGetNode")) {
-									getn.inputs[l.target_slot].type = this.outputs[0].type;
-									getn.outputs[l.target_slot].type = this.outputs[0].type;
-									getn.outputs[l.target_slot].name = this.outputs[0].type;
-									
-									const cColor = getTypeColor(this.outputs[0].type);
-									if (cColor && getn.type === "TJ_GetNode") {
-										getn.color = darkenHex(cColor, 0.6);
-										getn.bgcolor = darkenHex(cColor, 0.4);
-									}
-								}
+					if (this.outputs?.[0]?.links) {
+						[...this.outputs[0].links].forEach(lid => {
+							const l = getGraphLink(this.graph, lid);
+							if (!l) return;
+							const getn = this.graph.getNodeById(l.target_id);
+							if (getn && (getn.type === "TJ_GetNode" || getn.type === "TJ_MultiGetNode") && getn.inputs?.[l.target_slot] && getn.outputs?.[l.target_slot]) {
+								getn.inputs[l.target_slot].type = this.outputs[0].type || "*";
+								getn.outputs[l.target_slot].type = this.outputs[0].type || "*";
+                                const srcLabel = providerNameWidgets(this)[0]?.value || this.outputs[0].name || this.outputs[0].type;
+								getn.outputs[l.target_slot].name = srcLabel;
+                                getn.outputs[l.target_slot].label = `${srcLabel} ▶`;
+								if (getn.type === "TJ_GetNode") applyTJTheme(getn);
 							}
 						});
 					}
@@ -204,15 +1020,16 @@ app.registerExtension({
 			nodeType.prototype.onNodeCreated = function() {
 				if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
 
-                this.bgcolor = "#000000";
-                this.color = "#7612DA";
-                this.title_text_color = "#FFFFFF";
+                applyTJTheme(this);
 
-				const w = this.widgets.find(w => w.name === "set_name");
+				const w = this.widgets.find(w => w.name === "get_name" || w.name === "set_name");
 				if (w) {
 					w.options = { values: ["(none)"] }; 
 					w.callback = (val) => {
-						this.title = "(TJ) GET: " + val;
+						this.title = "(TJ) GET: " + getProviderLabelName(this.graph, val);
+                        if (isProviderSeparator(val)) { w.value = w._tj_previous_value || "(none)"; return; }
+                        w._tj_previous_value = val;
+                        markWirelessInputLabel(this, 0, getProviderLabelName(this.graph, val));
 						this._connectToSetNode(val); 
 					};
 				}
@@ -228,7 +1045,7 @@ app.registerExtension({
 			const origOnDrawForeground = nodeType.prototype.onDrawForeground;
 			nodeType.prototype.onDrawForeground = function(ctx) {
 				if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
-				const w = this.widgets?.find(x => x.name === "set_name");
+				const w = this.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
 				if (w && w.options) {
 					w.options.values = getAllSetNames(this.graph);
 				}
@@ -236,76 +1053,121 @@ app.registerExtension({
 
 			nodeType.prototype._connectToSetNode = function(setName) {
 				if (!this.graph) return;
-				if (this.inputs[0].link != null) this.graph.removeLink(this.inputs[0].link);
+				const wasConnecting = !!this._tj_connecting_wireless;
+				this._tj_connecting_wireless = true;
+				try {
+					if (this.inputs[0].link != null) this.graph.removeLink(this.inputs[0].link);
+				} finally {
+					this._tj_connecting_wireless = wasConnecting;
+				}
 
-				if (!setName || setName === "(none)") {
+				const valueW = this.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
+
+				if (!setName || setName === "(none)" || isProviderSeparator(setName)) {
+	                markWirelessInputLabel(this, 0, "");
 					this.inputs[0].type = "*";
 					this.inputs[0].name = "wire";
 					this.outputs[0].type = "*";
 					this.outputs[0].name = "value";
-					this.color = "#7612DA";
-					this.bgcolor = "#000000";
+	                this.outputs[0].label = "";
+					applyTJTheme(this);
 					return;
 				}
 
 				const sourceInfo = findSetterSourceInfo(this.graph, setName);
-				
-				if (sourceInfo) {
+				if (canConnectWireless(sourceInfo, this, 0)) {
+	                const normalizedValue = sourceInfo.displayName || normalizeProviderValue(this.graph, setName);
+	                setWidgetValueSilent(valueW, normalizedValue);
+	                const labelName = sourceInfo.labelName || getProviderLabelName(this.graph, normalizedValue) || getProviderLabelName(this.graph, setName) || setName;
+	                markWirelessInputLabel(this, 0, labelName);
+	                this._tj_connecting_wireless = true;
 					sourceInfo.node.connect(sourceInfo.slot, this, 0); 
-					const t = sourceInfo.node.outputs[sourceInfo.slot].type;
+	                markWirelessLink(this.graph, this, 0, normalizedValue);
+	                this._tj_connecting_wireless = false;
+					const t = getOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
 					this.inputs[0].type = t;
 					this.inputs[0].name = "wire"; 
 					this.outputs[0].type = t;
-					this.outputs[0].name = t;
-					
-					const color = getTypeColor(t);
-					if (color) {
-						this.color = darkenHex(color, 0.6);
-						this.bgcolor = darkenHex(color, 0.4);
-					} else {
-						this.color = "#7612DA";
-						this.bgcolor = "#000000";
-					}
+					this.outputs[0].name = labelName;
+	                this.outputs[0].label = `${labelName} ▶`;
+	                this.title = "(TJ) GET: " + labelName;
+					applyTJTheme(this);
 				} else {
+	                const provider = findProviderByValue(this.graph, setName);
+	                if (provider) {
+	                    const normalizedValue = provider.displayName || normalizeProviderValue(this.graph, setName);
+	                    setWidgetValueSilent(valueW, normalizedValue);
+	                    const labelName = provider.labelName || getProviderLabelName(this.graph, normalizedValue) || getProviderLabelName(this.graph, setName) || setName;
+	                    markWirelessInputLabel(this, 0, labelName);
+	                    this.title = "(TJ) GET: " + labelName;
+	                } else {
+	                    if (valueW) valueW.value = "(none)";
+	                    markWirelessInputLabel(this, 0, "");
+	                    this.title = "GET:";
+	                }
 					this.inputs[0].type = "*";
 					this.inputs[0].name = "wire";
 					this.outputs[0].type = "*";
 					this.outputs[0].name = "value";
-					this.color = "#7612DA";
-					this.bgcolor = "#000000";
+	                this.outputs[0].label = "";
+					applyTJTheme(this);
 				}
 			};
+
 
 			nodeType.prototype._syncWithSetNode = function() {
 				if (this.inputs[0].link != null) {
-					const l = this.graph.links[this.inputs[0].link] || (this.graph.links.get && this.graph.links.get(this.inputs[0].link));
+					const l = getGraphLink(this.graph, this.inputs[0].link);
 					if (l) {
-						const src = this.graph.getNodeById(l.origin_id);
-						let srcName = null;
-						if (src && src.type === "TJ_SetNode") {
-							srcName = src.widgets.find(w=>w.name==="set_name")?.value;
-						} else if (src && src.type === "TJ_MultiRouter" && src.properties?.auto_sets) {
-							srcName = src.properties.auto_sets[l.origin_slot];
-						}
+                        const src = this.graph.getNodeById(l.origin_id);
+                        const providerValue = findProviderValueForLink(this.graph, src, l.origin_slot);
+                        const labelName = getProviderLabelName(this.graph, providerValue);
 
-						const myW = this.widgets.find(w=>w.name==="set_name");
-						if (myW && srcName && myW.value !== srcName) {
-							myW.value = srcName;
-							this.title = "GET: " + srcName;
-						}
+                        const myW = this.widgets.find(w=>w.name==="get_name" || w.name==="set_name");
+                        if (myW && providerValue && myW.value !== providerValue) {
+                            myW.value = providerValue;
+                            this.title = "(TJ) GET: " + labelName;
+                            markWirelessInputLabel(this, 0, labelName);
+                        }
 					}
 				}
 			};
+
+
+            const origGetOnConnectionsChange = nodeType.prototype.onConnectionsChange;
+            nodeType.prototype.onConnectionsChange = function(type, index, connected) {
+                if (origGetOnConnectionsChange) origGetOnConnectionsChange.apply(this, arguments);
+                if (type === LiteGraph.INPUT && index === 0 && !connected && !this._tj_connecting_wireless) {
+                    const w = this.widgets?.find(x => x.name === "get_name" || x.name === "set_name");
+                    const selected = w?.value;
+                    const provider = selected && selected !== "(none)" && !isProviderSeparator(selected) ? findProviderByValue(this.graph, selected) : null;
+                    if (provider) {
+                        // Temporary wireless link removal while a provider input is being changed.
+                        // Keep the selection; repair will reconnect when possible.
+                        markWirelessInputLabel(this, 0, provider.labelName || getProviderLabelName(this.graph, selected));
+                        if (this.outputs?.[0]) {
+                            this.outputs[0].name = provider.labelName || getProviderLabelName(this.graph, selected) || "value";
+                            this.outputs[0].label = provider.labelName ? `${provider.labelName} ▶` : this.outputs[0].label;
+                        }
+                        scheduleWirelessRepair(this.graph, 60);
+                        return;
+                    }
+                    if (w && w.value && w.value !== "(none)") w.value = "(none)";
+                    markWirelessInputLabel(this, 0, "");
+                    if (this.outputs?.[0]) { this.outputs[0].name = "value"; this.outputs[0].label = ""; this.outputs[0].type = "*"; }
+                    app.canvas?.setDirty(true, true);
+                }
+            };
 
 			const origOnConfigure = nodeType.prototype.onConfigure;
 			nodeType.prototype.onConfigure = function() {
 				if (origOnConfigure) origOnConfigure.apply(this, arguments);
 				setTimeout(() => {
 					this._syncWithSetNode();
-					const w = this.widgets.find(w=>w.name==="set_name");
+					const w = this.widgets.find(w=>w.name==="get_name" || w.name==="set_name");
 					if(w) {
 						this._connectToSetNode(w.value);
-						this.title = "GET: " + w.value;
+						this.title = "(TJ) GET: " + getProviderLabelName(this.graph, w.value);
 					}
 				}, 100);
 			};
@@ -321,9 +1183,7 @@ app.registerExtension({
 			nodeType.prototype.onNodeCreated = function() {
 				if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
 
-                this.bgcolor = "#000000";
-                this.color = "#7612DA";
-                this.title_text_color = "#FFFFFF";
+                applyTJTheme(this);
 
 				this.selectorCount = 0;
 				this._addSelector("");
@@ -342,7 +1202,7 @@ app.registerExtension({
 			};
 
 			nodeType.prototype._selectors = function() { return (this.widgets || []).filter(w => w.name?.startsWith("slot_")); };
-			nodeType.prototype._activeNames = function() { return this._selectors().map(w => w.value).filter(v => v && v !== "(none)"); };
+			nodeType.prototype._activeNames = function() { return this._selectors().map(w => w.value).filter(v => v && v !== "(none)" && !isProviderSeparator(v)); };
 
 			nodeType.prototype._addSelector = function(initial) {
 				if (this._selectors().length >= MAX_PORTS) return null;
@@ -356,6 +1216,8 @@ app.registerExtension({
 			};
 
 			nodeType.prototype._onChange = function(w, v) {
+                if (isProviderSeparator(v)) { w.value = w._tj_previous_value || "(none)"; return; }
+                w._tj_previous_value = v;
 				this._rebuild();
 				const sels = this._selectors();
 				if (v && v !== "(none)" && sels[sels.length - 1] === w && sels.length < MAX_PORTS) {
@@ -365,7 +1227,6 @@ app.registerExtension({
 				app.canvas.setDirty(true, true);
 			};
 
-            // ★ Multi Get Node를 위한 자동 이름 동기화 함수 추가
             nodeType.prototype._syncWithSetNodes = function() {
                 let changed = false;
                 const sels = this._selectors();
@@ -373,19 +1234,13 @@ app.registerExtension({
                 for (let i = 0; i < this.inputs.length; i++) {
                     const inp = this.inputs[i];
                     if (inp && inp.link != null) {
-                        const l = this.graph.links[inp.link] || (this.graph.links.get && this.graph.links.get(inp.link));
+                        const l = getGraphLink(this.graph, inp.link);
                         if (l) {
                             const src = this.graph.getNodeById(l.origin_id);
-                            let srcName = null;
-                            if (src && src.type === "TJ_SetNode") {
-                                srcName = src.widgets.find(w => w.name === "set_name")?.value;
-                            } else if (src && src.type === "TJ_MultiRouter" && src.properties?.auto_sets) {
-                                srcName = src.properties.auto_sets[l.origin_slot];
-                            }
-                            
+                            const providerValue = findProviderValueForLink(this.graph, src, l.origin_slot);
                             const w = sels[i];
-                            if (w && srcName && w.value !== srcName) {
-                                w.value = srcName;
+                            if (w && providerValue && w.value !== providerValue) {
+                                w.value = providerValue;
                                 changed = true;
                             }
                         }
@@ -411,7 +1266,7 @@ app.registerExtension({
 				while (this.outputs.length < need) this.addOutput(`output_${this.outputs.length + 1}`, "*");
 				while (this.outputs.length > need) {
 					const i = this.outputs.length - 1;
-					if (this.outputs[i].links?.length) [...this.outputs[i].links].forEach(l => this.graph.removeLink(l));
+					if (this.outputs[i].links?.length) [...this.outputs[i].links].forEach(l => { if (getGraphLink(this.graph, l)) this.graph.removeLink(l); });
 					this.removeOutput(i);
 				}
 				
@@ -421,18 +1276,26 @@ app.registerExtension({
 					inp.color_on = "transparent"; inp.color_off = "transparent"; 
 					inp.name = `wire_${i+1}`; 
 
-					if (inp.link != null) this.graph.removeLink(inp.link);
+					if (inp.link != null) {
+						const wasConnecting = !!this._tj_connecting_wireless;
+						this._tj_connecting_wireless = true;
+						try { this.graph.removeLink(inp.link); }
+						finally { this._tj_connecting_wireless = wasConnecting; }
+					}
 
 					const name = active[i];
 					if (name) {
 						const sourceInfo = findSetterSourceInfo(this.graph, name);
-						if (sourceInfo) {
+                        const labelName = sourceInfo?.labelName || getProviderLabelName(this.graph, name) || name;
+						if (canConnectWireless(sourceInfo, this, i)) {
 							sourceInfo.node.connect(sourceInfo.slot, this, i); 
-							const t = sourceInfo.node.outputs[sourceInfo.slot].type;
+                            markWirelessLink(this.graph, this, i, sourceInfo.displayName || name);
+							const t = getOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
 							inp.type = t;
 							this.outputs[i].type = t;
 							this.outputs[i].name = t;
-							this.outputs[i].label = name;
+							markWirelessInputLabel(this, i, labelName);
+							this.outputs[i].label = `${labelName} ▶`;
 							
 							const typeC = getTypeColor(t);
 							if (typeC) {
@@ -446,20 +1309,13 @@ app.registerExtension({
 						inp.type = "*";
 						this.outputs[i].type = "*";
 						this.outputs[i].name = "*";
+						markWirelessInputLabel(this, i, "");
 						this.outputs[i].label = `output_${i+1}`;
 						this.outputs[i].color_on = null;
 						this.outputs[i].color_off = null;
 					}
 				});
-
-				const mColor = getTypeColor(firstValidType);
-				if (mColor) {
-					this.color = darkenHex(mColor, 0.6);
-					this.bgcolor = darkenHex(mColor, 0.4);
-				} else {
-					this.color = "#7612DA";
-					this.bgcolor = "#000000";
-				}
+				applyTJTheme(this);
 
 				this.setSize(this.computeSize());
 			};
@@ -483,14 +1339,147 @@ app.registerExtension({
 
 
 app.registerExtension({
+    name: "TJ.ProviderName.Common",
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function() {
+            if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+            if (String(nodeData.name || "").includes("TJ") || providerNameWidgets(this).length) {
+                applyTJTheme(this);
+                attachProviderNameSync(this);
+            }
+        };
+
+        const origOnConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = function(data) {
+            if (origOnConfigure) origOnConfigure.apply(this, arguments);
+            setTimeout(() => {
+                if (String(nodeData.name || "").includes("TJ") || providerNameWidgets(this).length) {
+                    applyTJTheme(this);
+                    attachProviderNameSync(this);
+                    ensureUniqueProviderNames(this);
+                    updateProviderLabels(this);
+                }
+            }, 100);
+        };
+
+        const origAnyConnChange = nodeType.prototype.onConnectionsChange;
+        nodeType.prototype.onConnectionsChange = function(type, index, connected) {
+            const g = this.graph || app.graph;
+            if (type === LiteGraph.INPUT && isWirelessProviderNode(this)) {
+                // Provider input was disconnected OR reconnected.
+                // Keep current get_name values, but rebuild the actual hidden wire origin.
+                const vals = getProviderValuesForNode(this);
+                scheduleWirelessRepair(g, connected ? 0 : 80);
+                scheduleWirelessRepair(g, connected ? 80 : 220);
+                forceReconnectConsumersForProviderValues(g, vals, connected ? 20 : 120);
+                forceReconnectConsumersForProviderValues(g, vals, connected ? 180 : 280);
+            }
+            if (origAnyConnChange) origAnyConnChange.apply(this, arguments);
+            if (type === LiteGraph.INPUT && isWirelessProviderNode(this)) {
+                const vals = getProviderValuesForNode(this);
+                forceReconnectConsumersForProviderValues(g, vals, connected ? 60 : 180);
+            }
+        };
+
+        const origAnyRemoved = nodeType.prototype.onRemoved;
+        nodeType.prototype.onRemoved = function() {
+            const g = this.graph || app.graph;
+            if (ECLIPSE_SET_TYPES.has(this.type)) resetConsumersForEclipseSet(this);
+            if (providerNameWidgets(this).length) disconnectWirelessLinksFromProvider(this);
+            if (ECLIPSE_SET_TYPES.has(this.type) || providerNameWidgets(this).length) scheduleWirelessRepair(g, 120);
+            if (origAnyRemoved) origAnyRemoved.apply(this, arguments);
+        };
+    }
+});
+
+
+function normalizeMenuContent(item) {
+    const c = item?.content ?? item?.title ?? "";
+    return String(c).replace(/<[^>]*>/g, "").trim();
+}
+
+function collectNativePropertyMenuItems(options) {
+    const found = [];
+    const seen = new Set();
+    const walk = (items) => {
+        for (const item of items || []) {
+            if (!item || typeof item !== "object") continue;
+            const label = normalizeMenuContent(item);
+            if ((label === "Properties" || label === "Properties Panel") && !seen.has(label)) {
+                seen.add(label);
+                found.push(item);
+            }
+            const sub = item.submenu?.options || item.submenu || item.options;
+            if (Array.isArray(sub)) walk(sub);
+        }
+    };
+    walk(options);
+    return found;
+}
+
+function openTJFallbackProperties(node, preferPanel = false) {
+    const canvas = app.canvas;
+    const calls = preferPanel
+        ? [
+            () => canvas?.showNodePropertiesPanel?.(node),
+            () => canvas?.showNodePanel?.(node),
+            () => canvas?.showShowNodePanel?.(node),
+            () => canvas?.showNodeProperties?.(node),
+            () => node?.showPropertiesPanel?.(),
+        ]
+        : [
+            () => canvas?.showShowNodePanel?.(node),
+            () => canvas?.showNodeProperties?.(node),
+            () => canvas?.showNodePanel?.(node),
+            () => canvas?.showNodePropertiesPanel?.(node),
+            () => node?.showPropertiesPanel?.(),
+        ];
+    for (const fn of calls) {
+        try {
+            const r = fn();
+            if (r !== undefined) return r;
+        } catch (err) {}
+    }
+    console.warn("[TJ_NODE] Native Properties action was not found for this ComfyUI build.");
+}
+
+function addNativePropertiesIntoTJMenu(tjSubOptions, originalOptions, node) {
+    const nativeItems = collectNativePropertyMenuItems(originalOptions);
+    if (nativeItems.length) {
+        tjSubOptions.push({
+            content: "⚙️ Native Properties",
+            has_submenu: true,
+            submenu: { options: nativeItems }
+        });
+    } else {
+        tjSubOptions.push({
+            content: "⚙️ Properties",
+            callback: () => openTJFallbackProperties(node, false)
+        });
+        tjSubOptions.push({
+            content: "⚙️ Properties Panel",
+            callback: () => openTJFallbackProperties(node, true)
+        });
+    }
+    tjSubOptions.push(null);
+}
+
+// ─── 메뉴 및 글로벌 이벤트 제어 ───
+app.registerExtension({
 	name: "TJ.GlobalContext",
 	setup() {
+        // 1. 노드 위 우클릭 시 메뉴 추가
 		const origGetMenuOptions = LGraphNode.prototype.getMenuOptions;
 		LGraphNode.prototype.getMenuOptions = function(canvas) {
 			const options = origGetMenuOptions ? origGetMenuOptions.call(this, canvas) : [];
 			const tjSubOptions = [];
 
-			if (this.type === "TJ_SetNode" || this.type === "TJ_GetNode" || this.type === "TJ_MultiGetNode" || this.type === "TJ_MultiRouter") {
+            const thisW = this.widgets?.find(w => w.name === "set_name" || w.name === "setnode_name");
+            const isGetNode = (this.type === "TJ_GetNode" || this.type === "TJ_MultiGetNode");
+            const hasProvider = (!isGetNode && thisW && thisW.value && thisW.value.trim() !== "");
+
+			if (hasProvider || isGetNode || this.type === "TJ_MultiRouter") {
 				tjSubOptions.push({
 					content: (this.properties?.show_wire ? "👁️ Hide This Wire" : "👁️ Show This Wire"),
 					callback: () => {
@@ -502,21 +1491,21 @@ app.registerExtension({
 				tjSubOptions.push(null);
 			}
 
-			if (this.type === "TJ_GetNode" || this.type === "TJ_MultiGetNode") {
+			if (isGetNode) {
 				tjSubOptions.push({ 
 					content: "🚀 Go to Source Node", 
 					callback: () => {
 						for (let i=0; i<this.inputs.length; i++) {
 							if (this.inputs[i].link) {
-								const l = this.graph.links[this.inputs[i].link] || this.graph.links.get(this.inputs[i].link);
-								const setNode = this.graph.getNodeById(l.origin_id);
+								const l = getGraphLink(this.graph, this.inputs[i].link);
+								const setNode = l ? this.graph.getNodeById(l.origin_id) : null;
 								if (setNode) { app.canvas.centerOnNode(setNode); app.canvas.selectNode(setNode); break; }
 							}
 						}
 					} 
 				});
-			} else if (this.type === "TJ_SetNode") {
-				const linkIds = this.outputs[0]?.links || [];
+			} else if (hasProvider) {
+				const linkIds = this.outputs?.[0]?.links || [];
 				if (linkIds.length > 0) {
 					const subOptions = [];
 					linkIds.forEach((lid, i) => {
@@ -560,6 +1549,8 @@ app.registerExtension({
 
 			if (tjSubOptions.length > 0) tjSubOptions.push(null);
 
+            addNativePropertiesIntoTJMenu(tjSubOptions, options, this);
+
 			tjSubOptions.push({
 				content: "➕ Add Set Node",
 				callback: () => {
@@ -584,6 +1575,16 @@ app.registerExtension({
 
 			tjSubOptions.push(null);
 
+            // 🚨 노드 우클릭 시 전체 리프레시 버튼 추가
+            tjSubOptions.push({
+				content: "🔄 Refresh ALL Get Nodes",
+				callback: () => {
+                    syncAllGetNodes(app.graph);
+				}
+			});
+
+            tjSubOptions.push(null);
+
 			tjSubOptions.push({
 				content: "📦 Convert ALL Outputs to Set",
 				callback: () => {
@@ -595,9 +1596,10 @@ app.registerExtension({
 						this.graph.add(setNode);
 						this.connect(slotIdx, setNode, 0);
 
-						const autoName = `${this.type}_${out.name}`;
+						const autoName = makeUniqueProviderName(this.graph, `${this.type}_${out.name}`, setNode);
 						setNode.widgets.find(w => w.name === "set_name").value = autoName;
 						setNode.title = "(TJ) SET: " + autoName;
+                        updateProviderLabels(setNode);
 
 						offsetY += 80;
 					});
@@ -625,6 +1627,14 @@ app.registerExtension({
 			tjSubOptions.push(null);
 
 			tjSubOptions.push({
+				content: (realtimeWireHoverEnabled ? "🟡 Realtime Wires View Mode OFF" : "🟡 Realtime Wires View Mode ON"),
+				callback: () => {
+					realtimeWireHoverEnabled = !realtimeWireHoverEnabled;
+					app.canvas.setDirty(true, true);
+				}
+			});
+
+			tjSubOptions.push({
 				content: (globalShowWire ? "🛑 Hide ALL Wires (전체 숨김)" : "🌐 Show ALL Wires (전체 보기)"),
 				callback: () => {
 					globalShowWire = !globalShowWire;
@@ -632,27 +1642,95 @@ app.registerExtension({
 				}
 			});
 
-			const cleanOptions = options.filter(o => o && o.content !== "🟩 TJ Node");
+			const cleanOptions = options.filter(o => {
+                const label = normalizeMenuContent(o);
+                return !(o && (o.content === "🟩 TJ Node" || label === "Properties" || label === "Properties Panel"));
+            });
 			cleanOptions.push(null, {
 				content: "🟩 TJ Node",
 				has_submenu: true,
 				submenu: { options: tjSubOptions }
 			});
 
+            // TJ Node 밖에도 기본 Properties 계열 메뉴를 안전망으로 강제 노출
+            cleanOptions.push({
+                content: "Properties",
+                callback: () => openTJFallbackProperties(this, false)
+            });
+            cleanOptions.push({
+                content: "Properties Panel",
+                callback: () => openTJFallbackProperties(this, true)
+            });
+
 			return cleanOptions;
 		};
 
+        // 2. 캔버스 빈 공간 우클릭 시 메뉴 추가
 		const origGetCanvasMenuOptions = LGraphCanvas.prototype.getCanvasMenuOptions;
 		LGraphCanvas.prototype.getCanvasMenuOptions = function() {
 			const options = origGetCanvasMenuOptions ? origGetCanvasMenuOptions.apply(this, arguments) : [];
-			options.push(null, {
-				content: (globalShowWire ? "🛑 Hide ALL TJ Wires" : "🌐 Show ALL TJ Wires"),
-				callback: () => {
-					globalShowWire = !globalShowWire;
-					app.canvas.setDirty(true, true);
-				}
-			});
-			return options;
+			
+            const tjSubOptions = [];
+
+            tjSubOptions.push({
+                content: "➕ Add Set Node",
+                callback: () => {
+                    const setNode = LiteGraph.createNode("TJ_SetNode");
+                    setNode.pos = [this.graph_mouse[0], this.graph_mouse[1]];
+                    this.graph.add(setNode);
+                    app.canvas.selectNode(setNode, false);
+                    app.canvas.setDirty(true, true);
+                }
+            });
+
+            tjSubOptions.push({
+                content: "➕ Add Get Node",
+                callback: () => {
+                    const getNode = LiteGraph.createNode("TJ_GetNode");
+                    getNode.pos = [this.graph_mouse[0], this.graph_mouse[1]];
+                    this.graph.add(getNode);
+                    app.canvas.selectNode(getNode, false);
+                    app.canvas.setDirty(true, true);
+                }
+            });
+
+            tjSubOptions.push(null);
+
+            // 🚨 캔버스 우클릭 메뉴에도 전체 리프레시 추가
+            tjSubOptions.push({
+                content: "🔄 Refresh ALL Get Nodes",
+                callback: () => {
+                    syncAllGetNodes(app.graph);
+                }
+            });
+
+            tjSubOptions.push(null);
+
+            tjSubOptions.push({
+                content: (realtimeWireHoverEnabled ? "🟡 Realtime Wires View Mode OFF" : "🟡 Realtime Wires View Mode ON"),
+                callback: () => {
+                    realtimeWireHoverEnabled = !realtimeWireHoverEnabled;
+                    app.canvas.setDirty(true, true);
+                }
+            });
+
+            tjSubOptions.push({
+                content: (globalShowWire ? "🛑 Hide ALL Wires (전체 숨김)" : "🌐 Show ALL Wires (전체 보기)"),
+                callback: () => {
+                    globalShowWire = !globalShowWire;
+                    app.canvas.setDirty(true, true);
+                }
+            });
+
+            // "🟩 TJ Node"를 메인 메뉴에 추가
+            const cleanOptions = options.filter(o => !(o && o.content === "🟩 TJ Node"));
+            cleanOptions.push(null, {
+                content: "🟩 TJ Node",
+                has_submenu: true,
+                submenu: { options: tjSubOptions }
+            });
+
+            return cleanOptions;
 		};
 	}
 });

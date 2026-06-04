@@ -30,7 +30,7 @@ class TJ_MultiRouter:
     RETURN_TYPES = tuple(["*"] * MAX_PORTS)
     RETURN_NAMES = tuple([f"output_{i}" for i in range(1, MAX_PORTS + 1)])
     FUNCTION     = "execute"
-    CATEGORY     = " ✨ TJ Node/Wireless"
+    CATEGORY     = " ✨ TJ_Node/Wireless"
     OUTPUT_NODE  = True
 
     @classmethod

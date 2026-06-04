@@ -1,152 +1,399 @@
-import { app } from "../../../scripts/app.js";
+import { app } from "../../scripts/app.js";
+
+
+function tjGetOutputSlot(node, slot) {
+    if (!node || slot == null || slot < 0) return null;
+    return node.outputs?.[slot] || null;
+}
+
+function tjCanConnect(sourceInfo, target, targetSlot) {
+    return !!(sourceInfo?.node && target?.inputs?.[targetSlot] && tjGetOutputSlot(sourceInfo.node, sourceInfo.slot));
+}
+
+function tjSafeRemoveLink(graph, linkId) {
+    if (!graph || linkId == null) return;
+    const link = graph.links?.[linkId] || graph.links?.get?.(linkId);
+    if (link) graph.removeLink(linkId);
+}
+
+function tjGetGraphLink(graph, linkId) {
+    if (!graph || linkId == null) return null;
+    return graph.links?.[linkId] || graph.links?.get?.(linkId) || null;
+}
+
+function tjIsWirelessLink(graph, linkId) {
+    const link = tjGetGraphLink(graph, linkId);
+    return !!(link && (link._tj_wireless || link._tj_provider_value));
+}
+function tjApplyTheme(node) {
+    if (!node) return;
+    node.bgcolor = "#000000";
+    node.color = "#7612DA";
+    node.title_text_color = "#FFFFFF";
+}
+
+function tjCollectProviderNames(graph, excludeNode=null) {
+    const names = new Set();
+    graph?._nodes?.forEach(n => {
+        if (!n || n === excludeNode || n.type === "TJ_GetNode" || n.type === "TJ_MultiGetNode") return;
+        (n.widgets || []).forEach(w => {
+            if ((w.name === "set_name" || w.name === "setnode_name") && String(w.value || "").trim()) names.add(String(w.value).trim());
+        });
+        if ((n.type === "TJ_MultiRouter" || n.type === "TJ_BatchToMultiOutput" || n.type === "TJ_MultiImageLoader") && n.properties?.auto_sets) {
+            const autoW = n.widgets?.find(w => w.name === "auto_set");
+            if (!autoW || autoW.value) Object.values(n.properties.auto_sets).forEach(v => { if (String(v || "").trim()) names.add(String(v).trim()); });
+        }
+    });
+    return names;
+}
+
+function tjUniqueName(graph, base, excludeNode=null) {
+    const names = tjCollectProviderNames(graph, excludeNode);
+    const raw = String(base || "IMAGE").trim() || "IMAGE";
+    const clean = raw.replace(/_\d+$/, "") || "IMAGE";
+    if (!names.has(raw)) return raw;
+    let i = 1;
+    while (names.has(`${clean}_${i}`)) i++;
+    return `${clean}_${i}`;
+}
+
+function tjGetAllSetNames(graph) {
+    if (window.TJ_NODE_getAllSetNames) return window.TJ_NODE_getAllSetNames(graph);
+    if (!graph) return ["(none)"];
+    const names = Array.from(tjCollectProviderNames(graph));
+    return ["(none)", ...new Set(names)].sort();
+}
+
+function tjFindSetterSourceInfo(graph, setName) {
+    if (window.TJ_NODE_findSetterSourceInfo) return window.TJ_NODE_findSetterSourceInfo(graph, setName);
+    if (!graph || !setName || setName === "(none)") return null;
+    for (const n of graph._nodes || []) {
+        if (!n || n.type === "TJ_GetNode" || n.type === "TJ_MultiGetNode") continue;
+        const w = n.widgets?.find(x => x.name === "set_name" || x.name === "setnode_name");
+        if (w && w.value === setName && n.outputs?.length) return { node: n, slot: 0 };
+        if ((n.type === "TJ_MultiRouter" || n.type === "TJ_BatchToMultiOutput" || n.type === "TJ_MultiImageLoader") && n.properties?.auto_sets) {
+            const autoW = n.widgets?.find(x => x.name === "auto_set");
+            if (autoW && !autoW.value) continue;
+            for (const [idx, nm] of Object.entries(n.properties.auto_sets)) {
+                if (nm === setName) {
+                    const slot = parseInt(idx);
+                    if (tjGetOutputSlot(n, slot)) return { node: n, slot };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function tjRefreshGetNodes(graph) {
+    if (window.TJ_NODE_syncAllGetNodes) window.TJ_NODE_syncAllGetNodes(graph);
+}
+
+function tjLabelName(graph, name) {
+    if (window.TJ_NODE_getProviderLabelName) return window.TJ_NODE_getProviderLabelName(graph, name);
+    return name && name !== "(none)" ? String(name) : "";
+}
+
+function tjIsSeparator(name) {
+    return !!(name && window.TJ_NODE_PROVIDER_SEPARATOR && name === window.TJ_NODE_PROVIDER_SEPARATOR);
+}
+
+function attachTJGetReceiver(node, opts = {}) {
+    const widgetName = opts.widgetName || "get_name";
+    const inputIndex = opts.inputIndex ?? 0;
+    const inputName = opts.inputName || node.inputs?.[inputIndex]?.name || "images";
+    const outputIndex = opts.outputIndex;
+    const getW = node.widgets?.find(w => w.name === widgetName);
+    if (!getW || getW._tj_get_receiver_attached) return;
+    getW._tj_get_receiver_attached = true;
+    getW.options = { ...(getW.options || {}), values: tjGetAllSetNames(node.graph) };
+
+    node._tjUpdateGetReceiverOptions = function() {
+        const w = this.widgets?.find(x => x.name === widgetName);
+        const values = tjGetAllSetNames(this.graph);
+        if (w && w.options) w.options.values = values;
+        if (w && w.value && w.value !== "(none)" && !values.includes(w.value)) {
+            w.value = "(none)";
+            this._tjConnectGetReceiver?.("(none)");
+        } else if (this.inputs?.[inputIndex]) {
+            this.inputs[inputIndex].label = tjLabelName(this.graph, w?.value) ? `◀ ${tjLabelName(this.graph, w?.value)}` : "";
+        }
+    };
+
+    node._tjConnectGetReceiver = function(setName, connectOpts = {}) {
+        if (!this.graph || !this.inputs?.[inputIndex]) return;
+        const values = tjGetAllSetNames(this.graph);
+        if (tjIsSeparator(setName)) setName = "(none)";
+        if (setName && setName !== "(none)" && !values.includes(setName) && !(window.TJ_NODE_findProviderByValue && window.TJ_NODE_findProviderByValue(this.graph, setName))) {
+            const w = this.widgets?.find(x => x.name === widgetName);
+            if (w) w.value = "(none)";
+            setName = "(none)";
+        }
+        const wantsWireless = !!(setName && setName !== "(none)" && !tjIsSeparator(setName));
+        const currentLinkId = this.inputs[inputIndex].link;
+        const currentIsWireless = tjIsWirelessLink(this.graph, currentLinkId);
+
+        // TJ_NODE34: Direct user wire has priority during workflow reload/auto sync.
+        // If a normal ComfyUI wire already exists, do NOT remove it just because get_name
+        // contains an old wireless value. Only a user-driven combo callback may force
+        // switching from direct mode to wireless mode.
+        if (currentLinkId != null && !currentIsWireless && !connectOpts.forceWireless) {
+            const w = this.widgets?.find(x => x.name === widgetName);
+            if (w && w.value !== "(none)") w.value = "(none)";
+            this.inputs[inputIndex].name = inputName;
+            this.inputs[inputIndex].label = "";
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+
+        // Preserve normal direct wires on workflow reload.
+        // Only wireless links created by TJ_NODE may be removed automatically when get_name is (none).
+        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
+            this._tj_connecting_wireless = true;
+            tjSafeRemoveLink(this.graph, currentLinkId);
+            this._tj_connecting_wireless = false;
+        }
+
+        this.inputs[inputIndex].name = inputName;
+        if (!setName || setName === "(none)") {
+            this.inputs[inputIndex].label = "";
+            if (currentLinkId == null || currentIsWireless) {
+                this.inputs[inputIndex].type = opts.defaultType || this.inputs[inputIndex].type || "IMAGE";
+                if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = opts.defaultOutputType || this.outputs[outputIndex].type || "IMAGE";
+            }
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+        const sourceInfo = tjFindSetterSourceInfo(this.graph, setName);
+        if (!sourceInfo) {
+            const w = this.widgets?.find(x => x.name === widgetName);
+            if (w) w.value = "(none)";
+            this.inputs[inputIndex].label = "";
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+        if (!tjCanConnect(sourceInfo, this, inputIndex)) {
+            const w = this.widgets?.find(x => x.name === widgetName);
+            if (w) w.value = "(none)";
+            this.inputs[inputIndex].label = "";
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+        this.inputs[inputIndex].label = `◀ ${tjLabelName(this.graph, setName)}`;
+        this._tj_connecting_wireless = true;
+        sourceInfo.node.connect(sourceInfo.slot, this, inputIndex);
+        if (window.TJ_NODE_markWirelessLink) window.TJ_NODE_markWirelessLink(this.graph, this, inputIndex, setName);
+        this._tj_connecting_wireless = false;
+        const t = tjGetOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
+        this.inputs[inputIndex].type = t;
+        if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = t;
+        app.canvas?.setDirty(true, true);
+    };
+
+    const origCb = getW.callback;
+    getW.callback = function(v) {
+        if (origCb) origCb.call(this, v);
+        if (tjIsSeparator(v)) { getW.value = getW._tj_previous_value || "(none)"; return; }
+        getW._tj_previous_value = v;
+        node._tjConnectGetReceiver(v, { forceWireless: true });
+    };
+    const origConnChange = node.onConnectionsChange;
+    node.onConnectionsChange = function(type, index, connected) {
+        if (origConnChange) origConnChange.apply(this, arguments);
+
+        if (type === LiteGraph.INPUT && index === inputIndex && connected && !this._tj_connecting_wireless) {
+            const lid = this.inputs?.[inputIndex]?.link;
+            if (lid != null && !tjIsWirelessLink(this.graph, lid)) {
+                const w = this.widgets?.find(x => x.name === widgetName);
+                if (w && w.value !== "(none)") w.value = "(none)";
+                if (this.inputs?.[inputIndex]) this.inputs[inputIndex].label = "";
+                app.canvas?.setDirty(true, true);
+                return;
+            }
+        }
+        if (type === LiteGraph.INPUT && index === inputIndex && !connected && !this._tj_connecting_wireless) {
+            const w = this.widgets?.find(x => x.name === widgetName);
+            if (w && w.value && w.value !== "(none)") w.value = "(none)";
+            this.inputs[inputIndex].label = "";
+            app.canvas?.setDirty(true, true);
+        }
+    };
+    requestAnimationFrame(() => {
+        node._tjUpdateGetReceiverOptions?.();
+        node._tjConnectGetReceiver(getW.value);
+    });
+}
+
+function tjUpdateBatchAutoSets(node) {
+    if (!node) return;
+    if (!node.properties) node.properties = {};
+    node.properties.auto_sets = {};
+    const autoW = node.widgets?.find(w => w.name === "auto_set");
+    const isAuto = autoW ? !!autoW.value : true;
+    (node.outputs || []).forEach((out, i) => {
+        const base = out?.name || `IMAGE_${i + 1}`;
+        if (isAuto) {
+            const nm = tjUniqueName(node.graph, base, node);
+            node.properties.auto_sets[i] = nm;
+            out.label = `${nm} ▶`;
+        } else {
+            out.label = base;
+        }
+    });
+    node.setDirtyCanvas?.(true, true);
+    tjRefreshGetNodes(node.graph);
+}
+
+const isInputChange = (type) => type === LiteGraph.INPUT || type === 1;
+const imageInputs = (node) => (node.inputs || []).filter(s => /^image_\d+$/.test(s.name));
+const eclipseInputs = (node) => (node.inputs || []).filter(s => /^(image|files)_\d+$/.test(s.name));
+
+function updateDynamicImageBatch(node) {
+    const imgs = imageInputs(node);
+    if (imgs.length === 0) node.addInput("image_1", "IMAGE");
+    const current = imageInputs(node);
+    const last = current[current.length - 1];
+    if (last && last.link != null && current.length < 64) node.addInput(`image_${current.length + 1}`, "IMAGE");
+    const after = imageInputs(node);
+    for (let i = after.length - 1; i > 0; i--) {
+        if (after[i].link == null && after[i - 1].link == null) {
+            node.removeInput(node.inputs.indexOf(after[i]));
+        }
+    }
+    node.setDirtyCanvas(true, true);
+}
+
+function updateDynamicImageBatchEclipse(node) {
+    const slots = new Set();
+    for (const s of eclipseInputs(node)) {
+        const m = s.name.match(/_(\d+)$/);
+        if (m) slots.add(parseInt(m[1]));
+    }
+    if (!slots.size) { node.addInput("image_1", "IMAGE"); node.addInput("files_1", "*"); }
+    const nums = Array.from(slots).sort((a,b)=>a-b);
+    const max = nums.length ? nums[nums.length - 1] : 1;
+    const imgLast = node.inputs?.find(s => s.name === `image_${max}`);
+    const fileLast = node.inputs?.find(s => s.name === `files_${max}`);
+    if ((imgLast?.link != null || fileLast?.link != null) && max < 64) {
+        node.addInput(`image_${max + 1}`, "IMAGE");
+        node.addInput(`files_${max + 1}`, "*");
+    }
+    // remove only when last two slot pairs are both empty, preserving one trailing empty pair
+    let changed = true;
+    while (changed) {
+        changed = false;
+        const ns = Array.from(new Set(eclipseInputs(node).map(s => parseInt(s.name.match(/_(\d+)$/)?.[1] || 0)).filter(Boolean))).sort((a,b)=>a-b);
+        if (ns.length <= 1) break;
+        const lastN = ns[ns.length - 1], prevN = ns[ns.length - 2];
+        const li = node.inputs.find(s => s.name === `image_${lastN}`);
+        const lf = node.inputs.find(s => s.name === `files_${lastN}`);
+        const pi = node.inputs.find(s => s.name === `image_${prevN}`);
+        const pf = node.inputs.find(s => s.name === `files_${prevN}`);
+        if (li?.link == null && lf?.link == null && pi?.link == null && pf?.link == null) {
+            if (lf) node.removeInput(node.inputs.indexOf(lf));
+            if (li) node.removeInput(node.inputs.indexOf(li));
+            changed = true;
+        }
+    }
+    node.setDirtyCanvas(true, true);
+}
 
 app.registerExtension({
     name: "Comfy.TJ_Nodes_Extension",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-
-        // TJ 노드 및 특정 다이나믹 배치 노드들을 모두 감지
         const customNodes = ["DynamicImageBatch", "DynamicImageBatchEclipse", "TJ_BatchToMultiOutput"];
-        
-        const isTJNode = customNodes.includes(nodeData.name) || 
-                         (typeof nodeData.name === "string" && nodeData.name.includes("TJ")) || 
-                         (typeof nodeType.title === "string" && nodeType.title.includes("TJ"));
+        const isTJNode = customNodes.includes(nodeData.name) ||
+            (typeof nodeData.name === "string" && nodeData.name.includes("TJ")) ||
+            (typeof nodeType.title === "string" && nodeType.title.includes("TJ"));
 
         if (isTJNode) {
-            // ★ 핵심: 맨 앞에 공백(" ")을 하나 추가했습니다!
-            // 공백은 정렬 순위가 A보다 앞서기 때문에 무조건 리스트 최상단에 고정됩니다.
-            nodeData.category = " ✨ TJ Nodes";
+            nodeData.category = nodeData.category || " ✨ TJ_Node/Image";
+            const origOnNodeCreatedBase = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (origOnNodeCreatedBase) origOnNodeCreatedBase.apply(this, arguments);
+                tjApplyTheme(this);
+                requestAnimationFrame(() => tjApplyTheme(this));
+            };
+        }
 
+        if (nodeData.name === "DynamicImageBatch") {
             const origOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-                
-                const applyColors = () => {
-                    this.bgcolor = "#000000";
-                    this.color = "#7612DA";
-                    this.title_text_color = "#FFFFFF";
-                };
-
-                // 즉시 적용
-                applyColors();
-                // LiteGraph 기본 테마 등에 의해 덮어씌워지는 것 방지
-                requestAnimationFrame(() => applyColors());
+                requestAnimationFrame(() => updateDynamicImageBatch(this));
             };
-        }
-        
-        // 1. 기존 표준형 다이나믹 배치 노드 처리
-        if (nodeData.name === "DynamicImageBatch") {
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
-            nodeType.prototype.onConnectionsChange = function (type, index, connected, link_info, input_info) {
+            nodeType.prototype.onConnectionsChange = function (type) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
-
-                if (type === 1) { 
-                    const lastInput = this.inputs[this.inputs.length - 1];
-                    if (lastInput && lastInput.link !== null) {
-                        const nextNum = this.inputs.length + 1;
-                        this.addInput(`image_${nextNum}`, "IMAGE");
-                    }
-                    for (let i = this.inputs.length - 1; i > 0; i--) {
-                        if (this.inputs[i].link === null && this.inputs[i - 1].link === null) {
-                            this.removeInput(i);
-                        }
-                    }
-                }
+                if (isInputChange(type)) requestAnimationFrame(() => updateDynamicImageBatch(this));
             };
         }
 
-        // 2. 이클립스 대용량 멀티 채널 노드 처리
         if (nodeData.name === "DynamicImageBatchEclipse") {
+            const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+                requestAnimationFrame(() => updateDynamicImageBatchEclipse(this));
+            };
             const onConnectionsChange = nodeType.prototype.onConnectionsChange;
-            nodeType.prototype.onConnectionsChange = function (type, index, connected, link_info, input_info) {
+            nodeType.prototype.onConnectionsChange = function (type) {
                 if (onConnectionsChange) onConnectionsChange.apply(this, arguments);
-
-                if (type === 1) { 
-                    const lastInput = this.inputs[this.inputs.length - 1];
-                    if (lastInput && lastInput.link !== null) {
-                        const nextNum = Math.floor(this.inputs.length / 2) + 1;
-                        this.addInput(`image_${nextNum}`, "IMAGE");
-                        this.addInput(`files_${nextNum}`, "*");
-                    }
-                    for (let i = this.inputs.length - 1; i > 1; i -= 2) {
-                        if (this.inputs[i].link === null && this.inputs[i-1].link === null &&
-                            this.inputs[i-2].link === null && this.inputs[i-3].link === null) {
-                            this.removeInput(i);   
-                            this.removeInput(i-1); 
-                        }
-                    }
-                }
+                if (isInputChange(type)) requestAnimationFrame(() => updateDynamicImageBatchEclipse(this));
             };
         }
 
-        // 3. Batch to Multi Image Output — 동적 출력 슬롯
         if (nodeData.name === "TJ_BatchToMultiOutput") {
-
-            // out_count에 맞게 출력 슬롯 개수 조정
             function updateOutputSlots(node) {
                 const outCountWidget = node.widgets ? node.widgets.find(w => w.name === "out_count") : null;
                 if (!outCountWidget) return;
-
                 const desired = Math.max(1, Math.min(64, parseInt(outCountWidget.value) || 2));
                 const current = node.outputs ? node.outputs.length : 0;
-
-                if (current === desired) return;
-
                 if (current < desired) {
-                    // 슬롯 추가
-                    for (let i = current; i < desired; i++) {
-                        node.addOutput(`IMAGE_${i + 1}`, "IMAGE");
-                    }
-                } else {
-                    // 슬롯 제거 (뒤에서부터, 연결 없는 것만)
+                    for (let i = current; i < desired; i++) node.addOutput(`IMAGE_${i + 1}`, "IMAGE");
+                } else if (current > desired) {
                     for (let i = current - 1; i >= desired; i--) {
-                        // 연결이 있으면 끊기
-                        if (node.outputs[i] && node.outputs[i].links && node.outputs[i].links.length > 0) {
-                            // 연결된 링크들 제거
-                            const links = [...node.outputs[i].links];
-                            for (const linkId of links) {
-                                node.graph.removeLink(linkId);
-                            }
-                        }
+                        if (node.outputs[i]?.links?.length) [...node.outputs[i].links].forEach(id => node.graph?.removeLink(id));
                         node.removeOutput(i);
                     }
                 }
-
+                tjUpdateBatchAutoSets(node);
                 node.setSize(node.computeSize());
                 node.setDirtyCanvas(true, true);
             }
 
-            // 노드 생성 시
             const origOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function () {
                 if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
-
                 const self = this;
+                attachTJGetReceiver(this, { inputIndex: 0, inputName: "images", outputIndex: 0, defaultType: "IMAGE", defaultOutputType: "IMAGE" });
+                requestAnimationFrame(() => { updateOutputSlots(self); tjUpdateBatchAutoSets(self); });
 
-                // 초기 출력 슬롯을 기본값(2개)으로 설정
-                // ComfyUI가 RETURN_TYPES 기반으로 64개를 자동 생성하므로 초과분 제거
-                requestAnimationFrame(() => {
-                    updateOutputSlots(self);
-                });
-
-                // out_count 위젯 콜백
-                const outCountWidget = this.widgets ? this.widgets.find(w => w.name === "out_count") : null;
+                const outCountWidget = this.widgets?.find(w => w.name === "out_count");
                 if (outCountWidget) {
                     const origCallback = outCountWidget.callback;
-                    outCountWidget.callback = function (v) {
-                        if (origCallback) origCallback.call(this, v);
-                        updateOutputSlots(self);
-                    };
+                    outCountWidget.callback = function (v) { if (origCallback) origCallback.call(this, v); updateOutputSlots(self); };
+                }
+                const autoSetWidget = this.widgets?.find(w => w.name === "auto_set");
+                if (autoSetWidget) {
+                    const origAutoCb = autoSetWidget.callback;
+                    autoSetWidget.callback = function(v) { if (origAutoCb) origAutoCb.call(this, v); tjUpdateBatchAutoSets(self); };
                 }
             };
 
-            // 워크플로우 로드 시
             const origOnConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function (data) {
                 if (origOnConfigure) origOnConfigure.call(this, data);
-                const self = this;
                 requestAnimationFrame(() => {
-                    updateOutputSlots(self);
+                    attachTJGetReceiver(this, { inputIndex: 0, inputName: "images", outputIndex: 0, defaultType: "IMAGE", defaultOutputType: "IMAGE" });
+                    updateOutputSlots(this);
+                    tjUpdateBatchAutoSets(this);
                 });
+            };
+
+            const origOnDrawForeground = nodeType.prototype.onDrawForeground;
+            nodeType.prototype.onDrawForeground = function(ctx) {
+                this._tjUpdateGetReceiverOptions?.();
+                if (origOnDrawForeground) return origOnDrawForeground.apply(this, arguments);
             };
         }
     }

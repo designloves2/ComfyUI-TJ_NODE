@@ -100,11 +100,24 @@ function refreshSlots(node) {
     const existingSets = new Set();
     if (isAutoSet) {
         for (const n of node.graph._nodes) {
-            if (n.type === "TJ_SetNode" && n.widgets?.[0]?.value) existingSets.add(n.widgets[0].value);
-            if (n.type === "TJ_MultiRouter" && n !== node && n.properties?.auto_sets) {
+            if (!n || n === node) continue;
+            // Reserve every visible Set provider name in the workflow, not just TJ_SetNode.
+            (n.widgets || []).forEach(w => {
+                if ((w.name === "set_name" || w.name === "setnode_name") && String(w.value || "").trim()) {
+                    existingSets.add(String(w.value).trim());
+                }
+            });
+            // Eclipse SetNode usually stores its provider name in widgets[0].value.
+            if ((n.type === "SetNode" || n.type === "SetNode [Eclipse]") && String(n.widgets?.[0]?.value || "").trim()) {
+                existingSets.add(String(n.widgets[0].value).trim());
+            }
+            if ((n.type === "TJ_MultiRouter" || n.type === "TJ_BatchToMultiOutput" || n.type === "TJ_MultiImageLoader") && n.properties?.auto_sets) {
                 const otherAutoSetW = n.widgets?.find(w => w.name === "auto_set");
                 if (!otherAutoSetW || otherAutoSetW.value) {
-                    Object.values(n.properties.auto_sets).forEach(v => existingSets.add(v));
+                    Object.values(n.properties.auto_sets).forEach(v => {
+                        v = String(v || "").trim();
+                        if (v) existingSets.add(v);
+                    });
                 }
             }
         }

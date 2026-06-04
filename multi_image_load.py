@@ -11,7 +11,7 @@ class TJ_MultiImageLoader:
     RETURN_TYPES = ("IMAGE", "INT", "INT")
     RETURN_NAMES = ("BATCH", "WIDTH", "HEIGHT")
     FUNCTION = "load_images"
-    CATEGORY = " ✨ TJ Nodes/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
     OUTPUT_NODE = False
 
     @classmethod
@@ -22,6 +22,7 @@ class TJ_MultiImageLoader:
                     "default": "[]",
                     "multiline": True,
                 }),
+                "auto_set": ("BOOLEAN", {"default": True, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "match_mode": (["Keep Input Ratio", "Megapixel"], {
                     "default": "Keep Input Ratio",
                 }),
@@ -154,7 +155,7 @@ class TJ_MultiImageLoader:
 
     # ───────────── main ─────────────
 
-    def load_images(self, image_paths_json, match_mode, resize_input,
+    def load_images(self, image_paths_json, auto_set, match_mode, resize_input,
                     edge_size, custom_width, custom_height,
                     megapixel, interpolation, scale_method):
 

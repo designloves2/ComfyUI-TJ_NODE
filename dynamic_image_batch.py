@@ -39,7 +39,9 @@ class DynamicImageBatch:
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {},
+            "required": {
+                "setnode_name": ("STRING", {"default": ""}),
+            },
             "optional": {
                 "image_1": ("IMAGE",),
             }
@@ -103,7 +105,7 @@ class TJ_SaveImage_Primary:
     RETURN_TYPES = ("IMAGE", "STRING")
     RETURN_NAMES = ("IMAGE", "FILEPATH_JSON")
     FUNCTION = "save_images"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
     def save_images(self, images, filename_prefix, subfolder, date_folder):
         import folder_paths
@@ -174,7 +176,7 @@ class TJ_SaveImage_Subsequent:
     RETURN_TYPES = ()
     OUTPUT_NODE = True
     FUNCTION = "save_images"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
     def save_images(self, images, filepath_json, filename_suffix, extension_option, save_path_opt):
         import json
@@ -220,7 +222,9 @@ class DynamicImageBatchEclipse:
     @classmethod
     def INPUT_TYPES(s):
         return {
-            "required": {},
+            "required": {
+                "setnode_name": ("STRING", {"default": ""}),
+            },
             "optional": {
                 "image_1": ("IMAGE",),
                 "files_1": ("*",),
@@ -229,7 +233,7 @@ class DynamicImageBatchEclipse:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_batch"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
     def do_batch(self, **kwargs):
         valid_images = []
@@ -310,7 +314,7 @@ class TJ_SaveImage_EclipseSubsequent:
     RETURN_TYPES = ()
     OUTPUT_NODE = True
     FUNCTION = "save_images"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
     def save_images(self, images, filename_suffix, extension_option, save_path_opt):
         source_paths = ECLIPSE_NAME_REGISTRY.get(id(images), None)
@@ -345,29 +349,47 @@ class TJ_BatchToMultiOutput:
         return {
             "required": {
                 "images": ("IMAGE",),
+                "get_name": (["(none)"], {"default": "(none)"}),
                 "out_count": ("INT", {"default": 2, "min": 1, "max": 64, "step": 1}),
+                "auto_set": ("BOOLEAN", {"default": True, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
             }
         }
 
     RETURN_TYPES = tuple(["IMAGE"] * 64)
     RETURN_NAMES = tuple([f"IMAGE_{i+1}" for i in range(64)])
     FUNCTION = "split"
-    CATEGORY = "TJ_Node/Image"
+    CATEGORY = " ✨ TJ_Node/Image"
 
-    def split(self, images, out_count):
-        batch_size = images.shape[0]
-        # 검은색 빈 이미지 (64x64)
-        black = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+    @classmethod
+    def VALIDATE_INPUTS(cls, **kwargs):
+        return True
+
+    def split(self, images, get_name="(none)", out_count=2, auto_set=True):
+        # ComfyUI IMAGE의 정상 형태는 [B, H, W, C]입니다.
+        # 일부 배처/커스텀 노드가 [1, B, H, W, C] 또는 list 형태로 감싸서 넘기는 경우도
+        # 실제 배치로 강제 평탄화해서 각 출력 슬롯으로 분리합니다.
+        if isinstance(images, (list, tuple)):
+            tensors = [x for x in images if isinstance(x, torch.Tensor)]
+            if tensors:
+                images = torch.cat([x.reshape(-1, *x.shape[-3:]) if x.ndim >= 4 else x for x in tensors], dim=0)
+
+        if isinstance(images, torch.Tensor) and images.ndim > 4:
+            images = images.reshape(-1, *images.shape[-3:])
+
+        if not isinstance(images, torch.Tensor) or images.ndim != 4 or images.shape[0] == 0:
+            black = torch.zeros((1, 64, 64, 3), dtype=torch.float32)
+            batch_size = 0
+        else:
+            batch_size = int(images.shape[0])
+            black = torch.zeros((1, images.shape[1], images.shape[2], images.shape[3]), dtype=images.dtype, device=images.device)
 
         result = []
         for i in range(out_count):
-            if i < batch_size:
+            if batch_size and i < batch_size:
                 result.append(images[i : i + 1])
             else:
-                # 입력 배치에 없는 인덱스는 검은색 이미지
                 result.append(black)
 
-        # out_count 이후 슬롯은 None (JS에서 슬롯 자체를 제거)
         for _ in range(64 - out_count):
             result.append(None)
 
