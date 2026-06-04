@@ -325,7 +325,7 @@ TJ_NODE는 이를 최대한 자동 복구하도록 설계되었습니다.
 
 ---
 
-### 노드 시스템 구성
+## 노드 시스템 구성
 
 
 
@@ -333,7 +333,7 @@ TJ_NODE는 크게 다음 구조로 구성됩니다.
 
 
 
-#### 1. Wireless Routing System
+### 1. Wireless Routing System
 
 
 
@@ -355,7 +355,7 @@ Multi Router (TJ)
 
 
 
-#### 2. Batch Workflow System
+### 2. Batch Workflow System
 
 
 
@@ -377,7 +377,7 @@ Batch to Multi Image Output(TJ)
 
 
 
-#### 3. Preview / Utility System
+### 3. Preview / Utility System
 
 
 
@@ -401,7 +401,7 @@ Text Concatenate (TJ)
 
 
 
-#### 4. Save Pipeline System
+### 4. Save Pipeline System
 
 
 
@@ -423,7 +423,7 @@ Save Image(Eclipse Suffix-TJ)
 
 ---
 
-### 노드 시스템 상세 설명
+## 노드 시스템 상세 설명
 
 ---
 
