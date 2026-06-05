@@ -32,6 +32,11 @@ from .utility_node_tj import (
     TJ_SaveAndPreviewVideo
 )
 
+# ====== 신규 노드 임포트 ======
+
+from .showany_tj import TJ_ShowAny
+from .smart_converter_tj import TJ_SmartConverter
+
 # ──────────── Node Mappings ────────────
 NODE_CLASS_MAPPINGS = {
     "TJ_MultiImageLoader": TJ_MultiImageLoader,
@@ -52,6 +57,8 @@ NODE_CLASS_MAPPINGS = {
     "TJ_TextConcatenate": TJ_TextConcatenate,
     "TJ_SmartShow": TJ_SmartShow,
     "TJ_SaveAndPreviewVideo": TJ_SaveAndPreviewVideo,
+    "TJ_ShowAny": TJ_ShowAny,
+    "TJ_SmartConverter": TJ_SmartConverter,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -73,6 +80,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_TextConcatenate": "Text Concatenate (TJ)",
     "TJ_SmartShow": "Smart show (TJ)",
     "TJ_SaveAndPreviewVideo": "Save & Preview Video (TJ)",
+    "TJ_ShowAny": "Show Any (TJ)",
+    "TJ_SmartConverter": "Smart Converter (TJ)",
 }
 
 WEB_DIRECTORY = "./web"
