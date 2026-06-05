@@ -117,7 +117,7 @@ function scheduleWirelessRepair(graph, delay = 0) {
 }
 
 let globalShowWire = false;
-let realtimeWireHoverEnabled = true; 
+let realtimeWireHoverEnabled = false; 
 
 const origRenderLink = LGraphCanvas.prototype.renderLink;
 LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow, color, start_dir, end_dir, num_sublines) {
@@ -879,16 +879,40 @@ function cleanupInvalidGetSelections(graph) {
             let changed = false;
             sels.forEach((w, i) => {
                 if (!w || !w.value || w.value === "(none)" || isProviderSeparator(w.value)) return;
+
+                const link = getGraphLink(graph, n.inputs?.[i]?.link);
+
+                // MultiGet is slot-entity based. A provider rename must update
+                // the widget value through the existing hidden fake-wire link,
+                // not clear the slot to (none).
+                const linkedSource = link ? graph.getNodeById(link.origin_id) : null;
+                const linkedProviderValue = link ? findProviderValueForLink(graph, linkedSource, link.origin_slot) : null;
+                if (linkedProviderValue && linkedProviderValue !== w.value) {
+                    w.value = linkedProviderValue;
+                    w._tj_previous_value = linkedProviderValue;
+                    changed = true;
+                    return;
+                }
+
                 const provider = findProviderByValue(graph, w.value);
                 if (!provider || !values.has(provider.displayName)) {
+                    // Provider was deleted or no matching hidden link remains.
+                    // Keep this MultiGet slot entity stable; clear only this slot.
                     w.value = "(none)";
+                    w._tj_previous_value = "(none)";
                     removeConsumerInputLink(n, i);
                     changed = true;
                     return;
                 }
-                const link = getGraphLink(graph, n.inputs?.[i]?.link);
                 if (link && !linkMatchesProvider(graph, link, provider)) {
-                    removeConsumerInputLink(n, i);
+                    const src = graph.getNodeById(link.origin_id);
+                    const renamedValue = findProviderValueForLink(graph, src, link.origin_slot);
+                    if (renamedValue && values.has(renamedValue)) {
+                        w.value = renamedValue;
+                        w._tj_previous_value = renamedValue;
+                    } else {
+                        removeConsumerInputLink(n, i);
+                    }
                     changed = true;
                 }
             });
@@ -1186,8 +1210,10 @@ app.registerExtension({
                 applyTJTheme(this);
 
 				this.selectorCount = 0;
-				this._addSelector("");
-				this._addSelector("");
+                if (!this._selectors || this._selectors().length === 0) {
+				    this._addSelector("");
+				    this._addSelector("");
+                }
 				this._rebuild();
 			};
 
@@ -1204,10 +1230,146 @@ app.registerExtension({
 			nodeType.prototype._selectors = function() { return (this.widgets || []).filter(w => w.name?.startsWith("slot_")); };
 			nodeType.prototype._activeNames = function() { return this._selectors().map(w => w.value).filter(v => v && v !== "(none)" && !isProviderSeparator(v)); };
 
+            nodeType.prototype._renumberSelectors = function() {
+                const sels = this._selectors();
+                sels.forEach((w, i) => {
+                    w.name = `slot_${i + 1}`;
+                });
+                this.selectorCount = sels.length;
+            };
+
+            nodeType.prototype._ensureTrailingEmptySlot = function() {
+                let sels = this._selectors();
+                if (!sels.length) {
+                    this._addSelector("");
+                    sels = this._selectors();
+                }
+                const last = sels[sels.length - 1];
+                const lastVal = last?.value;
+                if (sels.length < MAX_PORTS && lastVal && lastVal !== "(none)" && !isProviderSeparator(lastVal)) {
+                    this._addSelector("");
+                }
+                this._renumberSelectors();
+            };
+
+            nodeType.prototype._removeSlotAt = function(index) {
+                const sels = this._selectors();
+                if (index < 0 || index >= sels.length) return false;
+
+                this._tj_removing_multiget_slot = true;
+                try {
+                    if (this.inputs?.[index]?.link != null && this.graph) {
+                        const lid = this.inputs[index].link;
+                        if (getGraphLink(this.graph, lid)) this.graph.removeLink(lid);
+                    }
+                    if (this.outputs?.[index]?.links?.length && this.graph) {
+                        [...this.outputs[index].links].forEach(lid => {
+                            if (getGraphLink(this.graph, lid)) this.graph.removeLink(lid);
+                        });
+                    }
+
+                    const wi = this.widgets.indexOf(sels[index]);
+                    if (wi !== -1) this.widgets.splice(wi, 1);
+
+                    if (this.inputs?.[index] && typeof this.removeInput === "function") this.removeInput(index);
+                    if (this.outputs?.[index] && typeof this.removeOutput === "function") this.removeOutput(index);
+                } finally {
+                    this._tj_removing_multiget_slot = false;
+                }
+
+                this._renumberSelectors();
+                this._ensureTrailingEmptySlot();
+                this._rebuild();
+                this.setDirtyCanvas?.(true, true);
+                app.canvas?.setDirty(true, true);
+                return true;
+            };
+
+            nodeType.prototype._disconnectSlotAt = function(index) {
+                const sels = this._selectors();
+                const w = sels[index];
+                if (!w) return false;
+                w.value = "(none)";
+                w._tj_previous_value = "(none)";
+                removeConsumerInputLink(this, index);
+                this._rebuild();
+                app.canvas?.setDirty(true, true);
+                return true;
+            };
+
+            nodeType.prototype._renameSlotAt = function(index) {
+                const out = this.outputs?.[index];
+                if (!out) return false;
+                const current = String(out._tj_custom_label || out.name || out.label || `output_${index + 1}`).replace(/\s*▶$/, "");
+                const next = prompt("Rename MultiGet slot", current);
+                if (next == null) return false;
+                const clean = String(next || "").trim();
+                out._tj_custom_label = clean;
+                if (clean) {
+                    out.name = clean;
+                    out.label = `${clean} ▶`;
+                }
+                this._rebuild();
+                app.canvas?.setDirty(true, true);
+                return true;
+            };
+
+
+            nodeType.prototype._lastRemovableSlotIndex = function() {
+                const sels = this._selectors ? this._selectors() : [];
+                // Remove Last Slot must target the last real/selected slot, not the auto trailing (none) slot.
+                for (let i = sels.length - 1; i >= 0; i--) {
+                    const v = sels[i]?.value;
+                    if (v && v !== "(none)" && !isProviderSeparator(v)) return i;
+                }
+                return -1;
+            };
+
+            nodeType.prototype._compactEmptySlots = function() {
+                const sels = this._selectors();
+                const keep = sels
+                    .map((w, i) => ({
+                        value: w?.value,
+                        customLabel: this.outputs?.[i]?._tj_custom_label || ""
+                    }))
+                    .filter(item => item.value && item.value !== "(none)" && !isProviderSeparator(item.value));
+
+                // Remove all current wireless input links and downstream links once, then rebuild
+                // from the compacted slot list. Compact is the only command allowed to shift slots.
+                this._tj_connecting_wireless = true;
+                try {
+                    for (const inp of [...(this.inputs || [])]) {
+                        if (inp?.link != null && this.graph && getGraphLink(this.graph, inp.link)) this.graph.removeLink(inp.link);
+                    }
+                    for (const out of [...(this.outputs || [])]) {
+                        if (out?.links?.length && this.graph) {
+                            [...out.links].forEach(lid => { if (getGraphLink(this.graph, lid)) this.graph.removeLink(lid); });
+                        }
+                    }
+                } finally {
+                    this._tj_connecting_wireless = false;
+                }
+
+                this.widgets = (this.widgets || []).filter(w => !w.name?.startsWith("slot_"));
+                while ((this.inputs || []).length) this.removeInput(this.inputs.length - 1);
+                while ((this.outputs || []).length) this.removeOutput(this.outputs.length - 1);
+
+                this.selectorCount = 0;
+                keep.forEach(item => {
+                    const w = this._addSelector(item.value);
+                    if (w) w._tj_previous_value = item.value;
+                });
+                this._addSelector("");
+                this._rebuild();
+                this.setDirtyCanvas?.(true, true);
+                app.canvas?.setDirty(true, true);
+                return true;
+            };
+
 			nodeType.prototype._addSelector = function(initial) {
 				if (this._selectors().length >= MAX_PORTS) return null;
 				const idx = ++this.selectorCount;
-				
+
 				const w = this.addWidget("combo", `slot_${idx}`, initial || "(none)", (v) => {
 					this._onChange(w, v);
 				}, { values: ["(none)"] });
@@ -1230,7 +1392,7 @@ app.registerExtension({
             nodeType.prototype._syncWithSetNodes = function() {
                 let changed = false;
                 const sels = this._selectors();
-                
+
                 for (let i = 0; i < this.inputs.length; i++) {
                     const inp = this.inputs[i];
                     if (inp && inp.link != null) {
@@ -1246,15 +1408,16 @@ app.registerExtension({
                         }
                     }
                 }
-                
+
                 if (changed) {
                     this._rebuild();
                 }
             };
 
 			nodeType.prototype._rebuild = function() {
-				const active = this._activeNames();
-				const need = Math.max(active.length, 1);
+                this._ensureTrailingEmptySlot();
+                const sels = this._selectors();
+				const need = Math.max(sels.length, 1);
 
 				while (this.inputs.length < need) this.addInput(`wire_${this.inputs.length + 1}`, "*");
 				while (this.inputs.length > need) {
@@ -1269,10 +1432,9 @@ app.registerExtension({
 					if (this.outputs[i].links?.length) [...this.outputs[i].links].forEach(l => { if (getGraphLink(this.graph, l)) this.graph.removeLink(l); });
 					this.removeOutput(i);
 				}
-				
-				let firstValidType = null;
 
 				this.inputs.forEach((inp, i) => {
+                    const out = this.outputs[i];
 					inp.color_on = "transparent"; inp.color_off = "transparent"; 
 					inp.name = `wire_${i+1}`; 
 
@@ -1283,8 +1445,9 @@ app.registerExtension({
 						finally { this._tj_connecting_wireless = wasConnecting; }
 					}
 
-					const name = active[i];
-					if (name) {
+					const widget = sels[i];
+                    const name = widget?.value && !isProviderSeparator(widget.value) ? widget.value : "(none)";
+					if (name && name !== "(none)") {
 						const sourceInfo = findSetterSourceInfo(this.graph, name);
                         const labelName = sourceInfo?.labelName || getProviderLabelName(this.graph, name) || name;
 						if (canConnectWireless(sourceInfo, this, i)) {
@@ -1292,27 +1455,35 @@ app.registerExtension({
                             markWirelessLink(this.graph, this, i, sourceInfo.displayName || name);
 							const t = getOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
 							inp.type = t;
-							this.outputs[i].type = t;
-							this.outputs[i].name = t;
+							out.type = t;
+							out.name = out._tj_custom_label || labelName || t;
 							markWirelessInputLabel(this, i, labelName);
-							this.outputs[i].label = `${labelName} ▶`;
-							
+							out.label = `${out._tj_custom_label || labelName} ▶`;
+
 							const typeC = getTypeColor(t);
 							if (typeC) {
-								this.outputs[i].color_on = typeC;
-								this.outputs[i].color_off = typeC;
+								out.color_on = typeC;
+								out.color_off = typeC;
 							}
-
-							if (!firstValidType && t !== "*") firstValidType = t;
-						}
+						} else {
+                            // Provider is selected but not currently connectable.
+                            // Keep this slot entity stable; do NOT delete or shift lower slots.
+                            inp.type = "*";
+                            out.type = "*";
+                            out.name = out._tj_custom_label || "(empty)";
+                            markWirelessInputLabel(this, i, labelName);
+                            out.label = `${out._tj_custom_label || "(empty)"} ▶`;
+                            out.color_on = null;
+                            out.color_off = null;
+                        }
 					} else {
 						inp.type = "*";
-						this.outputs[i].type = "*";
-						this.outputs[i].name = "*";
+						out.type = "*";
+						out.name = out._tj_custom_label || "(empty)";
 						markWirelessInputLabel(this, i, "");
-						this.outputs[i].label = `output_${i+1}`;
-						this.outputs[i].color_on = null;
-						this.outputs[i].color_off = null;
+						out.label = `${out._tj_custom_label || "(empty)"} ▶`;
+						out.color_on = null;
+						out.color_off = null;
 					}
 				});
 				applyTJTheme(this);
@@ -1333,6 +1504,66 @@ app.registerExtension({
                     this._rebuild();
                 }, 100);
 			};
+
+            const origGetSlotMenuOptions = nodeType.prototype.getSlotMenuOptions;
+            nodeType.prototype.getSlotMenuOptions = function(slot_info) {
+                let options = origGetSlotMenuOptions ? (origGetSlotMenuOptions.apply(this, arguments) || []) : [];
+                if (this.type !== "TJ_MultiGetNode") return options;
+
+                // LiteGraph passes a slot_info object on most ComfyUI builds.
+                // The old patch tried to read slot/index directly, so the menu appeared
+                // but callbacks targeted index -1 or the wrong slot and did nothing.
+                let index = -1;
+                if (slot_info && typeof slot_info === "object") {
+                    if (slot_info.input) index = this.inputs ? this.inputs.indexOf(slot_info.input) : -1;
+                    if (index < 0 && slot_info.output) index = this.outputs ? this.outputs.indexOf(slot_info.output) : -1;
+                    if (index < 0 && Number.isFinite(Number(slot_info.slot))) index = Number(slot_info.slot);
+                    if (index < 0 && Number.isFinite(Number(slot_info.index))) index = Number(slot_info.index);
+                } else if (Number.isFinite(Number(slot_info))) {
+                    index = Number(slot_info);
+                }
+
+                if (index < 0 || index >= Math.max(this.inputs?.length || 0, this.outputs?.length || 0)) return options;
+
+                const labelRaw = this.outputs?.[index]?._tj_custom_label
+                    || getProviderLabelName(this.graph, this._selectors?.()[index]?.value)
+                    || this.outputs?.[index]?.name
+                    || this.inputs?.[index]?.type
+                    || "SLOT";
+                const title = String(labelRaw || "SLOT").replace(/\s*▶$/, "").toUpperCase();
+
+                const node = this;
+                const runSlotAction = (fnName) => {
+                    return function() {
+                        try {
+                            node.graph?.beforeChange?.();
+                            if (typeof node[fnName] === "function") node[fnName](index);
+                            node.graph?.afterChange?.();
+                            node.setDirtyCanvas?.(true, true);
+                            app.canvas?.setDirty(true, true);
+                        } catch (err) {
+                            console.warn(`[TJ_NODE] MultiGet ${fnName} failed`, err);
+                        }
+                        return true;
+                    };
+                };
+
+                // Native slot-dot menus are unreliable on several ComfyUI/LiteGraph builds:
+                // items may be displayed but their callbacks are swallowed by the slot menu layer.
+                // For MultiGet, keep this menu as guidance only and execute real actions from
+                // the working node context menu path: TJ Node > Disconnect/Rename/Remove Slot...
+                options = (options || []).filter(item => {
+                    const label = normalizeMenuContent(item);
+                    return !(label === "Disconnect Links" || label === "Rename Slot" || label === "Remove Slot");
+                });
+
+                options.push(null);
+                options.push({ content: title, disabled: true });
+                options.push(null);
+                options.push({ content: "Slot actions: use node context menu", disabled: true });
+                options.push({ content: "TJ Node > Disconnect / Rename / Remove Slot...", disabled: true });
+                return options;
+            };
 		}
 	}
 });
@@ -1528,19 +1759,86 @@ app.registerExtension({
 			}
 
 			if (this.type === "TJ_MultiGetNode") {
-				if (this._selectors && this._selectors().length > 1) {
-					tjSubOptions.push({
-						content: "✕ Remove Last Slot",
-						callback: () => {
-							const list = this._selectors();
-							if (list.length <= 1) return;
-							const wi = this.widgets.indexOf(list[list.length - 1]);
-							if (wi !== -1) this.widgets.splice(wi, 1);
-							this._rebuild();
-							app.canvas?.setDirty(true, true);
-						}
-					});
-				}
+                const runMultiGetSlotAction = (fnName, slotIndex) => {
+                    return () => {
+                        try {
+                            this.graph?.beforeChange?.();
+                            if (typeof this[fnName] === "function") this[fnName](slotIndex);
+                            this.graph?.afterChange?.();
+                            this.setDirtyCanvas?.(true, true);
+                            app.canvas?.setDirty(true, true);
+                        } catch (err) {
+                            console.warn(`[TJ_NODE] MultiGet ${fnName} failed`, err);
+                        }
+                    };
+                };
+
+                const buildSlotMenuOptions = (fnName) => {
+                    const sels = this._selectors ? this._selectors() : [];
+                    return sels.map((w, i) => {
+                        const label = getProviderLabelName(this.graph, w.value) || w.value || "(none)";
+                        const outLabel = String(this.outputs?.[i]?._tj_custom_label || this.outputs?.[i]?.name || "").replace(/\s*▶$/, "");
+                        const suffix = outLabel && outLabel !== "(empty)" && outLabel !== "*" ? ` / ${outLabel}` : "";
+                        return {
+                            content: `slot_${i + 1} — ${label}${suffix}`,
+                            callback: runMultiGetSlotAction(fnName, i)
+                        };
+                    });
+                };
+
+                tjSubOptions.push({
+                    content: "➕ Add Slot",
+                    callback: () => {
+                        if (this._addSelector) this._addSelector("");
+                        if (this._rebuild) this._rebuild();
+                        app.canvas?.setDirty(true, true);
+                    }
+                });
+
+                if (this._selectors && this._selectors().length > 0) {
+                    // Slot-dot native callbacks are inconsistent between ComfyUI/LiteGraph builds.
+                    // These node-context menus use the already-working TJ Node submenu path instead,
+                    // so Disconnect/Rename/Remove are guaranteed to execute.
+                    tjSubOptions.push({
+                        content: "🔌 Disconnect Slot...",
+                        has_submenu: true,
+                        submenu: { options: buildSlotMenuOptions("_disconnectSlotAt") }
+                    });
+                    tjSubOptions.push({
+                        content: "✏️ Rename Slot...",
+                        has_submenu: true,
+                        submenu: { options: buildSlotMenuOptions("_renameSlotAt") }
+                    });
+                    if (this._selectors().length > 1) {
+                        tjSubOptions.push({
+                            content: "✕ Remove Slot...",
+                            has_submenu: true,
+                            submenu: { options: buildSlotMenuOptions("_removeSlotAt") }
+                        });
+                        tjSubOptions.push({
+                            content: "✕ Remove Last Slot",
+                            callback: () => {
+                                if (this._removeSlotAt) {
+                                    const idx = this._lastRemovableSlotIndex ? this._lastRemovableSlotIndex() : this._selectors().length - 1;
+                                    if (idx >= 0) this._removeSlotAt(idx);
+                                }
+                            }
+                        });
+                        tjSubOptions.push({
+                            content: "🧹 Compact Empty Slots",
+                            callback: () => {
+                                try {
+                                    this.graph?.beforeChange?.();
+                                    if (this._compactEmptySlots) this._compactEmptySlots();
+                                } finally {
+                                    this.graph?.afterChange?.();
+                                    this.setDirtyCanvas?.(true, true);
+                                    app.canvas?.setDirty(true, true);
+                                }
+                            }
+                        });
+                    }
+                }
 			}
 
 			if (this._tj_submenu_options && this._tj_submenu_options.length > 0) {
@@ -1651,6 +1949,71 @@ app.registerExtension({
 				has_submenu: true,
 				submenu: { options: tjSubOptions }
 			});
+
+            // MultiGet slot actions are also exposed in the top-level node menu.
+            // This mirrors the TJ Node submenu actions but avoids the unreliable slot-dot callback layer.
+            if (this.type === "TJ_MultiGetNode" && this._selectors) {
+                const runRootMultiGetSlotAction = (fnName, slotIndex) => {
+                    return () => {
+                        try {
+                            this.graph?.beforeChange?.();
+                            if (typeof this[fnName] === "function") this[fnName](slotIndex);
+                            this.graph?.afterChange?.();
+                            this.setDirtyCanvas?.(true, true);
+                            app.canvas?.setDirty(true, true);
+                        } catch (err) {
+                            console.warn(`[TJ_NODE] MultiGet ${fnName} failed`, err);
+                        }
+                    };
+                };
+
+                const buildRootSlotMenuOptions = (fnName) => {
+                    const sels = this._selectors ? this._selectors() : [];
+                    return sels.map((w, i) => {
+                        const label = getProviderLabelName(this.graph, w.value) || w.value || "(none)";
+                        const outLabel = String(this.outputs?.[i]?._tj_custom_label || this.outputs?.[i]?.name || "").replace(/\s*▶$/, "");
+                        const suffix = outLabel && outLabel !== "(empty)" && outLabel !== "*" ? ` / ${outLabel}` : "";
+                        return {
+                            content: `slot_${i + 1} — ${label}${suffix}`,
+                            callback: runRootMultiGetSlotAction(fnName, i)
+                        };
+                    });
+                };
+
+                cleanOptions.push(null);
+                cleanOptions.push({
+                    content: "🔌 Disconnect Slot...",
+                    has_submenu: true,
+                    submenu: { options: buildRootSlotMenuOptions("_disconnectSlotAt") }
+                });
+                cleanOptions.push({
+                    content: "✏️ Rename Slot...",
+                    has_submenu: true,
+                    submenu: { options: buildRootSlotMenuOptions("_renameSlotAt") }
+                });
+                if (this._selectors().length > 1) {
+                    cleanOptions.push({
+                        content: "✕ Remove Slot...",
+                        has_submenu: true,
+                        submenu: { options: buildRootSlotMenuOptions("_removeSlotAt") }
+                    });
+                    cleanOptions.push({
+                        content: "✕ Remove Last Slot",
+                        callback: () => {
+                            if (this._removeSlotAt) {
+                                const idx = this._lastRemovableSlotIndex ? this._lastRemovableSlotIndex() : -1;
+                                if (idx >= 0) this._removeSlotAt(idx);
+                            }
+                        }
+                    });
+                    cleanOptions.push({
+                        content: "🧹 Compact Empty Slots",
+                        callback: () => {
+                            if (this._compactEmptySlots) this._compactEmptySlots();
+                        }
+                    });
+                }
+            }
 
             // TJ Node 밖에도 기본 Properties 계열 메뉴를 안전망으로 강제 노출
             cleanOptions.push({
