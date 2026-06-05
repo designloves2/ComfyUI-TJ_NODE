@@ -332,22 +332,19 @@ class TJ_SmartShow:
             
             return {"ui": {"tj_type": ["image"], "tj_data": results}, "result": (target_data,)}
         
-        if isinstance(target_data, dict) and "waveform" in target_data:
+        # Audio dict preview: reuse the same audio payload handling as Save & Preview Video.
+        # This accepts common ComfyUI audio dict shapes, including nested {"audio": {"waveform": ...}} payloads.
+        if isinstance(target_data, dict):
             try:
-                import torchaudio
-                out_dir = folder_paths.get_temp_directory()
-                os.makedirs(out_dir, exist_ok=True)
-                rnd = random.randint(10000, 99999)
-                filename = f"tj_audio_{rnd}.wav"
-                file_path = os.path.join(out_dir, filename)
-                
-                waveform = target_data["waveform"]
-                if len(waveform.shape) == 3:
-                    waveform = waveform.squeeze(0)
-                sample_rate = target_data.get("sample_rate", 44100)
-                torchaudio.save(file_path, waveform, sample_rate)
-                
-                return {"ui": {"tj_type": ["audio_file"], "tj_data": [{"filename": filename, "subfolder": "", "type": "temp"}]}, "result": (target_data,)}
+                if _tj_audio_payload(target_data):
+                    out_dir = folder_paths.get_temp_directory()
+                    os.makedirs(out_dir, exist_ok=True)
+                    rnd = random.randint(10000, 99999)
+                    filename = f"tj_audio_{rnd}.wav"
+                    file_path = os.path.join(out_dir, filename)
+                    written = _tj_write_wav(target_data, file_path)
+                    if written:
+                        return {"ui": {"tj_type": ["audio_file"], "tj_data": [{"filename": filename, "subfolder": "", "type": "temp"}]}, "result": (target_data,)}
             except Exception:
                 pass
         
