@@ -18,17 +18,33 @@ def save_image_with_quality(img_obj, file_path, ext):
         img_obj.save(file_path, format='PNG')
 
 def resolve_target_dir(base_dir_path, input_path_str):
-    input_str = input_path_str.strip()
+    """Resolve save target safely inside ComfyUI output directory only."""
+    import folder_paths
+    import re
+
+    output_root = Path(folder_paths.get_output_directory()).resolve()
+    base_dir = Path(base_dir_path).resolve()
+    input_str = str(input_path_str or "").strip()
+
     if not input_str:
-        return base_dir_path
-    input_path = Path(input_str)
-    if input_path.is_absolute():
-        return input_path
-    cleaned_str = input_str.lstrip('\\/')
-    if input_str.startswith('..'):
-        resolved_path = (base_dir_path / input_path).resolve()
+        resolved_path = base_dir
     else:
-        resolved_path = (base_dir_path / cleaned_str).resolve()
+        if Path(input_str).is_absolute() or re.match(r"^[A-Za-z]:[\\/]", input_str):
+            raise ValueError("TJ_NODE: absolute save paths are not allowed. Use a relative subfolder inside ComfyUI/output.")
+
+        normalized = input_str.replace("\\", "/").strip("/")
+        parts = [p for p in normalized.split("/") if p]
+        if any(p == ".." for p in parts):
+            raise ValueError("TJ_NODE: '..' is not allowed in save paths.")
+
+        resolved_path = (base_dir / "/".join(parts)).resolve()
+
+    try:
+        if os.path.commonpath([str(output_root), str(resolved_path)]) != str(output_root):
+            raise ValueError
+    except Exception:
+        raise ValueError("TJ_NODE: save path must stay inside ComfyUI/output.")
+
     return resolved_path
 
 

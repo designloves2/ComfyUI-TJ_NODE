@@ -23,6 +23,31 @@ def _tj_expand_datetime_aliases(text):
     text = text.replace("%time", "%H-%M-%S")
     return text
 
+def _tj_safe_output_dir(path_text=""):
+    """Resolve a user save path safely inside ComfyUI output directory only."""
+    output_root = os.path.realpath(folder_paths.get_output_directory())
+    raw = str(path_text or "").strip()
+
+    if not raw:
+        return output_root
+
+    if os.path.isabs(raw) or re.match(r"^[A-Za-z]:[\\/]", raw):
+        raise ValueError("TJ_NODE: absolute save paths are not allowed. Use a relative subfolder inside ComfyUI/output.")
+
+    normalized = raw.replace("\\", "/").strip("/")
+    parts = [p for p in normalized.split("/") if p]
+    if any(p == ".." for p in parts):
+        raise ValueError("TJ_NODE: '..' is not allowed in save paths.")
+
+    final_dir = os.path.realpath(os.path.join(output_root, *parts))
+    try:
+        if os.path.commonpath([output_root, final_dir]) != output_root:
+            raise ValueError
+    except Exception:
+        raise ValueError("TJ_NODE: save path must stay inside ComfyUI/output.")
+
+    return final_dir
+
 class _AnyDict(dict):
     def __contains__(self, key): return True
     def __getitem__(self, key): return "*"
@@ -43,6 +68,7 @@ class TJ_SaveAndPreviewImage:
         return {
             "required": {
                 "images": ("IMAGE",),
+                "get_name": (["(none)"],),
                 "setnode_name": ("STRING", {"default": ""}),
                 "filename_prefix": ("STRING", {"default": "TJ_Output"}),
                 "path": ("STRING", {"default": ""}),
@@ -57,7 +83,7 @@ class TJ_SaveAndPreviewImage:
     CATEGORY = " ✨ TJ Node/Utility"
     OUTPUT_NODE = True
 
-    def process(self, images, setnode_name, filename_prefix, path, type, mode):
+    def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
         now = datetime.now()
         parsed_prefix = now.strftime(filename_prefix)
         parsed_path = now.strftime(path)
@@ -65,14 +91,8 @@ class TJ_SaveAndPreviewImage:
         if mode == "Preview":
             out_dir = folder_paths.get_temp_directory()
         else:
-            if parsed_path.strip():
-                if os.path.isabs(parsed_path):
-                    out_dir = parsed_path
-                else:
-                    out_dir = os.path.join(folder_paths.get_output_directory(), parsed_path.strip().strip("\\/"))
-            else:
-                out_dir = folder_paths.get_output_directory()
-        
+            out_dir = _tj_safe_output_dir(parsed_path)
+
         os.makedirs(out_dir, exist_ok=True)
 
         results = []
@@ -127,6 +147,7 @@ class TJ_PromptText:
         return {
             "required": {
                 "text": ("STRING", {"multiline": True, "default": ""}),
+                "get_name": (["(none)"],),
                 "setnode_name": ("STRING", {"default": ""}),
             },
             "optional": {
@@ -139,7 +160,7 @@ class TJ_PromptText:
     FUNCTION = "process"
     CATEGORY = " ✨ TJ Node/Utility"
 
-    def process(self, text, setnode_name, prompt_in=""):
+    def process(self, text, get_name, setnode_name, prompt_in=""):
         out = ""
         if prompt_in and isinstance(prompt_in, str) and prompt_in.strip():
             out += prompt_in.strip() + "\n"
@@ -184,6 +205,7 @@ class TJ_SmartShow:
     def INPUT_TYPES(s):
         return {
             "required": {
+                "get_name": (["(none)"],),
                 "setnode_name": ("STRING", {"default": ""}),
                 "file": (["(none)"] + get_supported_files(),),
                 "edit_mode": ("BOOLEAN", {"default": False}),
@@ -204,7 +226,7 @@ class TJ_SmartShow:
     CATEGORY = " ✨ TJ Node/Utility"
     OUTPUT_NODE = True
 
-    def process(self, setnode_name, file, edit_mode, text_content, input=None):
+    def process(self, get_name, setnode_name, file, edit_mode, text_content, input=None):
         target_data = input
         
         if target_data is None and file != "(none)":
@@ -772,7 +794,7 @@ class TJ_SaveAndPreviewVideo:
         now = datetime.now()
         parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
         parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
-        out_dir = folder_paths.get_temp_directory() if mode == "Preview" else (os.path.join(folder_paths.get_output_directory(), parsed_path.strip().strip("\\/")) if parsed_path.strip() and not os.path.isabs(parsed_path) else (parsed_path if parsed_path.strip() else folder_paths.get_output_directory()))
+        out_dir = folder_paths.get_temp_directory() if mode == "Preview" else _tj_safe_output_dir(parsed_path)
         os.makedirs(out_dir, exist_ok=True)
         fps = float(fps or 24.0)
 
