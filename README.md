@@ -827,6 +827,235 @@ Recommended Usage:
 
 ---
 
+
+
+---
+
+## ✨ Show Any (TJ)
+
+Lightweight universal workflow inspection node.
+경량 Universal Workflow Inspect Node입니다.
+
+---
+
+Show Any는 다양한 타입의 데이터를 안전하게 펼쳐서 표시하면서 원본 값을 그대로 통과시키는 Debug / Monitor Node입니다.
+Show Any safely visualizes workflow data while preserving the original passthrough output.
+
+---
+
+지원 타입:
+Supported Types:
+
+* STRING
+* INT / FLOAT
+* LIST
+* JSON / DICT
+* TENSOR
+* PYTHON OBJECT
+
+---
+
+핵심 기능:
+Core Features:
+
+* Universal ANY Input
+* Original Passthrough Output
+* Tensor Summary
+* JSON-safe Display
+* Copy Button
+* Embedded Get
+* Wireless Provider Support
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Workflow Debug
+* Tensor Inspection
+* Metadata Visualization
+* Wireless Provider Inspect
+* Smart Converter Status Check
+
+---
+
+#스크린샷 : SHOW ANY
+#스크린샷 : SHOW ANY TENSOR SUMMARY
+
+---
+
+## ✨ Smart Converter (TJ)
+
+Universal Type Conversion Node입니다.
+Universal type conversion utility node.
+
+---
+
+ANY 입력을 다양한 타입으로 안전하게 변환합니다.
+Safely converts ANY input into multiple workflow data types.
+
+---
+
+지원 타입:
+Supported Types:
+
+* AUTO
+* INT
+* FLOAT
+* STRING
+* BOOLEAN
+* TENSOR
+* LIST
+* DICT
+* JSON
+
+---
+
+핵심 기능:
+Core Features:
+
+* Dynamic Output Type
+* Status Output
+* Strict Mode
+* Embedded Get
+* Wireless Conversion Workflow
+
+---
+
+strict_mode OFF 상태에서는 변환 실패 시 기본값과 WARN status를 반환합니다.
+When strict_mode is OFF, conversion failures return fallback values with WARN status output.
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* String → Number Conversion
+* Tensor Scalar Conversion
+* Metadata → JSON
+* Wireless Type Correction
+* Boolean Workflow Control
+
+---
+
+#스크린샷 : SMART CONVERTER
+#스크린샷 : SMART CONVERTER STATUS
+
+---
+
+## ✨ Shortcut Launcher (TJ)
+
+Workflow 내부에서 폴더, 파일, URL을 즉시 실행하는 Utility Launcher Node입니다.
+Utility launcher node for opening folders, files, and URLs directly inside workflows.
+
+---
+
+핵심 기능:
+Core Features:
+
+* Multi Shortcut Buttons
+* Folder / File Launch
+* URL Launch
+* JSON Export / Import
+* Color Preset
+* Tooltip Support
+* Settings Modal
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Output Folder Launch
+* Custom Node Folder
+* GitHub Repository
+* Civitai Upload Page
+* Workflow Asset Folder
+* Documentation Shortcut
+
+---
+
+#스크린샷 : SHORTCUT LAUNCHER
+#스크린샷 : SHORTCUT SETTINGS
+
+---
+
+## ✨ VHS Hotkey Remote (Utility Extension)
+
+TJ VHS Hotkey Remote는 일반 노드가 아닙니다.
+TJ VHS Hotkey Remote is NOT a standard node.
+
+---
+
+VideoHelperSuite(VHS) preview를 키보드 단축키로 직접 제어하는 Global Utility Extension입니다.
+A global utility extension for controlling VideoHelperSuite previews using keyboard shortcuts.
+
+---
+
+설치 위치:
+Installation Path:
+
+```text
+ComfyUI/custom_nodes/ComfyUI-TJ_NODE/web/js/
+```
+
+파일명:
+Filename:
+
+```text
+tj_vhs_hotkey_remote.js
+```
+
+---
+
+지원 단축키:
+Supported Shortcuts:
+
+| Shortcut | Function |
+| --- | --- |
+| Space | Pause / Play |
+| Alt + H | Preview Hide |
+| Alt + M | Mute |
+| Alt + O | Open in Browser |
+| Alt + S | Save Preview |
+| Alt + C | Copy Original Path |
+| Alt + Y | Sync Preview |
+
+---
+
+동작 방식:
+Behavior:
+
+```text
+Select VHS Preview Node
+ ↓
+Press Shortcut
+ ↓
+Instant Preview Control
+```
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Animation Inspection
+* Frame Compare
+* VFI Workflow
+* Interpolation Workflow
+* Rapid Preview Control
+
+---
+
+필요 없으면 단순히 JS 파일만 삭제하면 됩니다.
+Can be removed simply by deleting the JS file.
+
+---
+
+#스크린샷 : VHS HOTKEY REMOTE
+#스크린샷 : VHS SHORTCUT CONTROL
+
+
 # 🛠 Save Pipeline System
 
 TJ Save Pipeline은 단순 Save Node 구조가 아닙니다.
@@ -1385,12 +1614,12 @@ Category 구조:
 Category Structure:
 
 ```python id="n0jxll"
-CATEGORY = " ✨ TJ Node/Wireless"
-CATEGORY = " ✨ TJ Node/Batch"
-CATEGORY = " ✨ TJ Node/Preview"
-CATEGORY = " ✨ TJ Node/Utility"
-CATEGORY = " ✨ TJ Node/Save"
-CATEGORY = " ✨ TJ Node/Eclipse"
+CATEGORY = " ✨ TJ_Node/Wireless"
+CATEGORY = " ✨ TJ_Node/Batch"
+CATEGORY = " ✨ TJ_Node/Preview"
+CATEGORY = " ✨ TJ_Node/Utility"
+CATEGORY = " ✨ TJ_Node/Save"
+CATEGORY = " ✨ TJ_Node/Eclipse"
 ```
 
 ---
