@@ -59,6 +59,11 @@ class TJ_MultiImageLoader:
                 "scale_method": (["Center Crop", "Force Fit"], {
                     "default": "Center Crop",
                 }),
+                "batch_select": ("STRING", {
+                    "default": "",
+                    "multiline": False,
+                    "placeholder": "ex: 1,2,4 / empty = all",
+                }),
             },
         }
 
@@ -153,11 +158,37 @@ class TJ_MultiImageLoader:
         else:
             return TJ_MultiImageLoader._force_fit(img, tw, th, resample)
 
+    @staticmethod
+    def _parse_batch_select(batch_select, count):
+        """Parse user-facing 1-based UI numbers into 0-based tensor indices."""
+        raw = str(batch_select or "").strip()
+        if not raw:
+            return list(range(count))
+
+        indices = []
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                ui_num = int(part)
+            except ValueError:
+                print(f"[TJ_MultiImageLoader] Ignored invalid batch_select item: {part!r}")
+                continue
+
+            idx = ui_num - 1  # UI thumbnail number starts at 1, tensor batch index starts at 0.
+            if 0 <= idx < count:
+                indices.append(idx)
+            else:
+                print(f"[TJ_MultiImageLoader] Ignored out-of-range batch_select item: {ui_num} / total {count}")
+
+        return indices if indices else list(range(count))
+
     # ───────────── main ─────────────
 
     def load_images(self, image_paths_json, auto_set, match_mode, resize_input,
                     edge_size, custom_width, custom_height,
-                    megapixel, interpolation, scale_method):
+                    megapixel, interpolation, scale_method, batch_select):
 
         # Parse paths
         try:
@@ -212,4 +243,7 @@ class TJ_MultiImageLoader:
             return (blank, 64, 64)
 
         batch = torch.cat(tensors, dim=0)
+        selected_indices = self._parse_batch_select(batch_select, batch.shape[0])
+        if len(selected_indices) != batch.shape[0] or selected_indices != list(range(batch.shape[0])):
+            batch = batch[selected_indices]
         return (batch, tw, th)

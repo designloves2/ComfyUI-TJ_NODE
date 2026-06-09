@@ -367,7 +367,7 @@ class TJ_BatchToMultiOutput:
                 "images": ("IMAGE",),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "out_count": ("INT", {"default": 2, "min": 1, "max": 64, "step": 1}),
-                "auto_set": ("BOOLEAN", {"default": True, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
+                "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
             }
         }
 

@@ -80,7 +80,7 @@ class TJ_SaveAndPreviewImage:
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("image",)
     FUNCTION = "process"
-    CATEGORY = " ✨ TJ Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Image"
     OUTPUT_NODE = True
 
     def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
@@ -155,10 +155,14 @@ class TJ_PromptText:
             }
         }
 
+    @classmethod
+    def VALIDATE_INPUTS(s, *args, **kwargs):
+        return True
+
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("prompt",)
     FUNCTION = "process"
-    CATEGORY = " ✨ TJ Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Utility"
 
     def process(self, text, get_name, setnode_name, prompt_in=""):
         out = ""
@@ -184,7 +188,7 @@ class TJ_TextConcatenate:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("text",)
     FUNCTION = "process"
-    CATEGORY = " ✨ TJ Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Utility"
 
     def process(self, mode, num_ports, delimiter, setnode_name, **kwargs):
         delim = delimiter.replace("\\n", "\n")
@@ -223,7 +227,7 @@ class TJ_SmartShow:
     RETURN_TYPES = (any_type,)
     RETURN_NAMES = ("output",)
     FUNCTION = "process"
-    CATEGORY = " ✨ TJ Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Preview"
     OUTPUT_NODE = True
 
     def process(self, get_name, setnode_name, file, edit_mode, text_content, input=None):
@@ -469,6 +473,19 @@ def _tj_mix_audio(audio_a, audio_b, wav_path, monitor="A+B"):
     mix = mix / max(1, len(arrays))
     return _tj_write_wav({"waveform": torch.from_numpy(mix), "sample_rate": sr}, wav_path)
 
+
+
+
+def _tj_make_monitor_wav(audio_a, audio_b, wav_path, monitor="A+B"):
+    """Create the wav used for video+audio mux according to audio_monitor.
+    A/B single-monitor modes use direct wav writing; A+B keeps the existing mix path.
+    """
+    monitor = str(monitor or "A+B")
+    if monitor == "A":
+        return _tj_write_wav(audio_a, wav_path)
+    if monitor == "B":
+        return _tj_write_wav(audio_b, wav_path)
+    return _tj_mix_audio(audio_a, audio_b, wav_path, "A+B")
 
 def _tj_ffmpeg_run(args):
     import subprocess
@@ -754,6 +771,32 @@ def _tj_read_video_frames_to_tensor(video_path, target_fps=24.0, max_frames=0):
         frames.append(arr)
     return torch.from_numpy(np.stack(frames, axis=0)).float()
 
+def _tj_parse_frame_index(value, default=None):
+    """Parse optional frame index text. Empty returns default. Negative values clamp to 0."""
+    try:
+        text = str(value or "").strip()
+        if not text:
+            return default
+        return max(0, int(float(text)))
+    except Exception:
+        return default
+
+
+def _tj_slice_image_frames(image, begin_frame="", end_frame=""):
+    """Apply optional [begin_frame:end_frame] slicing to an IMAGE batch only."""
+    if image is None or not isinstance(image, torch.Tensor) or len(image.shape) < 1:
+        return image
+    total = int(image.shape[0])
+    start = _tj_parse_frame_index(begin_frame, 0)
+    end = _tj_parse_frame_index(end_frame, total)
+    start = min(max(0, start), total)
+    end = min(max(0, end), total)
+    if start == 0 and end == total:
+        return image
+    if end <= start:
+        raise ValueError(f"Save & Preview Video (TJ): invalid frame range begin_frame={start}, end_frame={end} for {total} frames.")
+    return image[start:end]
+
 
 class TJ_SaveAndPreviewVideo:
     @classmethod
@@ -761,6 +804,8 @@ class TJ_SaveAndPreviewVideo:
         return {
             "required": {
                 "fps": ("FLOAT", {"default": 24.0, "min": 1.0, "max": 120.0, "step": 1.0}),
+                "begin_frame": ("STRING", {"default": "", "multiline": False, "placeholder": "empty = 0"}),
+                "end_frame": ("STRING", {"default": "", "multiline": False, "placeholder": "empty = all"}),
                 "save_type": (["video only", "video + audio", "video + original audio", "audio only"], {"default": "video only"}),
                 "audio_monitor": (["A", "B", "A+B"], {"default": "A+B"}),
                 "get_name": (["(none)"],),
@@ -777,8 +822,8 @@ class TJ_SaveAndPreviewVideo:
             }
         }
 
-    RETURN_TYPES = (any_type, any_type, any_type, any_type, any_type)
-    RETURN_NAMES = ("image", "video", "audio_a", "audio_b", "original_audio")
+    RETURN_TYPES = (any_type, any_type, any_type, any_type, any_type, "INT")
+    RETURN_NAMES = ("image", "video", "audio_a", "audio_b", "original_audio", "video_total_frame")
     FUNCTION = "process"
     CATEGORY = " ✨ TJ_Node/Video"
     OUTPUT_NODE = True
@@ -787,7 +832,7 @@ class TJ_SaveAndPreviewVideo:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    def process(self, fps=24.0, save_type="video only", audio_monitor="A+B", get_name="(none)", setnode_name="", filename_prefix="TJ_Video", path="", mode="Preview", image=None, video=None, audio_a=None, audio_b=None):
+    def process(self, fps=24.0, begin_frame="", end_frame="", save_type="video only", audio_monitor="A+B", get_name="(none)", setnode_name="", filename_prefix="TJ_Video", path="", mode="Preview", image=None, video=None, audio_a=None, audio_b=None):
         now = datetime.now()
         parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
         parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
@@ -821,25 +866,76 @@ class TJ_SaveAndPreviewVideo:
                 if fallback_outputs:
                     for m in metas:
                         m["fallback_outputs"] = fallback_outputs
-                return {"ui": {"tj_video": metas}, "result": (image, video_path, audio_a, audio_b, original_audio)}
+                return {"ui": {"tj_video": metas}, "result": (image, video_path, audio_a, audio_b, original_audio, 0)}
             else:
-                filename = _tj_next_file(out_dir, parsed_prefix, "mp3")
-                final_path = os.path.join(out_dir, filename)
-                wav_tmp = os.path.join(folder_paths.get_temp_directory(), f"tj_audio_mix_{random.randint(10000,99999)}.wav")
-                mixed = _tj_mix_audio(audio_a, audio_b, wav_tmp, "A+B")
-                if not mixed:
+                metas = []
+
+                save_targets = []
+                if audio_monitor == "A":
+                    save_targets = [("A", audio_a)]
+                elif audio_monitor == "B":
+                    save_targets = [("B", audio_b)]
+                else:
+                    save_targets = [("A", audio_a), ("B", audio_b)]
+
+                saved_any = False
+
+                for label, audio_obj in save_targets:
+                    if audio_obj is None:
+                        continue
+
+                    filename = _tj_next_file(out_dir, f"{parsed_prefix}_{label}", "mp3")
+                    final_path = os.path.join(out_dir, filename)
+
+                    wav_tmp = os.path.join(
+                        folder_paths.get_temp_directory(),
+                        f"tj_audio_{label}_{random.randint(10000,99999)}.wav"
+                    )
+
+                    mixed = _tj_mix_audio(
+                        audio_obj if label == "A" else None,
+                        audio_obj if label == "B" else None,
+                        wav_tmp,
+                        label
+                    )
+
+                    if not mixed:
+                        continue
+
+                    _tj_ffmpeg_run([
+                        "ffmpeg", "-y",
+                        "-i", mixed,
+                        "-codec:a", "libmp3lame",
+                        "-b:a", "192k",
+                        final_path
+                    ])
+
+                    meta = _tj_media_meta_for_path(final_path, "audio_file")
+                    meta["label"] = label
+                    metas.append(meta)
+                    saved_any = True
+
+                if not saved_any:
                     raise ValueError("No audio data found in audio_a/audio_b")
-                _tj_ffmpeg_run(["ffmpeg", "-y", "-i", mixed, "-codec:a", "libmp3lame", "-b:a", "192k", final_path])
-                meta = _tj_media_meta_for_path(final_path, "audio_file")
-                image, video_path, audio_a, audio_b, original_audio, fallback_outputs = _tj_apply_output_fallbacks(image, None, audio_a, audio_b, None, out_dir, fps)
+
+                image, video_path, audio_a, audio_b, original_audio, fallback_outputs = _tj_apply_output_fallbacks(
+                    image, None, audio_a, audio_b, None, out_dir, fps
+                )
+
                 if fallback_outputs:
-                    meta["fallback_outputs"] = fallback_outputs
-                return {"ui": {"tj_video": [meta]}, "result": (image, video_path, audio_a, audio_b, original_audio)}
+                    for meta in metas:
+                        meta["fallback_outputs"] = fallback_outputs
+
+                return {
+                    "ui": {"tj_video": metas},
+                    "result": (image, video_path, audio_a, audio_b, original_audio, 0)
+                }
 
         video_path = None
         original_audio = None
 
         if has_image:
+            image = _tj_slice_image_frames(image, begin_frame, end_frame)
             # image batch -> h264 mp4
             filename = _tj_next_file(out_dir, parsed_prefix, "mp4") if mode == "Save" else f"tj_video_{random.randint(10000,99999)}_{parsed_prefix}.mp4"
             raw_video_path = os.path.join(out_dir, filename)
@@ -854,7 +950,7 @@ class TJ_SaveAndPreviewVideo:
 
             if save_type == "video + audio":
                 wav_tmp = os.path.join(folder_paths.get_temp_directory(), f"tj_audio_mix_{random.randint(10000,99999)}.wav")
-                mixed = _tj_mix_audio(audio_a, audio_b, wav_tmp, audio_monitor)
+                mixed = _tj_make_monitor_wav(audio_a, audio_b, wav_tmp, audio_monitor)
                 if mixed:
                     mux_path = os.path.join(out_dir, filename.replace(".mp4", "_audio.mp4")) if mode == "Preview" else raw_video_path + ".mux.mp4"
                     _tj_ffmpeg_run(["ffmpeg", "-y", "-i", raw_video_path, "-i", mixed, "-c:v", "copy", "-c:a", "aac", "-shortest", mux_path])
@@ -874,6 +970,7 @@ class TJ_SaveAndPreviewVideo:
                 raise ValueError("Save & Preview Video (TJ): this VIDEO object does not expose a readable file path. Connect decoded IMAGE frames to image input, or use a loader that exposes filename/path.")
 
             image = _tj_read_video_frames_to_tensor(source_path, fps)
+            image = _tj_slice_image_frames(image, begin_frame, end_frame)
             has_image = True
             original_audio, original_audio_path = _tj_extract_original_audio(source_path)
 
@@ -906,7 +1003,7 @@ class TJ_SaveAndPreviewVideo:
                     pass
             elif save_type == "video + audio":
                 wav_tmp = os.path.join(folder_paths.get_temp_directory(), f"tj_audio_mix_{random.randint(10000,99999)}.wav")
-                mixed = _tj_mix_audio(audio_a, audio_b, wav_tmp, audio_monitor)
+                mixed = _tj_make_monitor_wav(audio_a, audio_b, wav_tmp, audio_monitor)
                 if mixed:
                     mux_path = os.path.join(out_dir, filename.replace(".mp4", "_audio.mp4")) if mode == "Preview" else raw_video_path + ".mux.mp4"
                     _tj_ffmpeg_run(["ffmpeg", "-y", "-i", raw_video_path, "-i", mixed, "-c:v", "copy", "-c:a", "aac", "-shortest", mux_path])
@@ -928,7 +1025,13 @@ class TJ_SaveAndPreviewVideo:
                 meta["fps"] = fps
         except Exception:
             pass
+        video_total_frame = 0
+        try:
+            if image is not None and isinstance(image, torch.Tensor):
+                video_total_frame = int(image.shape[0])
+        except Exception:
+            video_total_frame = 0
         image, video_path, audio_a, audio_b, original_audio, fallback_outputs = _tj_apply_output_fallbacks(image, video_path, audio_a, audio_b, original_audio, out_dir, fps)
         if fallback_outputs:
             meta["fallback_outputs"] = fallback_outputs
-        return {"ui": {"tj_video": [meta]}, "result": (image, video_path, audio_a, audio_b, original_audio)}
+        return {"ui": {"tj_video": [meta]}, "result": (image, video_path, audio_a, audio_b, original_audio, video_total_frame)}

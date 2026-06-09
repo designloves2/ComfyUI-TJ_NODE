@@ -28,6 +28,113 @@ function findWidget(node, name) {
     return node.widgets ? node.widgets.find(w => w.name === name) : null;
 }
 
+function getWidgetInputName(input) {
+    return input?.widget?.name || input?.name || "";
+}
+
+function moveWidgetAfter(node, widgetName, anchorName) {
+    if (!node?.widgets) return;
+
+    // 1) Move the visible widget row. This controls the actual displayed order.
+    const widgetIdx = node.widgets.findIndex(w => w?.name === widgetName);
+    const anchorIdx = node.widgets.findIndex(w => w?.name === anchorName);
+    if (widgetIdx >= 0 && anchorIdx >= 0 && widgetIdx !== anchorIdx + 1) {
+        const [widget] = node.widgets.splice(widgetIdx, 1);
+        const freshAnchorIdx = node.widgets.findIndex(w => w?.name === anchorName);
+        node.widgets.splice(freshAnchorIdx + 1, 0, widget);
+    }
+
+    // 2) If these widgets were converted to inputs, keep input slot order consistent too.
+    //    Otherwise LiteGraph can still hit-test / display the old converted-widget slot order.
+    if (node.inputs?.length) {
+        const inputIdx = node.inputs.findIndex(i => getWidgetInputName(i) === widgetName);
+        const inputAnchorIdx = node.inputs.findIndex(i => getWidgetInputName(i) === anchorName);
+        if (inputIdx >= 0 && inputAnchorIdx >= 0 && inputIdx !== inputAnchorIdx + 1) {
+            const [input] = node.inputs.splice(inputIdx, 1);
+            const freshInputAnchorIdx = node.inputs.findIndex(i => getWidgetInputName(i) === anchorName);
+            node.inputs.splice(freshInputAnchorIdx + 1, 0, input);
+        }
+    }
+
+    node.setDirtyCanvas?.(true, true);
+}
+
+
+const TJ_RESIZE_WIDGET_INPUTS = ["edge_size", "custom_width", "custom_height", "megapixel"];
+
+function getResizeWidgetInputName(input) {
+    return input?.widget?.name || input?.name || "";
+}
+
+function isResizeWidgetInput(input) {
+    return TJ_RESIZE_WIDGET_INPUTS.includes(getResizeWidgetInputName(input));
+}
+
+function disconnectWidgetInput(node, widgetName) {
+    if (!node?.inputs || !node.graph) return;
+    const input = node.inputs.find(i => getResizeWidgetInputName(i) === widgetName);
+    if (input?.link != null) {
+        node.graph.removeLink(input.link);
+    }
+}
+
+function syncResizeWidgetInputSlots(node, activeNames) {
+    if (!node) return;
+    const active = new Set(activeNames || []);
+
+    // Store converted-widget input slot objects so we can remove hidden slots from hit-testing
+    // and restore them later without losing the user's "Convert Widget to Input" state.
+    if (!node._tjResizeInputSlotStore) node._tjResizeInputSlotStore = {};
+
+    const keptInputs = [];
+    for (const input of node.inputs || []) {
+        const name = getResizeWidgetInputName(input);
+        if (!TJ_RESIZE_WIDGET_INPUTS.includes(name)) {
+            keptInputs.push(input);
+            continue;
+        }
+
+        node._tjResizeInputSlotStore[name] = input;
+
+        if (active.has(name)) {
+            input.hidden = false;
+            keptInputs.push(input);
+        } else {
+            if (input?.link != null && node.graph) node.graph.removeLink(input.link);
+            input.link = null;
+            input.hidden = true;
+        }
+    }
+
+    // If a slot was previously converted to input and then temporarily removed,
+    // restore it when its widget becomes active again.
+    for (const name of TJ_RESIZE_WIDGET_INPUTS) {
+        if (!active.has(name)) continue;
+        if (keptInputs.some(i => getResizeWidgetInputName(i) === name)) continue;
+        const stored = node._tjResizeInputSlotStore[name];
+        if (stored) {
+            stored.hidden = false;
+            keptInputs.push(stored);
+        }
+    }
+
+    node.inputs = keptInputs;
+}
+
+function getActiveResizeWidgetInputs(node, nextResizeValue=null, nextMatchModeValue=null) {
+    const matchMode = nextMatchModeValue ?? findWidget(node, "match_mode")?.value;
+    const resize = nextResizeValue ?? findWidget(node, "resize_input")?.value ?? "none";
+
+    if (matchMode === "Megapixel") return ["megapixel"];
+    if (resize === "long edge" || resize === "short edge") return ["edge_size"];
+    if (resize === "Custom") return ["custom_width", "custom_height"];
+    return [];
+}
+
+function cleanupAndSyncResizeInputs(node, nextResizeValue=null, nextMatchModeValue=null) {
+    syncResizeWidgetInputSlots(node, getActiveResizeWidgetInputs(node, nextResizeValue, nextMatchModeValue));
+}
+
 function getAutoSetWidget(node) {
     return findWidget(node, "auto_set");
 }
@@ -173,6 +280,8 @@ function updateWidgetVisibility(node) {
         }
     }
 
+    cleanupAndSyncResizeInputs(node);
+
     requestAnimationFrame(() => {
         const sz = node.computeSize();
         node.setSize([Math.max(node.size[0], sz[0]), sz[1]]);
@@ -236,6 +345,7 @@ app.registerExtension({
                 const origCb1 = matchModeW.callback;
                 matchModeW.callback = function (v) {
                     if (origCb1) origCb1.call(this, v);
+                    cleanupAndSyncResizeInputs(node, null, v);
                     updateWidgetVisibility(node);
                 };
             }
@@ -243,6 +353,7 @@ app.registerExtension({
                 const origCb2 = resizeInputW.callback;
                 resizeInputW.callback = function (v) {
                     if (origCb2) origCb2.call(this, v);
+                    cleanupAndSyncResizeInputs(node, v, null);
                     updateWidgetVisibility(node);
                 };
             }
@@ -368,6 +479,9 @@ app.registerExtension({
                 const total = 28 + 6 + 24 + 4 + gridH + 4 + 20 + 16;
                 return [220, total];
             };
+
+            // Keep batch_select directly under scale_method, before the DOM image stack.
+            moveWidgetAfter(node, "batch_select", "scale_method");
 
             // ── State management ──
             function getCurrentPaths() {
@@ -1034,6 +1148,7 @@ app.registerExtension({
                 updateWidgetVisibility(node);
                 renderThumbnails();
                 refreshMultiImageLoaderAutoSets(node);
+                moveWidgetAfter(node, "batch_select", "scale_method");
             }, 100);
 
             // ── Handle workflow load ──
@@ -1044,6 +1159,7 @@ app.registerExtension({
                     updateWidgetVisibility(node);
                     renderThumbnails();
                     refreshMultiImageLoaderAutoSets(node);
+                    moveWidgetAfter(node, "batch_select", "scale_method");
                 }, 100);
             };
 

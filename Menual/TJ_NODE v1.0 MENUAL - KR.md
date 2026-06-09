@@ -251,7 +251,8 @@ get_name
 
 * Save & Preview Image (TJ)
 * Save & Preview Video (TJ)
-* Smart Show (TJ)
+* Show Any (TJ)
+* Smart Converter (TJ)
 * Prompt Text (TJ)
 * Batch to Multi Image Output (TJ)
 
@@ -394,6 +395,12 @@ Save & Preview Image (TJ)
 Save & Preview Video (TJ)
 
 Smart Show (TJ)
+
+Show Any (TJ)
+
+Smart Converter (TJ)
+
+Shortcut Launcher (TJ)
 
 Prompt Text (TJ)
 
@@ -3019,7 +3026,636 @@ lighting prompt
 
 ---
 
-### 6. Preview / Utility System 추천 구조
+
+### 6. Show Any (TJ)
+
+#### Lightweight Universal Output Viewer
+
+Show Any는 다양한 타입의 데이터를:
+
+```text
+텍스트로 안전하게 펼쳐서 확인
++
+원본 값은 그대로 통과
+```
+
+시키는 디버그 / 모니터링 노드입니다.
+
+---
+
+#스크린샷 : Show Any 기본 상태
+
+---
+
+#### 핵심 목적
+
+대규모 workflow에서는 중간 데이터가 실제로 어떤 값인지 확인해야 할 때가 많습니다.
+
+Show Any는 이때:
+
+* STRING
+* INT / FLOAT / BOOLEAN
+* LIST
+* DICT / JSON
+* TENSOR
+* numpy ndarray
+* 기타 Python object
+
+를 사람이 읽을 수 있는 형태로 표시합니다.
+
+---
+
+#### 중요한 특징
+
+Show Any는 단순 출력 노드가 아닙니다.
+
+```text
+입력 any
+ ↓
+텍스트 표시
+ ↓
+원본 any 그대로 output
+```
+
+구조입니다.
+
+즉 debug용으로 끼워 넣어도 downstream 데이터 흐름을 끊지 않습니다.
+
+---
+
+#### 지원 기능
+
+|기능|설명|
+|-|-|
+|ANY 입력|대부분의 ComfyUI 타입 수신|
+|원본 passthrough|입력 값을 그대로 output|
+|텍스트 표시|값을 multiline text로 표시|
+|Tensor 요약|shape / dtype / device / min / max / mean 표시|
+|JSON-safe 표시|dict/list/object를 읽기 쉬운 JSON 형태로 표시|
+|Copy 버튼|표시된 텍스트를 클립보드로 복사|
+|Embedded Get|wireless provider 직접 수신|
+|Set Provider|setnode_name으로 provider 등록 가능|
+
+---
+
+#스크린샷 : Show Any Tensor summary
+#스크린샷 : Show Any Copy 버튼
+
+---
+
+#### 입력 설명
+
+|입력|설명|
+|-|-|
+|any|확인할 데이터|
+|get_name|TJ / Eclipse provider 선택|
+|setnode_name|현재 출력을 provider로 등록할 이름|
+|text|실행 후 표시되는 텍스트 영역|
+
+---
+
+#### 사용 방법
+
+#### Step 1 — any 입력 연결
+
+확인하고 싶은 값을 `any` 슬롯에 연결합니다.
+
+예시:
+
+```text
+KSampler output
+Smart Converter output
+Prompt Text output
+metadata dict
+```
+
+---
+
+#### Step 2 — Queue 실행
+
+실행 후 입력 값이 텍스트 영역에 표시됩니다.
+
+Tensor의 경우 전체 데이터를 무식하게 뿌리지 않고:
+
+```text
+shape / dtype / device / min / max / mean
+```
+
+중심으로 요약됩니다.
+
+데이터의 바다에서 익사하지 않게 해주는 작은 구명보트입니다.
+
+---
+
+#### Step 3 — 필요 시 Copy
+
+오른쪽 하단 `Copy` 버튼으로 표시된 값을 복사할 수 있습니다.
+
+추천 사용:
+
+* prompt 결과 복사
+* JSON metadata 확인
+* converter status 확인
+* 중간 숫자 값 확인
+
+---
+
+#### Embedded Get 지원
+
+Show Any는 embedded get을 지원합니다.
+
+즉 직접 와이어를 길게 연결하지 않고:
+
+```text
+get_name
+```
+
+으로 provider를 선택해 값을 확인할 수 있습니다.
+
+---
+
+#스크린샷 : Show Any embedded get
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* 중간 데이터 타입 확인
+* Tensor 요약 확인
+* JSON / dict 구조 확인
+* Smart Converter 결과 확인
+* wireless provider 값 검사
+* workflow debug checkpoint
+
+---
+
+#### 주의 사항
+
+Show Any는 값을 표시하고 통과시키는 노드입니다.
+
+값을 변환하려면:
+
+```text
+Smart Converter (TJ)
+```
+
+를 사용하는 것이 맞습니다.
+
+Show Any는 현미경이고, Smart Converter는 변환기입니다. 현미경으로 국 끓이면 안 됩니다.
+
+---
+
+### 7. Smart Converter (TJ)
+
+#### Universal Type Conversion Node
+
+Smart Converter는 ANY 입력을 원하는 타입으로 변환하는 utility 노드입니다.
+
+---
+
+#스크린샷 : Smart Converter overview
+
+---
+
+#### 핵심 목적
+
+ComfyUI workflow에서는 타입이 살짝 맞지 않아 연결이 막히는 경우가 많습니다.
+
+예시:
+
+```text
+STRING 숫자 → INT
+FLOAT → INT
+Tensor scalar → FLOAT
+DICT → JSON string
+LIST → TENSOR
+```
+
+Smart Converter는 이런 타입 경계 문제를 빠르게 정리하기 위한 노드입니다.
+
+---
+
+#### 지원 변환 타입
+
+|output_type|출력 타입|설명|
+|-|-|-|
+|AUTO|자동 감지|입력값 타입을 기준으로 자동 출력|
+|INT|INT|정수 변환|
+|FLOAT|FLOAT|실수 변환|
+|STRING|STRING|문자열 변환|
+|BOOLEAN|BOOLEAN|True / False 변환|
+|TENSOR|TENSOR|torch Tensor 변환|
+|LIST|LIST|리스트 변환|
+|DICT|DICT|딕셔너리 변환|
+|JSON|STRING|JSON 문자열 변환|
+
+---
+
+#### 출력 설명
+
+|출력|설명|
+|-|-|
+|output|변환된 값|
+|status|변환 상태 메시지|
+
+---
+
+#### Status 출력
+
+Smart Converter는 변환 결과를 status 문자열로 함께 내보냅니다.
+
+예시:
+
+```text
+OK: str: '123' -> INT
+```
+
+또는:
+
+```text
+WARN: INT conversion failed: cannot convert string "abc" to INT
+```
+
+이 구조 덕분에 변환 실패를 workflow 안에서 바로 추적할 수 있습니다.
+
+---
+
+#스크린샷 : Smart Converter status output
+
+---
+
+#### strict_mode
+
+strict_mode는 변환 실패 시 동작을 결정합니다.
+
+|strict_mode|동작|
+|-|-|
+|OFF|경고 status 출력 후 기본값 반환|
+|ON|변환 실패 시 에러 발생|
+
+---
+
+#### 기본값 반환 규칙
+
+strict_mode가 OFF일 때 변환 실패하면 기본값을 반환합니다.
+
+|요청 타입|기본값|
+|-|-|
+|INT|0|
+|FLOAT|0.0|
+|STRING|빈 문자열|
+|BOOLEAN|False|
+|TENSOR|0 tensor|
+|LIST|빈 리스트|
+|DICT|빈 dict|
+|JSON|null 문자열|
+
+---
+
+#### Embedded Get 지원
+
+Smart Converter는 embedded get을 지원합니다.
+
+즉:
+
+```text
+provider 선택
+ ↓
+타입 변환
+ ↓
+downstream 전달
+```
+
+구조를 하나의 노드에서 처리할 수 있습니다.
+
+---
+
+#스크린샷 : Smart Converter embedded get
+
+---
+
+#### Dynamic Output Slot
+
+Smart Converter는 `output_type` 선택에 따라 output 슬롯 타입과 이름을 변경합니다.
+
+예시:
+
+|선택|output 표시|
+|-|-|
+|AUTO|output / *|
+|INT|int / INT|
+|FLOAT|float / FLOAT|
+|STRING|string / STRING|
+|TENSOR|tensor / TENSOR|
+
+타입이 맞지 않는 downstream 연결은 안전하게 끊어질 수 있습니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* 숫자 문자열을 INT/FLOAT로 변환
+* Boolean switch 값 만들기
+* dict/list를 JSON text로 확인
+* scalar Tensor를 숫자로 변환
+* metadata를 STRING으로 변환
+* wireless provider 타입 보정
+
+---
+
+#### 주의 사항
+
+Smart Converter는 만능 번역기는 아닙니다.
+
+예를 들어:
+
+```text
+"hello" → INT
+```
+
+같은 변환은 실패합니다.
+
+이 경우 strict_mode OFF에서는 기본값과 WARN status를 반환하고, ON에서는 에러를 발생시킵니다.
+
+---
+
+### 8. Shortcut Launcher (TJ)
+
+#### Workflow External Shortcut Panel
+
+Shortcut Launcher는 ComfyUI workflow 안에서 자주 쓰는 폴더, 파일, URL을 버튼으로 실행하는 utility 노드입니다.
+
+---
+
+#스크린샷 : Shortcut Launcher 기본 상태
+
+---
+
+#### 핵심 목적
+
+작업 중 자주 여는 항목이 있습니다.
+
+예시:
+
+* output 폴더
+* input 폴더
+* 프로젝트 폴더
+* 모델 폴더
+* GitHub repository
+* Civitai 페이지
+* 내부 문서 URL
+
+Shortcut Launcher는 이런 항목을 workflow 안에 버튼으로 배치합니다.
+
+즉:
+
+```text
+작업 동선 단축
++
+프로젝트별 바로가기 보관
+```
+
+을 위한 노드입니다.
+
+---
+
+#### 주요 기능
+
+|기능|설명|
+|-|-|
+|다중 버튼|여러 shortcut 버튼 생성|
+|Path 실행|로컬 폴더/파일 열기|
+|URL 실행|웹 URL 브라우저로 열기|
+|Tooltip|버튼 설명 표시|
+|Settings Modal|HTML5 설정창 제공|
+|JSON Export|shortcut preset 저장|
+|JSON Import|shortcut preset 불러오기|
+|Color Picker|버튼 배경색 / 글자색 지정|
+|Height-only resize|버튼 수에 맞춰 높이 자동 조정|
+
+---
+
+#스크린샷 : Shortcut Settings Modal
+#스크린샷 : Shortcut JSON Export Import
+#스크린샷 : Shortcut Color Picker
+
+---
+
+#### 사용 방법
+
+#### Step 1 — 노드 배치
+
+`Shortcut Launcher (TJ)` 노드를 배치합니다.
+
+이 노드는 실행 결과를 만드는 처리 노드가 아니라:
+
+```text
+workflow 작업용 런처 패널
+```
+
+입니다.
+
+---
+
+#### Step 2 — Settings 열기
+
+노드 내부의:
+
+```text
+⚙ Settings
+```
+
+버튼을 클릭합니다.
+
+---
+
+#### Step 3 — 버튼 추가
+
+`+ Add Button`으로 shortcut 항목을 추가합니다.
+
+각 항목은 다음 정보를 가집니다.
+
+|항목|설명|
+|-|-|
+|Button Name|노드에 표시될 버튼 이름|
+|Path / URL|열 대상 경로 또는 URL|
+|Description / Tooltip|마우스 hover 설명|
+
+---
+
+#### Step 4 — 저장
+
+`Save`를 누르면 노드에 버튼이 반영됩니다.
+
+버튼 클릭 시:
+
+* URL이면 브라우저 새 탭으로 열림
+* 로컬 path면 OS 기본 방식으로 열림
+
+---
+
+#### JSON Preset
+
+Shortcut Launcher는 JSON Export / Import를 지원합니다.
+
+추천 사용:
+
+* 프로젝트별 shortcut preset 저장
+* 다른 workflow로 shortcut 구성 이동
+* 팀 작업용 공통 링크 공유
+
+---
+
+#### 색상 설정
+
+Settings 안에서:
+
+* Button Background Color
+* Button Text Color
+
+를 지정할 수 있습니다.
+
+프로젝트별 launcher를 색으로 구분하기 좋습니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* output 폴더 바로 열기
+* custom node 폴더 바로 열기
+* README / Manual 바로 열기
+* GitHub issue 페이지 열기
+* Civitai 업로드 페이지 열기
+* 프로젝트 asset 폴더 열기
+
+---
+
+#### 주의 사항
+
+로컬 path는 실제 존재하는 경로여야 합니다.
+
+존재하지 않는 path는 열리지 않습니다.
+
+URL은 다음 형식을 권장합니다.
+
+```text
+https://example.com
+```
+
+---
+
+
+
+---
+
+### 8-Add. VHS Hotkey Remote (Utility Extension)
+
+#### VHS Preview 전용 글로벌 단축키 시스템
+
+TJ VHS Hotkey Remote는 일반 노드가 아닙니다.
+
+대신:
+
+```text
+VideoHelperSuite(VHS) preview를
+키보드 단축키로 직접 제어하는
+global utility extension
+```
+
+입니다.
+
+---
+
+#스크린샷 : VHS Hotkey Remote 사용 예시
+
+---
+
+#### 설치 위치
+
+```text
+ComfyUI/custom_nodes/ComfyUI-TJ_NODE/web/js/
+```
+
+파일명:
+
+```text
+tj_vhs_hotkey_remote.js
+```
+
+---
+
+#### 제거 방법
+
+필요 없으면:
+
+```text
+tj_vhs_hotkey_remote.js 삭제
+```
+
+만 하면 됩니다.
+
+---
+
+#### 지원 단축키
+
+|단축키|기능|
+|-|-|
+|Space|Pause / Play|
+|Alt + H|Preview Hide|
+|Alt + M|Mute|
+|Alt + O|브라우저에서 열기|
+|Alt + S|Preview Save|
+|Alt + C|원본 경로 복사|
+|Alt + Y|Sync Preview|
+
+---
+
+#### 동작 방식
+
+현재 선택된:
+
+```text
+VHS preview node
+```
+
+를 기준으로 동작합니다.
+
+즉:
+
+```text
+노드 선택
+ ↓
+단축키 입력
+ ↓
+즉시 preview 제어
+```
+
+구조입니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* animation inspect
+* frame compare
+* VFI workflow
+* interpolation workflow
+* 반복 preview 체크
+
+---
+
+#스크린샷 : VHS shortcut control
+
+
+### 9. Preview / Utility System 추천 구조
 
 TJ workflow에서는 다음 구조 추천.
 
@@ -4754,7 +5390,8 @@ Refresh ALL Get Nodes
 
 추천:
 
-* Smart Show
+* Show Any
+* Smart Converter
 * Save Preview
 * Multi Router
 
@@ -5729,7 +6366,8 @@ workflow 저장 후 reload.
 
 추천:
 
-* Smart Show
+* Show Any
+* Smart Converter
 * Save Preview
 * Multi Router
 

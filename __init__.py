@@ -36,6 +36,7 @@ from .utility_node_tj import (
 
 from .showany_tj import TJ_ShowAny
 from .smart_converter_tj import TJ_SmartConverter
+from .shortcut_launcher import TJShortcutLauncher
 
 # ──────────── Node Mappings ────────────
 NODE_CLASS_MAPPINGS = {
@@ -59,6 +60,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveAndPreviewVideo": TJ_SaveAndPreviewVideo,
     "TJ_ShowAny": TJ_ShowAny,
     "TJ_SmartConverter": TJ_SmartConverter,
+    "TJShortcutLauncher": TJShortcutLauncher,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -82,6 +84,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveAndPreviewVideo": "Save & Preview Video (TJ)",
     "TJ_ShowAny": "Show Any (TJ)",
     "TJ_SmartConverter": "Smart Converter (TJ)",
+    "TJShortcutLauncher": "Shortcut Launcher (TJ)",
 }
 
 WEB_DIRECTORY = "./web"

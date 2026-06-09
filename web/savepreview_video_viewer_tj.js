@@ -3,7 +3,7 @@ import { api } from "../../scripts/api.js";
 
 const NODE_NAME = "TJ_SaveAndPreviewVideo";
 const WIDGET_NAME = "tj_savepreview_video_viewer_force";
-const CSS_ID = "tj-savepreview-video-viewer-force-css-v66";
+const CSS_ID = "tj-savepreview-video-viewer-force-css-v67";
 const MIN_W = 340;
 const DEFAULT_H = 360;
 const PREVIEW_MIN_H = 160;
@@ -22,6 +22,12 @@ function ensureCss() {
 .tjvforce .info:empty{display:none;}
 .tjvforce .warn{position:absolute;right:8px;bottom:4px;width:24px;height:24px;border-radius:50%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.62);color:#ffd24a;font-size:15px;cursor:help;z-index:4;}
 .tjvforce .warn[hidden]{display:none;}
+.tjvforce .ctrls{position:absolute;top:5px;right:5px;display:flex;gap:4px;z-index:5;opacity:.78;}
+.tjvforce .ctrls:hover{opacity:1;}
+.tjvforce .ctrls button{min-width:22px;height:20px;padding:0 5px;border:1px solid rgba(0,191,255,.55);border-radius:4px;background:rgba(0,0,0,.55);color:#dfffea;font-size:10px;line-height:18px;cursor:pointer;}
+.tjvforce .ctrls button:hover{background:rgba(0,80,140,.75);}
+.tjvforce .ctrls button.active{color:#00efff;border-color:#00efff;box-shadow:0 0 5px rgba(0,239,255,.32);}
+.tjvforce .ctrls button[hidden]{display:none;}
 `;
   document.head.appendChild(s);
 }
@@ -97,6 +103,66 @@ function updateFallbackWarning(state, meta) {
   state.warn.title = title;
 }
 
+function getLoopEnabled(node) {
+  if (!node.properties) node.properties = {};
+  if (node.properties.tj_video_loop_enabled === undefined) node.properties.tj_video_loop_enabled = true;
+  return !!node.properties.tj_video_loop_enabled;
+}
+
+function saveLastPreview(node, kind, metas) {
+  if (!node || !metas?.length) return;
+  if (!node.properties) node.properties = {};
+  node.properties.tj_last_video_preview = {
+    kind,
+    metas: JSON.parse(JSON.stringify(metas)),
+    saved_at: Date.now(),
+  };
+}
+
+function restoreLastPreview(node) {
+  const saved = node?.properties?.tj_last_video_preview;
+  if (!saved || !Array.isArray(saved.metas) || !saved.metas.length) return false;
+  try {
+    if (saved.kind === "audio") setAudioPreview(node, saved.metas);
+    else setVideoPreview(node, saved.metas[0]);
+    return true;
+  } catch (e) {
+    console.warn("[TJ_NODE] video preview restore failed", e);
+    return false;
+  }
+}
+
+function syncPlayAllVideoPreviews() {
+  const nodes = app.graph?._nodes || [];
+  for (const n of nodes) {
+    const v = n?.type === NODE_NAME ? n.__tjvforce?.video : null;
+    if (!v || !v.src || v.style.display === "none") continue;
+    try {
+      v.pause();
+      v.currentTime = 0;
+    } catch (_) {}
+  }
+  for (const n of nodes) {
+    const v = n?.type === NODE_NAME ? n.__tjvforce?.video : null;
+    if (!v || !v.src || v.style.display === "none") continue;
+    try { v.play?.(); } catch (_) {}
+  }
+}
+
+function syncPlayCurrentAudioPreview(node) {
+  const audios = Array.from(node?.__tjvforce?.audioBox?.querySelectorAll?.("audio") || []);
+  if (audios.length < 2) return;
+  for (const a of audios) {
+    try {
+      a.pause();
+      a.currentTime = 0;
+    } catch (_) {}
+  }
+  for (const a of audios) {
+    try { a.play?.(); } catch (_) {}
+  }
+}
+
 function build(node) {
   if (node.__tjvforce) return node.__tjvforce;
   ensureCss();
@@ -106,7 +172,7 @@ function build(node) {
 
   const video = document.createElement("video");
   video.controls = true;
-  video.loop = true;
+  video.loop = getLoopEnabled(node);
   video.preload = "metadata";
   video.playsInline = true;
 
@@ -122,13 +188,59 @@ function build(node) {
   warn.textContent = "⚠";
   warn.hidden = true;
 
+  const ctrls = document.createElement("div");
+  ctrls.className = "ctrls";
+  const syncBtn = document.createElement("button");
+  syncBtn.type = "button";
+  syncBtn.textContent = "SYNC";
+  syncBtn.title = "Start all TJ video previews from frame 0";
+  const audioSyncBtn = document.createElement("button");
+  audioSyncBtn.type = "button";
+  audioSyncBtn.textContent = "A/B▶";
+  audioSyncBtn.title = "Start audio A/B previews from 0";
+  audioSyncBtn.hidden = true;
+  const loopBtn = document.createElement("button");
+  loopBtn.type = "button";
+  loopBtn.textContent = "LOOP";
+  loopBtn.title = "Toggle loop for this preview";
+  const refreshBtn = document.createElement("button");
+  refreshBtn.type = "button";
+  refreshBtn.textContent = "↻";
+  refreshBtn.title = "Reload this node's last preview";
+  ctrls.appendChild(syncBtn);
+  ctrls.appendChild(audioSyncBtn);
+  ctrls.appendChild(loopBtn);
+  ctrls.appendChild(refreshBtn);
+
   root.appendChild(video);
   root.appendChild(audioBox);
   root.appendChild(info);
   root.appendChild(warn);
+  root.appendChild(ctrls);
 
   const widget = node.addDOMWidget(WIDGET_NAME, "div", root, { serialize: false, hideOnZoom: false });
-  const state = node.__tjvforce = { root, video, audioBox, info, warn, widget, currentMeta: null };
+  const state = node.__tjvforce = { root, video, audioBox, info, warn, ctrls, syncBtn, audioSyncBtn, loopBtn, refreshBtn, widget, currentMeta: null };
+
+  function updateLoopButton() {
+    const enabled = getLoopEnabled(node);
+    video.loop = enabled;
+    loopBtn.classList.toggle("active", enabled);
+  }
+  updateLoopButton();
+
+  syncBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); syncPlayAllVideoPreviews(); });
+  audioSyncBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); syncPlayCurrentAudioPreview(node); });
+  loopBtn.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!node.properties) node.properties = {};
+    node.properties.tj_video_loop_enabled = !getLoopEnabled(node);
+    updateLoopButton();
+    node.setDirtyCanvas?.(true, true);
+  });
+  refreshBtn.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!restoreLastPreview(node)) info.textContent = "No saved preview to refresh.";
+  });
 
   widget.computeSize = function(width) {
     const nh = Number(node.size?.[1]) || DEFAULT_H;
@@ -163,7 +275,10 @@ function setVideoPreview(node, meta) {
   st.currentMeta = meta;
   st.audioBox.style.display = "none";
   st.audioBox.innerHTML = "";
+  if (st.audioSyncBtn) st.audioSyncBtn.hidden = true;
   st.video.style.display = "block";
+  st.video.loop = getLoopEnabled(node);
+  st.loopBtn?.classList.toggle("active", st.video.loop);
   st.info.textContent = `Loading preview: ${meta.filename}`;
   st.video.pause();
   st.video.removeAttribute("src");
@@ -188,6 +303,7 @@ function setAudioPreview(node, metas) {
     audio.title = meta.label ? `Audio ${meta.label}` : meta.filename;
     st.audioBox.appendChild(audio);
   }
+  if (st.audioSyncBtn) st.audioSyncBtn.hidden = !(metas.length >= 2);
   st.info.textContent = metas.map(m => m.label ? `Audio ${m.label}` : m.filename).join("  |  ") || "audio preview";
   updateFallbackWarning(st, metas.find(m => Array.isArray(m.fallback_outputs)) || metas[0]);
   node.setDirtyCanvas?.(true,true);
@@ -252,7 +368,7 @@ app.registerExtension({
       this.__tjv_mutex_ready = false;
       const r = configured?.apply(this, arguments);
       queueMicrotask(() => {
-        try { build(this); armImageVideoMutex(this, 500); }
+        try { build(this); restoreLastPreview(this); armImageVideoMutex(this, 500); }
         catch (e) { console.warn("[TJ_NODE] video viewer configure failed", e); }
       });
       return r;
@@ -274,8 +390,8 @@ app.registerExtension({
         const metas = findMetas(output?.tj_video || output?.ui?.tj_video || output);
         const audioMetas = metas.filter(m => m.media_type === "audio_file");
         const videoMeta = metas.find(m => m.media_type !== "audio_file");
-        if (audioMetas.length && !videoMeta) setAudioPreview(this, audioMetas);
-        else if (videoMeta) setVideoPreview(this, videoMeta);
+        if (audioMetas.length && !videoMeta) { saveLastPreview(this, "audio", audioMetas); setAudioPreview(this, audioMetas); }
+        else if (videoMeta) { saveLastPreview(this, "video", [videoMeta]); setVideoPreview(this, videoMeta); }
         else build(this).info.textContent = "No tj_video metadata returned.";
       } catch (e) { console.warn("[TJ_NODE] video viewer executed failed", e); }
       return r;

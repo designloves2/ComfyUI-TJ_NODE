@@ -1237,7 +1237,7 @@ app.registerExtension({
                 attachTJGetReceiver(this, { inputIndex: 0, inputName: "prompt_in", outputIndex: 0, defaultType: "*", defaultOutputType: "STRING" });
 
                 const btnRow = document.createElement("div");
-                btnRow.style.cssText = "display:flex; align-items:center; gap:4px; padding:2px; height:24px; box-sizing:border-box;";
+                btnRow.style.cssText = "display:flex; align-items:center; gap:4px; padding:2px; height:12px; box-sizing:border-box;";
                 
                 const btnStyle = "flex:1; height:20px; min-height:20px; max-height:20px; padding:0; background:#0055bb; color:#00efff; border:none; border-radius:3px; cursor:pointer; font-size:10px; font-weight:bold; line-height:20px; box-sizing:border-box;";
 

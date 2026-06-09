@@ -1,3 +1,8 @@
+# NOTE
+
+This document is the English localization build of the TJ_NODE manual.
+Node names and workflow terminology are preserved to match actual ComfyUI usage.
+
 ---
 
 # TJ_NODE v1.0 Official English Manual
@@ -6,67 +11,77 @@
 
 ---
 
-### Introduction to Wireless Routing System
+### Wireless Routing System 소개
 
-The core of TJ_NODE is the:
+TJ_NODE의 핵심은:
 
 ```text
 Wireless Workflow Architecture
 ```
 
-In standard ComfyUI, the structure is:
+입니다.
+
+기존 ComfyUI는:
 
 ```text
-Node ↔ Node
+노드 ↔ 노드
 ```
 
-connected directly via visible wires.
+를 직접 visible wire로 연결하는 구조입니다.
 
-This is not an issue for small workflows, but as the scale grows, it causes problems such as:
+작은 workflow에서는 문제가 없지만, 규모가 커질수록:
 
-* Long wires
-* Overlapping connection lines
-* Routing clutter
-* Difficulty in understanding the structure
-* Increased difficulty in maintenance
+* 긴 와이어
+* 겹치는 연결선
+* routing 혼잡
+* 구조 파악 어려움
+* 유지보수 난이도 증가
 
-To solve this, TJ_NODE uses the:
+문제가 발생합니다.
+
+TJ_NODE는 이를 해결하기 위해:
 
 ```text
 TJ Fake-Wire System
 ```
 
----
-
-#Screenshot : Standard workflow vs TJ workflow comparison
+을 사용합니다.
 
 ---
 
-### TJ Fake-Wire Structure
+#스크린샷 : 일반 workflow vs TJ workflow 비교
 
-The TJ Fake-Wire structure is:
+---
+
+### TJ Fake-Wire 구조
+
+TJ Fake-Wire는:
 
 ```text
-Physical connections maintained
+실제 연결은 유지
 +
-Visual connections hidden
+시각적 연결은 숨김
 ```
 
-In other words:
+구조입니다.
+
+즉:
 
 ```text
-Logical connection
+논리적 연결
 =
-Maintained
+유지
 
-Visual clutter
+시각적 clutter
 =
-Minimized
+최소화
 ```
+
+됩니다.
 
 ---
 
-#### Standard Method Example
+#### 기존 방식 예시
 
 ```text
 Load Image
@@ -75,7 +90,7 @@ Load Image
 
 ---
 
-#### TJ Method Example
+#### TJ 방식 예시
 
 ```text
 Load Image
@@ -85,45 +100,51 @@ KSampler
  ← Get Node
 ```
 
-The actual internal connection remains intact.
+실제 내부 연결은 유지됩니다.
 
-This system removes long wires from the workflow screen to create:
+단지 workflow 화면에서 긴 와이어를 제거하여:
 
-* An easy-to-read structure
-* A modular architecture
-* A maintainable workflow
+* 읽기 쉬운 구조
+* 모듈 구조
+* 유지보수 가능한 workflow
+
+를 만들기 위한 시스템입니다.
 
 ---
 
-#Screenshot : Fake-wire hover state
-#Screenshot : Hidden wire structure
+#스크린샷 : fake-wire hover 상태
+#스크린샷 : hidden wire structure
 
 ---
 
 ### Realtime Wires View Mode
 
-Realtime Wires View Mode is a feature that:
+Realtime Wires View Mode는:
 
 ```text
-Shows fake-wires only on hover
+hover 시에만 fake-wire 표시
 ```
+
+하는 기능입니다.
 
 ---
 
-#### Purpose
+#### 목적
 
-The purpose of this feature is:
+이 기능의 목적은:
 
 ```text
-Keep it clean normally,
-check connections only when needed
+평소에는 깔끔하게
+필요할 때만 연결 확인
 ```
+
+입니다.
 
 ---
 
-#### How to Enable
+#### 활성화 방법
 
-Right-click menu:
+우클릭 메뉴:
 
 ```text
 TJ Node
@@ -132,260 +153,331 @@ TJ Node
 
 ---
 
-#### How it Works
+#### 동작 방식
 
-| State | Description |
-| - | - |
-| OFF | Does not show hidden wires |
-| ON | Shows hidden wires on hover |
+|상태|설명|
+|-|-|
+|OFF|hidden wire 표시 안함|
+|ON|hover 시 hidden wire 표시|
 
 ---
 
-#### Recommended Usage
+#### 추천 사용 방식
 
-In TJ_NODE workflows, we recommend the following state:
+TJ_NODE workflow에서는:
 
 ```text
 Realtime Wires View Mode = ON
 Show ALL Wires = OFF
 ```
 
-This structure provides the best workflow readability.
+상태를 권장합니다.
+
+이 구조가 가장 workflow 가독성이 좋습니다.
 
 ---
 
-#Screenshot : Realtime Hover Wire
+#스크린샷 : Realtime Hover Wire
 
 ---
 
 ### Show ALL Wires
 
-Show ALL Wires is a mode that:
+Show ALL Wires는:
 
 ```text
-Forcefully displays all fake-wires
+모든 fake-wire 강제 표시
 ```
 
----
-
-#### Purpose of Use
-
-Recommended situations to use this:
-
-* Provider tracking
-* Wireless debugging
-* Connection inspection
-* Workflow analysis
+모드입니다.
 
 ---
 
-#### Precautions
+#### 사용 목적
 
-In large-scale workflows:
+추천 사용 상황:
+
+* provider 추적
+* wireless 디버깅
+* 연결 검사
+* workflow 분석
+
+---
+
+#### 주의 사항
+
+대규모 workflow에서는:
 
 ```text
-Wire clutter may increase again
+와이어 clutter가 다시 증가
 ```
 
-It is recommended to keep this OFF during general workflow operations.
+할 수 있습니다.
+
+일반 workflow 작업 중에는 OFF를 추천합니다.
 
 ---
 
-#Screenshot : Show ALL Wires ON state
+#스크린샷 : Show ALL Wires ON 상태
 
 ---
 
-### Embedded Get System
+### Embedded Get 시스템
 
-One of the core philosophies of TJ_NODE is:
+TJ_NODE의 핵심 철학 중 하나는:
 
 ```text
-Minimize the overuse of Standalone Get Nodes
+Standalone Get Node 남발 최소화
 ```
 
-To achieve this, many TJ nodes include a built-in:
+입니다.
+
+이를 위해 많은 TJ 노드는:
 
 ```text
 get_name
 ```
 
-widget.
+내장 위젯을 포함합니다.
 
-This means:
+즉:
 
 ```text
-Wireless receiving directly inside the node
+노드 내부에서 직접 wireless receive
 ```
 
-is possible.
+가 가능합니다.
 
 ---
 
-#### Supported Nodes
+#### 지원 노드
 
-Nodes currently supporting Embedded Get:
+현재 embedded get 지원 노드:
 
 * Save & Preview Image (TJ)
 * Save & Preview Video (TJ)
-* Smart Show (TJ)
+* Show Any (TJ)
+* Smart Converter (TJ)
 * Prompt Text (TJ)
 * Batch to Multi Image Output (TJ)
 
 ---
 
-#### Advantages
+#### 장점
 
-Advantages of the Embedded Get structure:
+Embedded Get 구조의 장점:
 
-| Advantage | Description |
-| - | - |
-| Reduced node count | Eliminates repetitive Get Nodes |
-| Simplified workflow | Removes long routing |
-| Improved readability | Strengthens modular structure |
-| Better maintainability | Local receive is possible |
+|장점|설명|
+|-|-|
+|노드 수 감소|Get Node 반복 제거|
+|workflow 단순화|긴 routing 제거|
+|가독성 향상|모듈 구조 강화|
+|유지보수 개선|local receive 가능|
 
 ---
 
-#Screenshot : Embedded get widget
-#Screenshot : Embedded get connection
+#스크린샷 : embedded get 위젯
+#스크린샷 : embedded get 연결
 
 ---
 
 ### Wireless Lifecycle System
 
-TJ_NODE is not just a simple connection system.
+TJ_NODE는 단순 연결 시스템이 아닙니다.
 
-Internally, there is a:
+내부적으로:
 
 ```text
 Wireless Lifecycle Management
 ```
 
-system.
+시스템이 존재합니다.
 
 ---
 
-#### Role
+#### 역할
 
-This system manages:
+이 시스템은:
 
-* Provider registration
-* Reconnects
-* Cleanups
-* Reload restores
-* Fake-wire sync
+* provider 등록
+* reconnect
+* cleanup
+* reload restore
+* fake-wire sync
 
----
-
-#### Why is this important?
-
-In large workflows, situations such as:
-
-* Node duplication
-* Workflow reloads
-* Provider renaming
-* Node deletion
-
-occur very frequently.
-
-A simple wireless structure easily breaks during these processes.
-
-TJ_NODE is designed to automatically recover from this as much as possible.
+를 관리합니다.
 
 ---
 
-#Screenshot : Provider reconnect
-#Screenshot : Reload-safe restore
+#### 왜 중요한가?
+
+대규모 workflow에서는:
+
+* node duplicate
+* workflow reload
+* provider rename
+* node delete
+
+상황이 매우 자주 발생합니다.
+
+단순 wireless 구조는 이 과정에서 쉽게 깨집니다.
+
+TJ_NODE는 이를 최대한 자동 복구하도록 설계되었습니다.
 
 ---
 
-## Node System Composition
+#스크린샷 : provider reconnect
+#스크린샷 : reload-safe restore
 
-TJ_NODE is mainly composed of the following structures:
+---
+
+## 노드 시스템 구성
+
+
+
+TJ_NODE는 크게 다음 구조로 구성됩니다.
+
+
 
 ### 1. Wireless Routing System
 
-The core structural system.
 
-Included Nodes:
 
-* Set Node (TJ)
-* Get Node (TJ)
-* Multi Get Node (TJ)
-* Multi Router (TJ)
+핵심 구조 시스템입니다.
+
+
+
+포함 노드:
+
+
+
+Set Node (TJ)
+
+Get Node (TJ)
+
+Multi Get Node (TJ)
+
+Multi Router (TJ)
+
+
 
 ### 2. Batch Workflow System
 
-Mass image/batch processing structure.
 
-Included Nodes:
 
-* Multi Image Loader (TJ)
-* Dynamic Image Batch(TJ)
-* Dynamic Image Batch(Eclipse-TJ)
-* Batch to Multi Image Output(TJ)
+대량 이미지/배치 처리 구조입니다.
+
+
+
+포함 노드:
+
+
+
+Multi Image Loader (TJ)
+
+Dynamic Image Batch(TJ)
+
+Dynamic Image Batch(Eclipse-TJ)
+
+Batch to Multi Image Output(TJ)
+
+
 
 ### 3. Preview / Utility System
 
-Preview and debugging system.
 
-Included Nodes:
 
-* Save & Preview Image (TJ)
-* Save & Preview Video (TJ)
-* Smart Show (TJ)
-* Prompt Text (TJ)
-* Text Concatenate (TJ)
+미리보기 및 디버그 시스템입니다.
+
+
+
+포함 노드:
+
+
+
+Save & Preview Image (TJ)
+
+Save & Preview Video (TJ)
+
+Smart Show (TJ)
+
+Show Any (TJ)
+
+Smart Converter (TJ)
+
+Shortcut Launcher (TJ)
+
+Prompt Text (TJ)
+
+Text Concatenate (TJ)
+
+
 
 ### 4. Save Pipeline System
 
-Save structure system.
 
-Included Nodes:
 
-* Save Image(Primary-TJ)
-* Save Image(Suffix-TJ)
-* Save Image(Eclipse Suffix-TJ)
+저장 구조 시스템입니다.
+
+
+
+포함 노드:
+
+
+
+Save Image(Primary-TJ)
+
+Save Image(Suffix-TJ)
+
+Save Image(Eclipse Suffix-TJ)
+
+
 
 ---
 
-## Node System Detailed Explanations
+## 노드 시스템 상세 설명
 
 ---
+
+
 
 ### 1. Set Node (TJ)
 
-#### Wireless Provider Creation Node
+#### Wireless Provider 생성 노드
 
 ---
 
-#### Purpose
+#### 목적
 
-The Set Node is used to:
+Set Node는:
 
 ```text
-Register data as a wireless provider
+데이터를 wireless provider로 등록
 ```
 
-Simply put, it acts as a:
+하는 노드입니다.
+
+쉽게 말하면:
 
 ```text
-Broadcasting station within the workflow
+workflow 내부 방송국
 ```
 
----
-
-#Screenshot : Set Node basic structure
+같은 역할입니다.
 
 ---
 
-#### How to Use
+#스크린샷 : Set Node 기본 구조
 
-#### Step 1 — Connect Input
+---
 
-First, connect the source data.
+#### 사용 방법
 
-Supported examples:
+#### Step 1 — 입력 연결
+
+먼저 source 데이터를 연결합니다.
+
+지원 예시:
 
 * IMAGE
 * LATENT
@@ -395,23 +487,25 @@ Supported examples:
 * CLIP
 * VAE
 
-Supports most types.
+등 대부분 타입 지원.
 
 ---
 
-#Screenshot : IMAGE input connection
+#스크린샷 : IMAGE 입력 연결
 
 ---
 
-#### Step 2 — Set setnode_name
+#### Step 2 — setnode_name 설정
 
-Next, set the:
+다음으로:
 
 ```text
 setnode_name
 ```
 
-Examples:
+을 설정합니다.
+
+예시:
 
 ```text
 MAIN_CHARACTER
@@ -421,15 +515,15 @@ MASTER_PROMPT
 
 ---
 
-#### Recommended Naming Convention
+#### 권장 네이밍 규칙
 
-Recommended format:
+추천 방식:
 
 ```text
 SECTION_PURPOSE
 ```
 
-Examples:
+예시:
 
 ```text
 INPUT_MAIN_IMAGE
@@ -439,9 +533,7 @@ PROMPT_CHARACTER_MAIN
 
 ---
 
-#### Not Recommended
-
-We advise avoiding meaningless names like:
+#### 비추천 방식
 
 ```text
 test
@@ -449,123 +541,141 @@ aaa
 123
 ```
 
-This makes maintenance difficult in large-scale workflows.
+처럼 의미 없는 이름은 피하는 것을 권장합니다.
+
+대규모 workflow에서 유지보수가 어려워집니다.
 
 ---
 
-#Screenshot : setnode_name examples
+#스크린샷 : setnode_name 예시
 
 ---
 
-#### Step 3 — Receive downstream
+#### Step 3 — downstream에서 receive
 
-Now, other nodes can receive wirelessly using:
+이제 다른 노드들은:
 
 * Get Node
-* Embedded Get
+* embedded get
 * MultiGet
 
----
-
-#Screenshot : Downstream receive example
+등으로 wireless receive 가능합니다.
 
 ---
 
-#### Internal Behavior of Set Node
+#스크린샷 : downstream receive 예시
 
-Internally, the Set Node is registered in the:
+---
+
+#### Set Node 내부 동작
+
+Set Node는 내부적으로:
 
 ```text
 Provider Registry
 ```
 
-This means the entire workflow shares a:
+에 등록됩니다.
+
+즉 workflow 전체가:
 
 ```text
-List of currently active providers
+현재 활성 provider 리스트
 ```
 
-The Get list is automatically generated from here.
+를 공유합니다.
+
+Get 리스트는 여기서 자동 생성됩니다.
 
 ---
 
-#### Precautions
+#### 주의 사항
 
-#### Duplicate Name Issue
+#### 중복 이름 문제
 
-If multiple nodes have the same:
+동일한:
 
 ```text
 setnode_name
 ```
 
-it can cause:
+이 여러 개 존재할 경우:
 
-* Unexpected receives
-* Tangled reconnects
-* Provider overwrites
+* 예상치 못한 receive
+* reconnect 꼬임
+* provider overwrite
+
+가 발생할 수 있습니다.
 
 ---
 
-#### Recommended Approach
+#### 추천 방식
 
-Always use:
+항상:
 
 ```text
-Unique and meaningful provider names
+고유하고 의미 있는 provider 이름
 ```
+
+사용을 권장합니다.
 
 ---
 
 ### 2. Get Node (TJ)
 
-#### Wireless Receive Node
+#### Wireless Receive 노드
 
 ---
 
-#### Purpose
+#### 목적
 
-The Get Node is used to:
+Get Node는:
 
 ```text
-Receive the wireless provider of a Set Node
+Set Node의 wireless provider를 수신
 ```
 
-Simply put, it acts as a:
+하는 노드입니다.
+
+쉽게 말하면:
 
 ```text
-Wireless receiver
+무선 수신기
 ```
 
----
-
-#Screenshot : Get Node overview
+역할입니다.
 
 ---
 
-#### How to Use
+#스크린샷 : Get Node overview
 
-#### Step 1 — Place Get Node
+---
 
-Place the Get Node near the location where the data will be used.
+#### 사용 방법
 
-The core purpose of this structure is:
+#### Step 1 — Get Node 배치
+
+데이터를 사용할 위치 근처에 Get Node를 배치합니다.
+
+이 구조의 핵심 목적은:
 
 ```text
-Removing long visible wires
+긴 visible wire 제거
 ```
 
----
-
-#Screenshot : Local receive example
+입니다.
 
 ---
 
-#### Step 2 — Select get_name
+#스크린샷 : local receive example
 
-Select a provider from the dropdown.
+---
 
-Examples:
+#### Step 2 — get_name 선택
+
+드롭다운에서 provider 선택.
+
+예시:
 
 ```text
 MAIN_CHARACTER
@@ -575,15 +685,17 @@ MASTER_PROMPT
 
 ---
 
-#### Eclipse Compatibility Display
+#### Eclipse 호환 표시
 
-Eclipse SetNode providers are displayed as:
+Eclipse SetNode provider는:
 
 ```text
 Eclipse / PROVIDER_NAME
 ```
 
-Example:
+형태로 표시됩니다.
+
+예시:
 
 ```text
 Eclipse / MAIN_IMAGE
@@ -591,110 +703,118 @@ Eclipse / MAIN_IMAGE
 
 ---
 
-#Screenshot : get_name dropdown
+#스크린샷 : get_name dropdown
 
 ---
 
-#### Step 3 — Use output
+#### Step 3 — output 사용
 
-The Get Node output:
+Get Node 출력은:
 
 ```text
-Behaves identically to the original data
+원본 데이터와 동일하게 동작
 ```
 
-Meaning it can be used downstream just like a standard connection.
+합니다.
+
+즉 일반 연결처럼 downstream 사용 가능합니다.
 
 ---
 
-#Screenshot : Sampler connection example
+#스크린샷 : sampler 연결 예시
 
 ---
 
 #### Hover Wire Visualization
 
-When hovering over a Get Node or slot:
+Get Node 또는 slot hover 시:
 
 ```text
-The fake-wire path is displayed
+fake-wire 경로 표시
 ```
 
-Through this, you can:
+됩니다.
 
-* Check the source provider
-* Check the routing direction
-* Analyze the workflow structure
+이를 통해:
 
----
+* source provider 확인
+* routing 방향 확인
+* workflow 구조 분석
 
-#Screenshot : Hover wire route
-
----
-
-#### Common Issues
-
-#### Provider list not showing
-
-Things to check:
-
-* Does the provider exist?
-* Has the workflow been reloaded?
-* Was the Set Node deleted?
+가능합니다.
 
 ---
 
-#### Solution
+#스크린샷 : hover wire route
 
-Right-click menu:
+---
 
-It is recommended to run:
+#### 자주 발생하는 문제
+
+#### Provider 리스트가 안 보이는 경우
+
+확인 사항:
+
+* provider 존재 여부
+* workflow reload 상태
+* deleted Set Node 여부
+
+---
+
+#### 해결 방법
+
+우클릭 메뉴:
 
 ```text
 Refresh ALL Get Nodes
 ```
 
+실행 권장.
+
 ---
 
 ### 3. Multi Get Node (TJ)
 
-#### Multi-Wireless Receive Node
+#### 다중 Wireless Receive 노드
 
 ---
 
-#### Purpose
+#### 목적
 
-A node that receives multiple wireless providers simultaneously.
+여러 wireless provider를 동시에 수신하는 노드입니다.
 
-Particularly crucial for:
+특히:
 
 ```text
-Modularizing large-scale workflows
+대규모 workflow 모듈화
 ```
 
----
-
-#Screenshot : MultiGet overview
+에서 매우 중요합니다.
 
 ---
 
-#### Recommended Use Cases
-
-Examples:
-
-* Receiving multiple prompts
-* Receiving multiple images
-* Managing grouped providers
-* Module receive structures
+#스크린샷 : MultiGet overview
 
 ---
 
-#### How to Use
+#### 추천 사용 상황
 
-#### Step 1 — Add Providers
+추천 예시:
 
-Multiple providers can be registered.
+* 여러 prompt 수신
+* 여러 image 수신
+* grouped provider 관리
+* module receive 구조
 
-Examples:
+---
+
+#### 사용 방법
+
+#### Step 1 — provider 추가
+
+여러 provider 등록 가능.
+
+예시:
 
 ```text
 MAIN_PROMPT
@@ -705,67 +825,73 @@ NEGATIVE_PROMPT
 
 ---
 
-#Screenshot : Multiple provider slots
+#스크린샷 : multiple provider slots
 
 ---
 
-#### Step 2 — Use Reorder
+#### Step 2 — reorder 사용
 
-Buttons:
+버튼:
 
-| Button | Function |
-| - | - |
-| ↑ | Move Up |
-| ↓ | Move Down |
-| ✕ | Remove |
+|버튼|기능|
+|-|-|
+|↑|위로 이동|
+|↓|아래로 이동|
+|✕|제거|
 
 ---
 
-#### Purpose
+#### 목적
 
-To align the provider order with the:
+provider 순서를:
 
 ```text
-Logical order of the workflow
+workflow 논리 순서
 ```
 
----
-
-#Screenshot : Reorder UI
+와 맞추기 위함입니다.
 
 ---
 
-#### Compact Slot Structure
+#스크린샷 : reorder UI
 
-Deleted slots are automatically compacted.
+---
 
-Meaning it uses a structure that:
+#### Compact Slot 구조
+
+삭제된 slot은 자동 compact 됩니다.
+
+즉:
 
 ```text
-Minimizes empty slots in the middle
+중간 빈 슬롯 최소화
 ```
 
----
-
-#Screenshot : Compact slot behavior
+구조를 사용합니다.
 
 ---
 
-#### Recommended Structure
+#스크린샷 : compact slot behavior
 
-Instead of using multiple Get Nodes, we recommend a:
+---
+
+#### 추천 구조
+
+다수의 Get Node 대신:
 
 ```text
-MultiGet-based module receive
+MultiGet 기반 module receive
 ```
 
-structure.
+구조를 추천합니다.
 
-It is highly effective for receiving:
+특히:
 
-* Prompt groups
-* Model groups
-* Image groups
+* prompt group
+* model 단 group
+* image group
+
+수신에 매우 효과적입니다.
 
 ---
 
@@ -775,55 +901,61 @@ It is highly effective for receiving:
 
 ---
 
-#### Purpose
+#### 목적
 
-The Multi Router is a core node for:
+Multi Router는:
 
 ```text
-Separating a workflow into a wireless branch structure
+workflow를 무선 branch 구조로 분리
 ```
 
-It is one of the central nodes in the TJ_NODE architecture.
+하기 위한 핵심 노드입니다.
+
+TJ_NODE architecture 중심 노드 중 하나입니다.
 
 ---
 
-#Screenshot : Multi Router overview
+#스크린샷 : Multi Router overview
 
 ---
 
-#### Core Role
+#### 핵심 역할
 
-The Multi Router performs:
+Multi Router는:
 
-* Branch separation
-* Auto Set creation
-* Provider structuring
-* Workflow modularization
+* branch 분리
+* Auto Set 생성
+* provider 구조화
+* workflow 모듈화
+
+를 수행합니다.
 
 ---
 
-#### How to Use
+#### 사용 방법
 
-#### Step 1 — Source Input
+#### Step 1 — source 입력
 
-Examples of valid inputs:
+예시:
 
 * IMAGE
 * LATENT
 * CONDITIONING
 * STRING
 
----
-
-#Screenshot : Source input
+등 입력 가능.
 
 ---
 
-#### Step 2 — Configure Output Branches
+#스크린샷 : source input
 
-Separate the output branches by workflow section.
+---
 
-Examples:
+#### Step 2 — output branch 구성
+
+출력 branch를 workflow section별로 분리.
+
+예시:
 
 ```text
 generation
@@ -834,41 +966,41 @@ save
 
 ---
 
-#Screenshot : Branch workflow
+#스크린샷 : branch workflow
 
 ---
 
-#### Step 3 — Enable Auto Set
-
-When:
+#### Step 3 — Auto Set 활성화
 
 ```text
 Auto Set = ON
 ```
 
-Each output automatically becomes a wireless provider.
+시:
+
+각 output이 자동 wireless provider가 됩니다.
 
 ---
 
-#### Core Purpose of Auto Set
+#### Auto Set의 핵심 목적
 
-To create an:
+긴 wire 없이:
 
 ```text
-Auto provider branch creation
+자동 provider branch 생성
 ```
 
-structure without long wires.
+구조를 만들기 위함입니다.
 
 ---
 
-#Screenshot : Auto Set ON state
+#스크린샷 : Auto Set ON 상태
 
 ---
 
-#### Recommended Workflow Structure
+#### 추천 workflow 구조
 
-TJ workflows recommend the following structure:
+TJ workflow는 다음 구조를 추천합니다.
 
 ```text
 INPUT
@@ -884,117 +1016,129 @@ PREVIEW
 SAVE
 ```
 
-Connecting each section via:
+각 section을:
 
 ```text
-Multi Router + wireless branches
+Multi Router + wireless branch
 ```
 
-is the most stable method.
+로 연결하는 것이 가장 안정적입니다.
 
 ---
 
-#Screenshot : Modular workflow architecture
+#스크린샷 : modular workflow architecture
 
 ---
 
 #### Eclipse Compatibility
 
-TJ_NODE is compatible with the Eclipse SetNode.
+TJ_NODE는 Eclipse SetNode와 호환됩니다.
 
-The TJ Get system can directly use the:
+TJ Get 시스템은:
 
 ```text
 Eclipse SetNode OUTPUT endpoint
 ```
 
-as a provider.
+를 직접 provider로 사용 가능합니다.
 
 ---
 
-#### Display Format
+#### 표시 방식
 
-In the Get list, it appears as:
+Get 리스트에서:
 
 ```text
 Eclipse / PROVIDER_NAME
 ```
 
+형태로 표시됩니다.
+
 ---
 
-#### Purpose
+#### 목적
 
-TJ_NODE is not meant to replace Eclipse.
+TJ_NODE는 Eclipse를 대체하는 구조가 아닙니다.
 
-Instead, it acts as an:
+대신:
 
 ```text
 Eclipse workflow bridge layer
 ```
 
-Meaning you can run a mix of:
+역할을 수행합니다.
 
-* Eclipse workflows
-* TJ workflows
+즉:
 
----
+* Eclipse workflow
+* TJ workflow
 
-#Screenshot : Eclipse bridge workflow
-
----
-
-### Recommended Operation for Wireless Routing System
-
-We recommend the following for TJ workflows:
+혼합 운용 가능합니다.
 
 ---
 
-#### Recommended
+#스크린샷 : Eclipse bridge workflow
+
+---
+
+### Wireless Routing System 추천 운영 방식
+
+TJ workflow에서는 다음 구조를 추천합니다.
+
+---
+
+#### 추천
 
 ```text
 - Realtime Wires View Mode = ON
 - Show ALL Wires = OFF
-- Active use of Embedded Get
-- Systematized provider naming
-- Separating workflows into sections
+- Embedded Get 적극 사용
+- Provider 이름 체계화
+- Section 단위 workflow 분리
 ```
 
 ---
 
-#### Not Recommended
+#### 비추천
 
 ```text
-- Duplicate provider names
-- Meaningless provider names
-- Maintaining long visible wires
-- Overuse of standalone Get nodes
+- 중복 provider 이름
+- 무의미한 provider 이름
+- 긴 visible wire 유지
+- standalone Get 남발
 ```
 
 ---
 
 ### Final Notes
 
-The Wireless Routing System is the:
+Wireless Routing System은:
 
 ```text
-Heart of TJ_NODE
+TJ_NODE의 심장
 ```
 
-The core philosophy of TJ_NODE workflows is not:
+입니다.
+
+TJ_NODE workflow의 핵심 철학은:
 
 ```text
-"Removing wires"
+"와이어 제거"
 ```
 
-The core is:
+가 아닙니다.
+
+핵심은:
 
 ```text
-"Making large-scale workflows maintainable"
+"대규모 workflow를 유지 가능한 구조로 만드는 것"
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final wireless workflow showcase
+#스크린샷 : 최종 wireless workflow showcase
 
 ---
 
@@ -1002,122 +1146,132 @@ The core is:
 
 ---
 
-### Introduction to Batch Workflow System
+### Batch Workflow System 소개
 
-The Batch Workflow System of TJ_NODE is not just a collection of simple batch processing nodes.
+TJ_NODE의 Batch Workflow System은 단순 batch 처리 노드 모음이 아닙니다.
 
-This system is:
+이 시스템은:
 
 ```text
-A system designed to structurally operate
-large-scale image workflows
+대규모 이미지 workflow를
+구조적으로 운영하기 위한 시스템
 ```
 
-Standard batch workflows often cause the following issues:
+입니다.
 
-* Image sequence tangling
-* Loss of metadata
-* Resolution mismatch
-* Congestion in downstream branches
-* Difficulty managing image groups
-* Save path sync issues
+일반적인 batch workflow는 다음 문제를 자주 발생시킵니다.
 
-To solve these, TJ_NODE provides:
+* 이미지 순서 꼬임
+* metadata 유실
+* 해상도 mismatch
+* downstream branch 혼잡
+* 이미지 그룹 관리 어려움
+* save path sync 문제
+
+TJ_NODE는 이를 해결하기 위해:
 
 * Multi Image Loader
 * Dynamic Batch
 * Batch Split
 * Eclipse Metadata Sync
 
+구조를 제공합니다.
+
 ---
 
-#Screenshot : Batch Workflow Overall Structure
+#스크린샷 : Batch Workflow 전체 구조
 
 ---
 
 ### 1. Multi Image Loader (TJ)
 
-#### The Core Input Hub of TJ_NODE
+#### TJ_NODE의 핵심 입력 허브
 
-The Multi Image Loader acts as the:
+Multi Image Loader는:
 
 ```text
-Starting point of a TJ workflow
+TJ workflow의 시작점
 ```
 
-It doesn't merely load images.
+역할을 수행하는 핵심 노드입니다.
 
-In reality, it simultaneously acts as an:
+이 노드는 단순히 이미지를 로드하는 것이 아닙니다.
 
-* Image stack manager
-* Batch generator
-* Resolution manager
-* Provider source
-* Metadata sync system
+실제로는:
 
----
+* image stack manager
+* batch generator
+* resolution manager
+* provider source
+* metadata sync system
 
-#Screenshot : Multi Image Loader basic state
-
----
-
-#### Key Roles
-
-The Multi Image Loader performs:
-
-| Function | Description |
-| - | - |
-| Image Load | Multiple image input |
-| Image Stack | Internal list management |
-| Thumbnail Preview | Previewing images |
-| Reorder | Drag-to-sort |
-| Batch Generation | IMAGE batch tensor output |
-| Resize | Standardize resolutions |
-| Metadata Preservation | Maintain original info |
-| Auto Set | Generate WIDTH/HEIGHT/BATCH providers |
+역할을 동시에 수행합니다.
 
 ---
 
-#### When to use it?
-
-Recommended situations:
-
-* Dataset batch processing
-* Variation workflows
-* Upscale batches
-* VAE Encode batches
-* ControlNet image groups
-* Style transfer batches
-* Image compare workflows
+#스크린샷 : Multi Image Loader 기본 상태
 
 ---
 
-#Screenshot : Mass batch workflow example
+#### 주요 역할
+
+Multi Image Loader는:
+
+|기능|설명|
+|-|-|
+|이미지 로드|다중 이미지 입력|
+|image stack|내부 리스트 관리|
+|thumbnail preview|미리보기|
+|reorder|drag 정렬|
+|batch 생성|IMAGE batch tensor|
+|resize|해상도 통일|
+|metadata 유지|원본 정보 유지|
+|Auto Set|WIDTH/HEIGHT/BATCH provider 생성|
+
+를 수행합니다.
 
 ---
 
-#### A. Adding Images
+#### 언제 사용하는가?
 
-Supported methods:
+추천 상황:
 
-| Method | Description |
-| - | - |
-| File Select | Local files |
-| Drag & Drop | Direct drag |
-| URL Download | Download external images |
-
----
-
-#Screenshot : Add Image button
-#Screenshot : Drag & drop state
+* dataset batch
+* variation workflow
+* upscale batch
+* VAE Encode batch
+* ControlNet image group
+* style transfer batch
+* image compare workflow
 
 ---
 
-#### B. URL Download Feature
+#스크린샷 : 대량 batch workflow 예시
 
-Allows external URL input.
+---
 
-Example:
+#### A. 이미지 추가 방법
+
+지원 방식:
+
+|방식|설명|
+|-|-|
+|파일 선택|로컬 파일|
+|Drag & Drop|직접 드래그|
+|URL Download|외부 이미지 다운로드|
+
+---
+
+#스크린샷 : 이미지 추가 버튼
+#스크린샷 : drag & drop 상태
+
+---
+
+#### B. URL Download 기능
+
+외부 URL 입력 가능.
+
+예시:
 
 ```text
 https://example.com/image.jpg
@@ -1125,100 +1279,108 @@ https://example.com/image.jpg
 
 ---
 
-#### Purpose
+#### 목적
 
-Recommended for:
+추천 사용:
 
-* Reference images
-* External datasets
-* Remote workflow assets
-
----
-
-#### Precautions
-
-Some sites may cause downloads to fail due to:
-
-* Hotlink blocking
-* CORS restrictions
+* reference image
+* external dataset
+* remote workflow asset
 
 ---
 
-#Screenshot : URL download example
+#### 주의 사항
+
+일부 사이트는:
+
+* hotlink 차단
+* CORS 제한
+
+으로 다운로드 실패 가능.
 
 ---
 
-#### C. Image Stack System
+#스크린샷 : URL download 예시
 
-Images are managed internally as an:
+---
+
+#### C. Image Stack 시스템
+
+이미지는 내부적으로:
 
 ```text
 Image Stack
 ```
 
-Meaning it’s not just an array, but also manages:
+구조로 관리됩니다.
 
-* Preview state
-* Order
-* Metadata
-* Resize state
+즉 단순 배열이 아니라:
+
+* preview state
+* order
+* metadata
+* resize state
+
+를 함께 관리합니다.
 
 ---
 
 #### D. Thumbnail Grid
 
-Added images are displayed as a:
+추가된 이미지는:
 
 ```text
-Thumbnail grid
+thumbnail grid
 ```
 
-Purpose:
+로 표시됩니다.
 
-* Quick structural check
-* Batch state check
-* Improved reorder intuitiveness
+목적:
 
----
-
-#Screenshot : Thumbnail grid
+* 빠른 구조 확인
+* batch 상태 확인
+* reorder 직관성 향상
 
 ---
 
-#### E. Drag Reorder Feature
-
-Images can be reordered by dragging.
+#스크린샷 : thumbnail grid
 
 ---
 
-#### Why is this important?
+#### E. Drag Reorder 기능
 
-In batch workflows, the:
+이미지는 drag로 순서 변경 가능합니다.
+
+---
+
+#### 왜 중요한가?
+
+Batch workflow에서는:
 
 ```text
-Order itself is data
+순서 자체가 데이터
 ```
 
-in many cases.
+인 경우가 많습니다.
 
-Examples:
+예시:
 
-* Animation sequences
-* Prompt sync
-* Frame processing
-* Paired datasets
-
----
-
-#Screenshot : Drag reorder state
+* animation sequence
+* prompt sync
+* frame processing
+* paired dataset
 
 ---
 
-#### Recommended Usage
+#스크린샷 : drag reorder 상태
 
-It is recommended to maintain a sorting rule.
+---
 
-Example:
+#### 추천 사용 방식
+
+정렬 규칙을 유지하는 것을 추천합니다.
+
+예시:
 
 ```text
 001_input
@@ -1230,41 +1392,41 @@ Example:
 
 #### F. Resize System
 
-#### Core Purpose
+#### 핵심 목적
 
-In batch workflows, a:
+Batch workflow에서:
 
 ```text
-Resolution mismatch
+resolution mismatch
 ```
 
-is a very common issue.
+는 매우 흔한 문제입니다.
 
-The Multi Image Loader includes a resize system to fix this.
-
----
-
-#### Supported Modes
-
-| Mode | Description |
-| - | - |
-| none | Keep original |
-| long edge | Based on the longest side |
-| short edge | Based on the shortest side |
-| custom | Manual input |
-| megapixel | Calculated based on MP |
+Multi Image Loader는 이를 해결하기 위한 resize 시스템을 포함합니다.
 
 ---
 
-#Screenshot : Resize settings
+#### 지원 모드
+
+|Mode|설명|
+|-|-|
+|none|원본 유지|
+|long edge|긴 변 기준|
+|short edge|짧은 변 기준|
+|custom|직접 입력|
+|megapixel|MP 기준 계산|
+
+---
+
+#스크린샷 : resize settings
 
 ---
 
 #### Long Edge Mode
 
-Resize based on the longest side.
+긴 변 기준 resize.
 
-Example:
+예시:
 
 ```text
 long edge = 1536
@@ -1280,32 +1442,32 @@ long edge = 1536
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommended for:
+추천 상황:
 
-* SDXL workflows
-* Image generation normalization
-* Upscale pipelines
+* SDXL workflow
+* image generation normalization
+* upscale pipeline
 
 ---
 
 #### Short Edge Mode
 
-Resize based on the shortest side.
+짧은 변 기준 resize.
 
-Recommended for:
+추천 상황:
 
-* Portrait datasets
-* Vertical image consistency
+* portrait dataset
+* vertical image consistency
 
 ---
 
 #### Megapixel Mode
 
-Auto-calculate based on MP.
+MP 기준으로 자동 계산.
 
-Examples:
+예시:
 
 ```text
 1MP
@@ -1315,15 +1477,15 @@ Examples:
 
 ---
 
-#### Advantages
+#### 장점
 
-Normalize based on the:
+직접 width/height 계산 없이:
 
 ```text
-Target pixel count
+목표 픽셀량 기준 normalize
 ```
 
-without manually calculating width/height.
+가능.
 
 ---
 
@@ -1331,57 +1493,59 @@ without manually calculating width/height.
 
 #### Center Crop
 
-Maintain ratio and crop from the center.
+비율 유지 후 중앙 crop.
 
 ---
 
-#### Recommended Use Cases
+#### 추천 상황
 
-* Portrait datasets
-* Subject-focused images
-* Fashion workflows
+* portrait dataset
+* subject 중심 이미지
+* fashion workflow
 
 ---
 
 #### Force Fit
 
-Force fit to aspect ratio.
+비율 강제 맞춤.
 
 ---
 
-#### Recommended Use Cases
+#### 추천 상황
 
-* Textures
-* Tiles
-* Exact resolution workflows
+* texture
+* tile
+* exact resolution workflow
 
 ---
 
-#### Precautions
+#### 주의 사항
 
-Force Fit can cause:
+Force Fit은:
 
 ```text
-Ratio distortion
+비율 왜곡 가능
 ```
 
-Center Crop is recommended for images of people.
+합니다.
+
+사람 이미지에서는 Center Crop 권장.
 
 ---
 
-#Screenshot : Center Crop vs Force Fit comparison
+#스크린샷 : Center Crop vs Force Fit 비교
 
 ---
 
-#### H. Output Descriptions
+#### H. Output 설명
 
 #### BATCH
 
-Outputs an IMAGE batch tensor.
+IMAGE batch tensor 출력.
 
 ---
 
-#### Usage Example
+#### 사용 예시
 
 ```text
 Multi Image Loader
@@ -1394,36 +1558,38 @@ Multi Image Loader
 
 #### WIDTH / HEIGHT
 
-Outputs the resolution based on the current batch.
+현재 batch 기준 해상도 출력.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In TJ workflows:
+TJ workflow에서는:
 
 ```text
-Resolution is also used as routing data
+resolution도 routing 데이터
 ```
 
----
-
-#### Recommended Usage
-
-* Auto Set providers
-* Upscale sync
-* Save pipelines
-* Latent sizing
+로 사용합니다.
 
 ---
 
-#Screenshot : WIDTH/HEIGHT routing
+#### 추천 사용
+
+* Auto Set provider
+* upscale sync
+* save pipeline
+* latent sizing
 
 ---
 
-#### I. Auto Set Feature
+#스크린샷 : WIDTH/HEIGHT routing
 
-The Multi Image Loader can automatically create:
+---
+
+#### I. Auto Set 기능
+
+Multi Image Loader는:
 
 ```text
 BATCH
@@ -1431,11 +1597,11 @@ WIDTH
 HEIGHT
 ```
 
-wireless providers.
+자동 wireless provider 생성 가능.
 
 ---
 
-#### How to Use
+#### 사용 방법
 
 ```text
 Auto Set = ON
@@ -1443,9 +1609,9 @@ Auto Set = ON
 
 ---
 
-#### Internal Behavior
+#### 내부 동작
 
-Automatically generates:
+자동으로:
 
 ```text
 TJ / BATCH
@@ -1453,25 +1619,23 @@ TJ / WIDTH
 TJ / HEIGHT
 ```
 
-providers.
+provider 생성.
 
 ---
 
-#### Advantages
+#### 장점
 
-* Removes long wires
-* Simplifies downstream routing
-* Modularizes batch structures
-
----
-
-#Screenshot : Auto Set provider list
+* 긴 wire 제거
+* downstream routing 단순화
+* batch 구조 모듈화
 
 ---
 
-#### Recommended Structure
+#스크린샷 : Auto Set provider list
 
-We recommend the following structure:
+---
+
+#### 추천 구조
 
 ```text
 Multi Image Loader
@@ -1481,79 +1645,87 @@ Multi Router
 Wireless Sections
 ```
 
+구조를 추천합니다.
+
 ---
 
-#Screenshot : Recommended structure
+#스크린샷 : recommended structure
 
 ---
 
 ### 2. Dynamic Image Batch (TJ)
 
-#### Purpose
+#### 목적
 
-A node that combines multiple images into a:
-
-```text
-Dynamic batch structure
-```
-
----
-
-#### Core Roles
-
-* Image grouping
-* Dynamic batching
-* Scalable processing
-* Workflow distribution
-
----
-
-#### Recommended Use Cases
-
-Examples:
-
-* Image variations
-* Multi-prompt generation
-* Grouped upscaling
-* Iterative processing
-
----
-
-#Screenshot : Dynamic Image Batch overview
-
----
-
-#### Internal Structure
-
-This node does not create a:
+여러 이미지를:
 
 ```text
-Fixed batch
+동적 batch 구조
 ```
 
-but instead:
-
-```text
-Creates batches dynamically
-```
-
-Meaning depending on the workflow state, the:
-
-* Batch size
-* Image groups
-* Downstream branches
-
-may vary.
+로 생성하는 노드입니다.
 
 ---
 
-#### Why is this important?
+#### 핵심 역할
 
-In large-scale workflows:
+* image grouping
+* dynamic batch
+* scalable processing
+* workflow distribution
+
+---
+
+#### 추천 사용 상황
+
+추천 예시:
+
+* image variation
+* multi prompt generation
+* grouped upscale
+* iterative processing
+
+---
+
+#스크린샷 : Dynamic Image Batch overview
+
+---
+
+#### 내부 구조
+
+이 노드는:
 
 ```text
-The batch itself is often dynamic data
+고정 batch
 ```
+
+가 아니라:
+
+```text
+동적으로 batch 생성
+```
+
+합니다.
+
+즉 workflow 상태에 따라:
+
+* batch size
+* image group
+* downstream branch
+
+가 달라질 수 있습니다.
+
+---
+
+#### 왜 중요한가?
+
+대규모 workflow에서는:
+
+```text
+batch 자체가 동적 데이터
+```
+
+인 경우가 많기 때문입니다.
 
 ---
 
@@ -1561,63 +1733,67 @@ The batch itself is often dynamic data
 
 #### Eclipse Compatibility Batch System
 
-A batch system compatible with Eclipse workflow structures.
+Eclipse workflow 구조와 호환되는 batch 시스템입니다.
 
 ---
 
-#### Core Features
+#### 핵심 특징
 
-This node keeps the:
+이 노드는:
 
 ```text
 IMAGE + FILES pair
 ```
 
-together.
+를 함께 유지합니다.
 
-Meaning it simultaneously maintains the:
+즉:
 
-* Image tensor
-* Original file metadata
-* Original path
+* image tensor
+* original file metadata
+* original path
+
+를 동시에 유지합니다.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Standard batch systems often suffer from:
+일반 batch 시스템은:
 
 ```text
-Loss of original file information
+원본 파일 정보 유실
 ```
 
-This is extremely important in Eclipse workflows.
+이 자주 발생합니다.
+
+Eclipse workflow에서는 이것이 매우 중요합니다.
 
 ---
 
-#### Supported Features
+#### 지원 기능
 
-| Feature | Description |
-| - | - |
-| Maintain Metadata | Keep original info |
-| Bypass Filtering | Maintain file sync |
-| Original Path | Keep original paths |
-| Eclipse Save Sync | Link save structures |
-
----
-
-#Screenshot : Eclipse batch flow
+|기능|설명|
+|-|-|
+|metadata 유지|원본 정보 유지|
+|bypass filtering|file sync 유지|
+|original path|원본 경로 유지|
+|Eclipse save sync|저장 구조 연동|
 
 ---
 
-#### Recommended Use Cases
+#스크린샷 : Eclipse batch flow
 
-Recommended workflows:
+---
 
-* Large dataset workflows
-* Eclipse save pipelines
-* Metadata-dependent workflows
-* File-tracking workflows
+#### 추천 사용 상황
+
+추천 workflow:
+
+* large dataset workflow
+* Eclipse save pipeline
+* metadata dependent workflow
+* file-tracking workflow
 
 ---
 
@@ -1625,89 +1801,97 @@ Recommended workflows:
 
 #### Batch Split System
 
-A node that splits an IMAGE batch into:
+IMAGE batch를:
 
 ```text
-Up to 64 independent IMAGE outputs
+최대 64개 IMAGE output
 ```
+
+으로 분리하는 노드입니다.
 
 ---
 
-#### Core Purpose
+#### 핵심 목적
 
-To split a batch workflow into:
+Batch workflow를:
 
 ```text
-Individual downstream branches
+개별 downstream branch
 ```
 
----
-
-#Screenshot : Batch Split overview
+로 분리하기 위함입니다.
 
 ---
 
-#### How to Use
+#스크린샷 : Batch Split overview
 
-#### Step 1 — Input IMAGE Batch
+---
 
-Connect the:
+#### 사용 방법
+
+#### Step 1 — IMAGE batch 입력
 
 ```text
 IMAGE batch
 ```
 
+연결.
+
 ---
 
-#### Step 2 — Use Output
+#### Step 2 — output 사용
 
-Each image is separated into an:
+각 이미지가:
 
 ```text
-Independent IMAGE output
+독립 IMAGE output
 ```
 
----
-
-#### Recommended Use Cases
-
-Examples:
-
-* Selective upscaling
-* Compare workflows
-* Image ranking
-* Branch processing
-* Multi-save pipelines
+으로 분리됩니다.
 
 ---
 
-#Screenshot : Split branch example
+#### 추천 사용 상황
+
+추천 예시:
+
+* selective upscale
+* compare workflow
+* image ranking
+* branch processing
+* multi save pipeline
 
 ---
 
-#### Embedded Get Support
+#스크린샷 : split branch example
 
-Batch to Multi Image Output supports:
+---
+
+#### Embedded Get 지원
+
+Batch to Multi Image Output는:
 
 ```text
-Embedded Get
+embedded get
 ```
 
-Meaning direct wireless receiving is possible.
+지원.
+
+즉 직접 wireless receive 가능.
 
 ---
 
-#Screenshot : Embedded get in batch output
+#스크린샷 : embedded get in batch output
 
 ---
 
-### Recommended Batch Workflow Structure
+### Batch Workflow 추천 구조
 
-We recommend the following structure in TJ workflows:
+TJ workflow에서는 다음 구조를 추천합니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Multi Image Loader
@@ -1725,98 +1909,104 @@ Preview / Save
 
 ---
 
-#### Advantages
+#### 장점
 
-This structure is highly advantageous for:
+이 구조는:
 
-* Batch management
-* Routing structuring
-* Save pipeline separation
-* Workflow maintenance
+* batch 관리
+* routing 구조화
+* save pipeline 분리
+* workflow 유지보수
 
----
-
-### Common Issues
-
-#### Image order tangling
-
-Causes:
-
-* Missing reorder
-* Batch overwrite
-* Duplicated workflows
+에 매우 유리합니다.
 
 ---
 
-#### Solution
+### 자주 발생하는 문제
 
-Recommendation:
+#### 이미지 순서 꼬임
+
+원인:
+
+* reorder 누락
+* batch overwrite
+* duplicated workflow
+
+---
+
+#### 해결 방법
+
+추천:
 
 ```text
-Save workflow after drag reorder
+drag reorder 후 workflow 저장
 ```
 
 ---
 
-#### Resolution Mismatch
+#### 해상도 mismatch
 
-Causes:
+원인:
 
-* Mixed resolutions
-* Resize OFF
+* mixed resolution
+* resize OFF
 * Force Fit mismatch
 
 ---
 
-#### Solution
+#### 해결 방법
 
-Recommendation:
+추천:
 
 ```text
-Long edge normalize
+long edge normalize
 ```
 
 ---
 
-#### Metadata Loss
+#### Metadata 유실
 
-Causes:
+원인:
 
-* Using standard batch
-* Not using Eclipse metadata
+* 일반 batch 사용
+* Eclipse metadata 미사용
 
 ---
 
-#### Solution
+#### 해결 방법
 
-Recommendation:
-
-Use:
+추천:
 
 ```text
 Dynamic Image Batch(Eclipse-TJ)
 ```
 
+사용.
+
 ---
 
 ### Final Notes
 
-The Batch Workflow System is the:
+Batch Workflow System은:
 
 ```text
-Input and distribution structure of TJ workflows
+TJ workflow의 입력 및 분배 구조
 ```
 
-The core of TJ_NODE isn't just basic batch processing, but:
+입니다.
+
+TJ_NODE의 핵심은 단순 batch 처리 자체가 아니라:
 
 ```text
-Structuring large-scale workflows
-into a maintainable form
+대규모 workflow를
+구조적으로 유지 가능한 형태로 만드는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final Batch Workflow showcase
+#스크린샷 : 최종 Batch Workflow showcase
 
 ---
 
@@ -1824,28 +2014,31 @@ into a maintainable form
 
 ---
 
-### Introduction to Preview / Utility System
+### Preview / Utility System 소개
 
-The Preview / Utility System in TJ_NODE is not just a collection of simple preview nodes.
+TJ_NODE의 Preview / Utility System은 단순 preview 노드 모음이 아닙니다.
 
-This system is a:
+이 시스템은:
 
 ```text
-Visualization and debugging system designed
-to keep large-scale workflows in an operational state
+대규모 workflow를
+실제로 운영 가능한 구조로 유지하기 위한
+시각화 및 디버그 시스템
 ```
 
-Standard workflows frequently encounter the following issues:
+입니다.
 
-* Overusing preview nodes to check results
-* Long preview wires
-* Difficult fullscreen inspections
-* Difficult batch comparisons
-* Loss of previews after reloading
-* Unstable video previews
-* Audio sync issues
+일반적인 workflow에서는 다음 문제가 자주 발생합니다.
 
-To solve these, TJ_NODE provides:
+* 결과 확인을 위해 preview 노드 남발
+* 긴 preview wire
+* fullscreen 검사 어려움
+* batch 비교 어려움
+* reload 후 preview 유실
+* video preview 불안정
+* audio sync 문제
+
+TJ_NODE는 이를 해결하기 위해:
 
 * Smart Preview
 * Snapshot Preview
@@ -1855,9 +2048,11 @@ To solve these, TJ_NODE provides:
 * HTML5 Video Player
 * Audio Controller
 
+시스템을 제공합니다.
+
 ---
 
-#Screenshot : Preview System Overall Structure
+#스크린샷 : Preview System 전체 구조
 
 ---
 
@@ -1865,31 +2060,31 @@ To solve these, TJ_NODE provides:
 
 #### Unified Image Preview System
 
-Save & Preview Image is the flagship preview system of TJ_NODE.
+Save & Preview Image는 TJ_NODE의 대표 preview 시스템입니다.
 
-It is not just a preview node.
+단순 preview 노드가 아닙니다.
 
-It integrates:
+이 노드는:
 
-* Image preview
-* Fullscreen viewer
-* Batch grid
-* Keyboard navigation
-* Snapshot preview
-* Save pipeline
-* Embedded Get
+* image preview
+* fullscreen viewer
+* batch grid
+* keyboard navigation
+* snapshot preview
+* save pipeline
+* embedded get
 
-into a single structure.
-
----
-
-#Screenshot : Save & Preview Image basic state
+을 하나로 통합한 구조입니다.
 
 ---
 
-#### Main Purpose
+#스크린샷 : Save & Preview Image 기본 상태
 
-In standard workflows, you had to separately configure:
+---
+
+#### 주요 목적
+
+기존 workflow에서는:
 
 ```text
 Preview Image
@@ -1901,299 +2096,319 @@ Fullscreen Viewer
 Compare Viewer
 ```
 
-TJ_NODE unifies these into a single workflow node.
+를 따로 구성해야 했습니다.
+
+TJ_NODE는 이를 하나의 workflow node로 통합합니다.
 
 ---
 
-#### Supported Features
+#### 지원 기능
 
-| Feature | Description |
-| - | - |
-| IMAGE preview | Single/Batch display |
-| Fullscreen | Zoomed view |
-| Smart Grid | Batch grid layout |
-| Keyboard Control | Arrow keys / ESC |
-| Snapshot | Preview copy |
-| Embedded Get | Wireless receive |
-| Save System | Save images |
-| Reload Restore | Restore previews |
+|기능|설명|
+|-|-|
+|IMAGE preview|단일/배치 표시|
+|Fullscreen|확대 보기|
+|Smart Grid|batch grid|
+|Keyboard Control|방향키/ESC|
+|Snapshot|preview 복사|
+|Embedded Get|wireless receive|
+|Save System|이미지 저장|
+|Reload Restore|preview 복원|
 
 ---
 
-#### Basic Usage
+#### 기본 사용 방법
 
-#### Step 1 — Connect IMAGE Input
-
-Connect an IMAGE or IMAGE batch to the:
+#### Step 1 — IMAGE 입력 연결
 
 ```text
 image
 ```
 
-slot.
+슬롯에 IMAGE 또는 IMAGE batch 연결.
 
 ---
 
-#Screenshot : Image input connection
+#스크린샷 : image input 연결
 
 ---
 
-#### Supported Inputs
+#### 지원 입력
 
-| Input Type | Description |
-| - | - |
-| IMAGE | Single image |
-| IMAGE batch | Multiple images |
+|입력 타입|설명|
+|-|-|
+|IMAGE|단일 이미지|
+|IMAGE batch|다중 이미지|
 
 ---
 
-#### Auto Detection
+#### 자동 감지
 
-The node automatically determines between:
+노드는 자동으로:
 
 ```text
 single image
-or
+또는
 batch grid
 ```
 
-modes.
+모드를 판단합니다.
 
 ---
 
-#### Step 2 — Execute Queue
+#### Step 2 — Queue 실행
 
-When the workflow is executed:
+workflow 실행 시:
 
-* Preview generation
-* Grid generation
-* Snapshot metadata save
+* preview 생성
+* grid 생성
+* snapshot metadata 저장
 
-are performed automatically.
-
----
-
-#Screenshot : Preview generation state
+이 자동 수행됩니다.
 
 ---
 
-#### Step 3 — Inspect Image
-
-Click the image to enter fullscreen preview.
+#스크린샷 : preview 생성 상태
 
 ---
 
-#Screenshot : Fullscreen viewer
+#### Step 3 — 이미지 확인
+
+이미지를 클릭하면 fullscreen preview 진입.
 
 ---
 
-#### Smart Grid System
+#스크린샷 : fullscreen viewer
 
-#### Purpose
+---
 
-To display batch previews in an:
+#### Smart Grid 시스템
+
+#### 목적
+
+batch preview를:
 
 ```text
-Easy-to-read structure
+읽기 쉬운 구조
 ```
+
+로 표시하기 위함입니다.
 
 ---
 
-#### Features
+#### 특징
 
-The Smart Grid uses:
+Smart Grid는:
 
-* Dynamic layout
-* Fit-center
+* dynamic layout
+* fit-center
 * 2px spacing
-* Stable rendering
+* stable rendering
+
+구조를 사용합니다.
 
 ---
 
-#Screenshot : Smart grid layout
+#스크린샷 : smart grid layout
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Standard batch previews often suffer from:
+일반 batch preview는:
 
-* Image overlapping
-* Broken resizing
-* Collapsed aspect ratios
+* 이미지 겹침
+* resize 깨짐
+* aspect ratio 붕괴
 
-The TJ grid system is designed to minimize these issues.
+문제가 자주 발생합니다.
+
+TJ grid 시스템은 이를 최소화하도록 설계되었습니다.
 
 ---
 
-#### Relationship between Node Resize and Preview
+#### 노드 Resize와 Preview 관계
 
-Save & Preview Image does not:
+Save & Preview Image는:
 
 ```text
-Force change node.size upon execution
+실행 시 node.size 강제 변경
 ```
 
-Instead, it:
+을 하지 않습니다.
 
-* Provides an initial preview area
-* Displays fit-center
-* Retains user resizing
+대신:
 
----
+* 초기 preview area 제공
+* fit-center 표시
+* 사용자 resize 유지
 
-#### Advantages
-
-| Advantage | Description |
-| - | - |
-| Retain User Layout | Protects resizing |
-| Workflow Stability | Minimizes positional shifts |
-| Preview Stability | Maintains grid |
+구조를 사용합니다.
 
 ---
 
-#Screenshot : Fit-center preview
+#### 장점
+
+|장점|설명|
+|-|-|
+|사용자 레이아웃 유지|resize 보호|
+|workflow 안정성|위치 변화 최소화|
+|preview 안정성|grid 유지|
+
+---
+
+#스크린샷 : fit-center preview
 
 ---
 
 #### Fullscreen Viewer
 
-#### Purpose
+#### 목적
 
-A feature to inspect resulting images at:
+결과 이미지를:
 
 ```text
-Actual quality levels
+실제 품질 수준으로 검사
 ```
 
----
-
-#### How to Enter
-
-Methods:
-
-* Click image
-* Keyboard F / f
+하기 위한 기능입니다.
 
 ---
 
-#Screenshot : Fullscreen mode
+#### 진입 방법
+
+방법:
+
+* 이미지 클릭
+* 키보드 F/f
 
 ---
 
-#### Key Features
-
-| Feature | Description |
-| - | - |
-| Zoom View | Based on original size |
-| Batch Navigation | Previous/Next |
-| ESC Close | Close fullscreen |
-| Reload Persist | Preview restore |
+#스크린샷 : fullscreen mode
 
 ---
 
-#### Keyboard Controls
+#### 주요 기능
 
-| Key | Function |
-| - | - |
-| F / f | Fullscreen |
-| ESC | Close |
-| ← | Previous image |
-| → | Next image |
+|기능|설명|
+|-|-|
+|확대 보기|원본 크기 기반|
+|batch 이동|이전/다음|
+|ESC 종료|fullscreen close|
+|reload 유지|preview restore|
 
 ---
 
-#### Important Feature
+#### 키보드 조작
 
-Even in Fullscreen mode, the:
+|키|기능|
+|-|-|
+|F / f|fullscreen|
+|ESC|종료|
+|←|이전 이미지|
+|→|다음 이미지|
+
+---
+
+#### 중요한 특징
+
+Fullscreen 상태에서도:
 
 ```text
-Preview lifecycle
+preview lifecycle
 ```
 
-is maintained.
+가 유지됩니다.
 
-Meaning it can restore the last state even after:
+즉:
 
-* Reloading
-* Moving tabs
-* Saving workflow
+* reload
+* tab 이동
+* workflow 저장
 
----
-
-#Screenshot : Fullscreen restore
+후에도 마지막 상태 복원 가능.
 
 ---
 
-#### Snapshot Preview System
+#스크린샷 : fullscreen restore
 
-#### Core Concept
+---
 
-TJ preview copies are not:
+#### Snapshot Preview 시스템
+
+#### 핵심 개념
+
+TJ preview copy는:
 
 ```text
-Live mirrors
+live mirror
 ```
 
-Instead, it uses a:
+가 아닙니다.
+
+대신:
 
 ```text
-Preserve current preview snapshot
+현재 preview snapshot 보존
 ```
 
-structure.
+구조입니다.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Intermediate workflow results can be maintained as:
+workflow 중간 결과를:
 
-* Comparisons
-* Records
-* Checkpoints
+* 비교
+* 기록
+* 체크포인트
+
+형태로 유지 가능.
 
 ---
 
-#### Example
+#### 예시
 
 ```text
-Copy Save Preview
+Save Preview 복사
  ↓
-Keep current result snapshot
+현재 결과 snapshot 유지
  ↓
-Original workflow continues updating
+원본 workflow는 계속 업데이트
 ```
 
 ---
 
-#Screenshot : Snapshot preview copy
+#스크린샷 : snapshot preview copy
 
 ---
 
-#### Advantages
+#### 장점
 
-| Advantage | Description |
-| - | - |
-| Result Compare | Keeps previous results |
-| Checkpoints | Preserves intermediate states |
-| Debugging | Step-by-step analysis |
+|장점|설명|
+|-|-|
+|결과 비교|이전 결과 유지|
+|checkpoint|중간 상태 보존|
+|debug|단계별 분석|
 
 ---
 
-#### Embedded Get Support
+#### Embedded Get 지원
 
-Save & Preview Image supports Embedded Get.
+Save & Preview Image는 embedded get 지원.
 
-Meaning it can directly receive wireless providers using:
+즉:
 
 ```text
 get_name
 ```
 
+으로 wireless provider 직접 receive 가능.
+
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Multi Router
@@ -2205,42 +2420,42 @@ Save & Preview Image
 
 ---
 
-#### Advantages
+#### 장점
 
-* Removes long preview wires
-* Simplifies workflow
-* Structures preview modules
-
----
-
-#Screenshot : Embedded get preview
+* 긴 preview wire 제거
+* workflow 단순화
+* preview module 구조화
 
 ---
 
-#### Save System
+#스크린샷 : embedded get preview
+
+---
+
+#### 저장 시스템
 
 #### filename_prefix
 
-Sets the filename naming convention.
+파일명 규칙 설정.
 
 ---
 
-#### Supported Aliases
+#### 지원 Alias
 
-| Alias | Result |
-| - | - |
-| %date | YYYY-MM-DD |
-| %time | HH-MM-SS |
+|Alias|결과|
+|-|-|
+|%date|YYYY-MM-DD|
+|%time|HH-MM-SS|
 
 ---
 
-#### Usage Example
+#### 사용 예시
 
 ```text
 %date_%time_preview
 ```
 
-Result:
+결과:
 
 ```text
 2026-06-04_14-22-11_preview
@@ -2248,24 +2463,24 @@ Result:
 
 ---
 
-#### Precautions
+#### 주의 사항
 
-The following are not recommended:
+다음은 권장하지 않습니다.
 
 ```text
 %D
 %T
 ```
 
-Reason:
+이유:
 
-May conflict with default Python strftime tokens.
+Python strftime 기본 토큰과 충돌 가능.
 
 ---
 
-#### Duplicate Save Handling
+#### 중복 저장 처리
 
-If the same filename exists, it auto-increments:
+동일 파일명 존재 시:
 
 ```text
 _001
@@ -2273,9 +2488,11 @@ _002
 _003
 ```
 
+자동 증가 저장.
+
 ---
 
-#Screenshot : Save filename example
+#스크린샷 : save filename example
 
 ---
 
@@ -2283,24 +2500,26 @@ _003
 
 #### Unified Video Workflow System
 
-Save & Preview Video is a node that integrates:
+Save & Preview Video는:
 
-* Image batch playback
-* Video decode
-* Audio mux
-* Preview restore
-* Video save
-* Audio only export
+* image batch playback
+* video decode
+* audio mux
+* preview restore
+* video save
+* audio only export
 
----
-
-#Screenshot : Save & Preview Video overview
+를 통합한 노드입니다.
 
 ---
 
-#### Core Purpose
+#스크린샷 : Save & Preview Video overview
 
-In standard workflows, you had to separately configure:
+---
+
+#### 핵심 목적
+
+기존 workflow에서는:
 
 ```text
 VHS
@@ -2314,27 +2533,29 @@ Audio Player
 Video Decode
 ```
 
-TJ_NODE integrates this into one.
+를 따로 구성해야 했습니다.
+
+TJ_NODE는 이를 하나로 통합합니다.
 
 ---
 
-#### Supported Features
+#### 지원 기능
 
-| Feature | Description |
-| - | - |
-| IMAGE batch playback | Frame preview |
-| VIDEO decode | mp4 → frames |
-| Audio mux | Audio merge |
-| Audio Only | Audio only export |
-| Embedded Get | Wireless receive |
-| Preview Restore | Reload recovery |
-| HTML5 Player | Browser playback |
+|기능|설명|
+|-|-|
+|IMAGE batch playback|frame preview|
+|VIDEO decode|mp4 → frames|
+|Audio mux|audio merge|
+|Audio Only|오디오 전용|
+|Embedded Get|wireless receive|
+|Preview Restore|reload 복원|
+|HTML5 Player|browser playback|
 
 ---
 
-#### Using IMAGE Batch Method
+#### IMAGE Batch 방식 사용
 
-#### Basic Structure
+#### 기본 구조
 
 ```text
 IMAGE batch
@@ -2348,79 +2569,81 @@ optional mp4 rebuild
 
 ---
 
-#### How to Use
+#### 사용 방법
 
-#### Step 1 — Connect IMAGE batch
-
-Connect to the:
+#### Step 1 — IMAGE batch 연결
 
 ```text
 image
 ```
 
-input.
+입력 연결.
 
 ---
 
-#### Recommended Sources
+#### 추천 source
 
-Recommended sources:
+추천 source:
 
 * AnimateDiff
-* Frame Generators
+* Frame Generator
 * VFI
-* Interpolation
+* interpolation
 * Dynamic Batch
 
 ---
 
-#Screenshot : Image batch playback
+#스크린샷 : image batch playback
 
 ---
 
-#### Step 2 — Set fps
+#### Step 2 — fps 설정
 
-Set playback fps.
-
----
-
-#### Recommended FPS
-
-| Use Case | Recommended |
-| - | - |
-| Preview | 12~16 |
-| Animation | 24 |
-| Cinematic | 30 |
+playback fps 지정.
 
 ---
 
-#### Step 3 — Execute Queue
+#### 추천 fps
 
-Internally, the node automatically performs:
-
-* Playback generation
-* Preview frame generation
-* Optional video rebuild
-
----
-
-#Screenshot : Playback preview
+|용도|추천|
+|-|-|
+|preview|12~16|
+|animation|24|
+|cinematic|30|
 
 ---
 
-#### Using VIDEO Decode Method
+#### Step 3 — Queue 실행
 
-#### Purpose
+노드 내부에서:
 
-A structure to convert existing mp4 files into an:
+* playback 생성
+* preview frame 생성
+* optional video rebuild
+
+자동 수행.
+
+---
+
+#스크린샷 : playback preview
+
+---
+
+#### VIDEO Decode 방식 사용
+
+#### 목적
+
+기존 mp4를:
 
 ```text
 IMAGE batch
 ```
 
+로 변환하기 위한 구조입니다.
+
 ---
 
-#### Usage Flow
+#### 사용 흐름
 
 ```text
 VIDEO
@@ -2434,179 +2657,191 @@ preview
 
 ---
 
-#Screenshot : Decode flow
+#스크린샷 : decode flow
 
 ---
 
-#### Recommended Use Cases
+#### 지원 목적
 
-Recommended for:
+추천 사용:
 
-* Frame inspections
-* VFI workflows
-* Frame editing
-* img2img animations
+* frame inspection
+* VFI workflow
+* frame editing
+* img2img animation
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-Decoded frames can be used downstream:
+decode된 frame은:
 
 ```text
-Just like a standard IMAGE batch
+일반 IMAGE batch처럼 downstream 사용 가능
 ```
 
----
-
-#Screenshot : Decoded frame preview
+합니다.
 
 ---
 
-#### Mutex System
+#스크린샷 : decoded frame preview
 
-Save & Preview Video prevents simultaneous connections of:
+---
+
+#### Mutex 시스템
+
+Save & Preview Video는:
 
 ```text
 image + video direct input
 ```
 
----
-
-#### Why is this needed?
-
-Simultaneous connections can cause:
-
-* Ambiguous decode states
-* Invalid playback states
-* Reload mismatches
+동시 연결을 방지합니다.
 
 ---
 
-#### Internal Structure
+#### 왜 필요한가?
 
-The node operates based on the:
+동시 연결 시:
+
+* ambiguous decode state
+* invalid playback state
+* reload mismatch
+
+발생 가능.
+
+---
+
+#### 내부 구조
+
+노드는:
 
 ```text
-Currently active source
+현재 활성 source
 ```
 
----
-
-#### Reload-Safe Behavior
-
-Upon workflow reload, it automatically cleans up:
-
-* Invalid mutexes
-* Stale sources
-
-as much as possible.
+를 기준으로 동작합니다.
 
 ---
 
-#### Audio System
+#### reload-safe 동작
 
-#### Supported Inputs
+workflow reload 시에도:
 
-| Input | Description |
-| - | - |
-| audio_a | Main audio |
-| audio_b | Sub audio |
+* invalid mutex
+* stale source
+
+최대한 자동 정리됩니다.
 
 ---
 
-#Screenshot : Audio input
+#### Audio 시스템
+
+#### 지원 입력
+
+|입력|설명|
+|-|-|
+|audio_a|메인 오디오|
+|audio_b|보조 오디오|
+
+---
+
+#스크린샷 : audio input
 
 ---
 
 #### Audio Only Mode
 
-If save_type is:
+save_type:
 
 ```text
 audio only
 ```
 
-A dedicated audio controller UI is displayed.
+일 경우:
+
+전용 audio controller UI 표시.
 
 ---
 
-#### Features
+#### 특징
 
 * HTML5 audio player
-* Dynamic controller count
-* Synchronized playback
+* dynamic controller count
+* synchronized playback
 
 ---
 
-#### Controller Creation Rules
+#### controller 생성 규칙
 
-| Input State | Display |
-| - | - |
-| A only | 1 controller |
-| B only | 1 controller |
-| A+B | 2 controllers |
-
----
-
-#Screenshot : Dual audio controller
+|입력 상태|표시|
+|-|-|
+|A only|controller 1개|
+|B only|controller 1개|
+|A+B|controller 2개|
 
 ---
 
-#### original_audio Output
+#스크린샷 : dual audio controller
 
-During video decode, the:
+---
+
+#### original_audio 출력
+
+video decode 시:
 
 ```text
-Original video audio
+원본 video audio
 ```
 
-is maintained in AUDIO dict format.
+를 AUDIO dict 형태로 유지.
 
 ---
 
-#### Purpose
+#### 목적
 
-Recommended usage:
+추천 사용:
 
-* Remuxing
-* Audio preservation
-* Keeping the original soundtrack
+* remux
+* audio preserve
+* original soundtrack 유지
 
 ---
 
-#### Preview Restore System
+#### Preview Restore 시스템
 
-Save & Preview Video supports:
+Save & Preview Video는:
 
 ```text
 reload-safe preview restore
 ```
 
----
-
-#### Maintained Items
-
-* Preview state
-* Playback state
-* Snapshot
-* Decoded preview
+지원.
 
 ---
 
-#### Purpose
+#### 유지 항목
 
-To preserve the:
+* preview state
+* playback state
+* snapshot
+* decoded preview
+
+---
+
+#### 목적
+
+tab 이동 또는 reload 후에도:
 
 ```text
-Last preview state
+마지막 preview 상태 유지
 ```
 
-even after changing tabs or reloading.
+하기 위함.
 
 ---
 
-#Screenshot : Reload restore
+#스크린샷 : reload restore
 
 ---
 
@@ -2614,82 +2849,88 @@ even after changing tabs or reloading.
 
 #### Universal Debug Viewer
 
-Smart Show is the flagship debug viewer of TJ_NODE.
+Smart Show는 TJ_NODE 대표 debug viewer입니다.
 
 ---
 
-#### Purpose
+#### 목적
 
-A node designed for:
+다양한 타입을:
 
 ```text
-Automatic analysis and preview
+자동 분석 및 preview
 ```
 
-of various data types.
+하기 위한 노드입니다.
 
 ---
 
-#### Supported Types
+#### 지원 타입
 
-| Type | Description |
-| - | - |
-| IMAGE | Image |
-| STRING | Text |
-| FLOAT | Number |
-| INT | Integer |
-| JSON | Structured data |
-| LIST | Lists |
-| VIDEO | Video |
-| AUDIO | Audio |
-
----
-
-#Screenshot : Smart Show overview
+|타입|설명|
+|-|-|
+|IMAGE|이미지|
+|STRING|텍스트|
+|FLOAT|숫자|
+|INT|정수|
+|JSON|구조 데이터|
+|LIST|리스트|
+|VIDEO|영상|
+|AUDIO|오디오|
 
 ---
 
-#### Automatic Type Switching
-
-Depending on the input type, it automatically switches to:
-
-* Image viewer
-* Text viewer
-* Media player
-* Numeric viewer
+#스크린샷 : Smart Show overview
 
 ---
 
-#Screenshot : Automatic type switching
+#### 자동 타입 전환
+
+입력 타입에 따라:
+
+* image viewer
+* text viewer
+* media player
+* numeric viewer
+
+자동 전환.
+
+---
+
+#스크린샷 : automatic type switching
 
 ---
 
 #### Edit Mode
 
-Edit Mode defaults to:
+Edit Mode는 기본:
 
 ```text
 OFF
 ```
 
+상태.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-To prevent:
+실수로:
 
 ```text
-Accidentally overwriting workflow values
+workflow 값 overwrite
 ```
+
+되는 것을 방지하기 위함.
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-* Debugging
-* Comparing
-* Text inspection
-* Metadata inspection
+* debug
+* compare
+* text inspect
+* metadata inspect
 
 ---
 
@@ -2697,34 +2938,34 @@ Accidentally overwriting workflow values
 
 #### Prompt Management Node
 
-A node for structuring prompts.
+프롬프트 구조화를 위한 노드.
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-* Character prompts
-* Style prompts
-* Reusable prompt blocks
-* Lighting prompts
+* character prompt
+* style prompt
+* reusable prompt block
+* lighting prompt
 
 ---
 
-#### Embedded Get Support
+#### Embedded Get 지원
 
-Prompt Text supports Embedded Get.
+Prompt Text는 embedded get 지원.
 
-Meaning you can build a:
+즉 긴 text wire 없이:
 
 ```text
-Modular prompt architecture
+modular prompt architecture
 ```
 
-without long text wires.
+구성 가능.
 
 ---
 
-#Screenshot : Prompt routing
+#스크린샷 : prompt routing
 
 ---
 
@@ -2732,65 +2973,700 @@ without long text wires.
 
 #### Dynamic Text Combine Node
 
-A node that combines multiple texts.
+여러 text를 결합하는 노드입니다.
 
 ---
 
-#### Features
+#### 특징
 
-* Dynamic inputs
-* Custom delimiters
-* Scalable combining
-
----
-
-#Screenshot : Concatenate example
+* dynamic input
+* custom delimiter
+* scalable combine
 
 ---
 
-#### Embedded Get Not Supported
+#스크린샷 : concatenate example
 
-This node intentionally:
+---
+
+#### Embedded Get 미지원
+
+이 노드는 intentionally:
 
 ```text
-Does not support Embedded Get
+embedded get 미지원
+```
+
+입니다.
+
+---
+
+#### 이유
+
+dynamic input 구조와:
+
+```text
+stable wireless routing
+```
+
+이 충돌하기 때문입니다.
+
+---
+
+#### 추천 사용
+
+추천 예시:
+
+```text
+character prompt
++
+style prompt
++
+camera prompt
++
+lighting prompt
+```
+
+결합.
+
+---
+
+
+### 6. Show Any (TJ)
+
+#### Lightweight Universal Output Viewer
+
+Show Any는 다양한 타입의 데이터를:
+
+```text
+텍스트로 안전하게 펼쳐서 확인
++
+원본 값은 그대로 통과
+```
+
+시키는 디버그 / 모니터링 노드입니다.
+
+---
+
+#스크린샷 : Show Any 기본 상태
+
+---
+
+#### 핵심 목적
+
+대규모 workflow에서는 중간 데이터가 실제로 어떤 값인지 확인해야 할 때가 많습니다.
+
+Show Any는 이때:
+
+* STRING
+* INT / FLOAT / BOOLEAN
+* LIST
+* DICT / JSON
+* TENSOR
+* numpy ndarray
+* 기타 Python object
+
+를 사람이 읽을 수 있는 형태로 표시합니다.
+
+---
+
+#### 중요한 특징
+
+Show Any는 단순 출력 노드가 아닙니다.
+
+```text
+입력 any
+ ↓
+텍스트 표시
+ ↓
+원본 any 그대로 output
+```
+
+구조입니다.
+
+즉 debug용으로 끼워 넣어도 downstream 데이터 흐름을 끊지 않습니다.
+
+---
+
+#### 지원 기능
+
+|기능|설명|
+|-|-|
+|ANY 입력|대부분의 ComfyUI 타입 수신|
+|원본 passthrough|입력 값을 그대로 output|
+|텍스트 표시|값을 multiline text로 표시|
+|Tensor 요약|shape / dtype / device / min / max / mean 표시|
+|JSON-safe 표시|dict/list/object를 읽기 쉬운 JSON 형태로 표시|
+|Copy 버튼|표시된 텍스트를 클립보드로 복사|
+|Embedded Get|wireless provider 직접 수신|
+|Set Provider|setnode_name으로 provider 등록 가능|
+
+---
+
+#스크린샷 : Show Any Tensor summary
+#스크린샷 : Show Any Copy 버튼
+
+---
+
+#### 입력 설명
+
+|입력|설명|
+|-|-|
+|any|확인할 데이터|
+|get_name|TJ / Eclipse provider 선택|
+|setnode_name|현재 출력을 provider로 등록할 이름|
+|text|실행 후 표시되는 텍스트 영역|
+
+---
+
+#### 사용 방법
+
+#### Step 1 — any 입력 연결
+
+확인하고 싶은 값을 `any` 슬롯에 연결합니다.
+
+예시:
+
+```text
+KSampler output
+Smart Converter output
+Prompt Text output
+metadata dict
 ```
 
 ---
 
-#### Reason
+#### Step 2 — Queue 실행
 
-Because a dynamic input structure conflicts with:
+실행 후 입력 값이 텍스트 영역에 표시됩니다.
+
+Tensor의 경우 전체 데이터를 무식하게 뿌리지 않고:
 
 ```text
-Stable wireless routing
+shape / dtype / device / min / max / mean
+```
+
+중심으로 요약됩니다.
+
+데이터의 바다에서 익사하지 않게 해주는 작은 구명보트입니다.
+
+---
+
+#### Step 3 — 필요 시 Copy
+
+오른쪽 하단 `Copy` 버튼으로 표시된 값을 복사할 수 있습니다.
+
+추천 사용:
+
+* prompt 결과 복사
+* JSON metadata 확인
+* converter status 확인
+* 중간 숫자 값 확인
+
+---
+
+#### Embedded Get 지원
+
+Show Any는 embedded get을 지원합니다.
+
+즉 직접 와이어를 길게 연결하지 않고:
+
+```text
+get_name
+```
+
+으로 provider를 선택해 값을 확인할 수 있습니다.
+
+---
+
+#스크린샷 : Show Any embedded get
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* 중간 데이터 타입 확인
+* Tensor 요약 확인
+* JSON / dict 구조 확인
+* Smart Converter 결과 확인
+* wireless provider 값 검사
+* workflow debug checkpoint
+
+---
+
+#### 주의 사항
+
+Show Any는 값을 표시하고 통과시키는 노드입니다.
+
+값을 변환하려면:
+
+```text
+Smart Converter (TJ)
+```
+
+를 사용하는 것이 맞습니다.
+
+Show Any는 현미경이고, Smart Converter는 변환기입니다. 현미경으로 국 끓이면 안 됩니다.
+
+---
+
+### 7. Smart Converter (TJ)
+
+#### Universal Type Conversion Node
+
+Smart Converter는 ANY 입력을 원하는 타입으로 변환하는 utility 노드입니다.
+
+---
+
+#스크린샷 : Smart Converter overview
+
+---
+
+#### 핵심 목적
+
+ComfyUI workflow에서는 타입이 살짝 맞지 않아 연결이 막히는 경우가 많습니다.
+
+예시:
+
+```text
+STRING 숫자 → INT
+FLOAT → INT
+Tensor scalar → FLOAT
+DICT → JSON string
+LIST → TENSOR
+```
+
+Smart Converter는 이런 타입 경계 문제를 빠르게 정리하기 위한 노드입니다.
+
+---
+
+#### 지원 변환 타입
+
+|output_type|출력 타입|설명|
+|-|-|-|
+|AUTO|자동 감지|입력값 타입을 기준으로 자동 출력|
+|INT|INT|정수 변환|
+|FLOAT|FLOAT|실수 변환|
+|STRING|STRING|문자열 변환|
+|BOOLEAN|BOOLEAN|True / False 변환|
+|TENSOR|TENSOR|torch Tensor 변환|
+|LIST|LIST|리스트 변환|
+|DICT|DICT|딕셔너리 변환|
+|JSON|STRING|JSON 문자열 변환|
+
+---
+
+#### 출력 설명
+
+|출력|설명|
+|-|-|
+|output|변환된 값|
+|status|변환 상태 메시지|
+
+---
+
+#### Status 출력
+
+Smart Converter는 변환 결과를 status 문자열로 함께 내보냅니다.
+
+예시:
+
+```text
+OK: str: '123' -> INT
+```
+
+또는:
+
+```text
+WARN: INT conversion failed: cannot convert string "abc" to INT
+```
+
+이 구조 덕분에 변환 실패를 workflow 안에서 바로 추적할 수 있습니다.
+
+---
+
+#스크린샷 : Smart Converter status output
+
+---
+
+#### strict_mode
+
+strict_mode는 변환 실패 시 동작을 결정합니다.
+
+|strict_mode|동작|
+|-|-|
+|OFF|경고 status 출력 후 기본값 반환|
+|ON|변환 실패 시 에러 발생|
+
+---
+
+#### 기본값 반환 규칙
+
+strict_mode가 OFF일 때 변환 실패하면 기본값을 반환합니다.
+
+|요청 타입|기본값|
+|-|-|
+|INT|0|
+|FLOAT|0.0|
+|STRING|빈 문자열|
+|BOOLEAN|False|
+|TENSOR|0 tensor|
+|LIST|빈 리스트|
+|DICT|빈 dict|
+|JSON|null 문자열|
+
+---
+
+#### Embedded Get 지원
+
+Smart Converter는 embedded get을 지원합니다.
+
+즉:
+
+```text
+provider 선택
+ ↓
+타입 변환
+ ↓
+downstream 전달
+```
+
+구조를 하나의 노드에서 처리할 수 있습니다.
+
+---
+
+#스크린샷 : Smart Converter embedded get
+
+---
+
+#### Dynamic Output Slot
+
+Smart Converter는 `output_type` 선택에 따라 output 슬롯 타입과 이름을 변경합니다.
+
+예시:
+
+|선택|output 표시|
+|-|-|
+|AUTO|output / *|
+|INT|int / INT|
+|FLOAT|float / FLOAT|
+|STRING|string / STRING|
+|TENSOR|tensor / TENSOR|
+
+타입이 맞지 않는 downstream 연결은 안전하게 끊어질 수 있습니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* 숫자 문자열을 INT/FLOAT로 변환
+* Boolean switch 값 만들기
+* dict/list를 JSON text로 확인
+* scalar Tensor를 숫자로 변환
+* metadata를 STRING으로 변환
+* wireless provider 타입 보정
+
+---
+
+#### 주의 사항
+
+Smart Converter는 만능 번역기는 아닙니다.
+
+예를 들어:
+
+```text
+"hello" → INT
+```
+
+같은 변환은 실패합니다.
+
+이 경우 strict_mode OFF에서는 기본값과 WARN status를 반환하고, ON에서는 에러를 발생시킵니다.
+
+---
+
+### 8. Shortcut Launcher (TJ)
+
+#### Workflow External Shortcut Panel
+
+Shortcut Launcher는 ComfyUI workflow 안에서 자주 쓰는 폴더, 파일, URL을 버튼으로 실행하는 utility 노드입니다.
+
+---
+
+#스크린샷 : Shortcut Launcher 기본 상태
+
+---
+
+#### 핵심 목적
+
+작업 중 자주 여는 항목이 있습니다.
+
+예시:
+
+* output 폴더
+* input 폴더
+* 프로젝트 폴더
+* 모델 폴더
+* GitHub repository
+* Civitai 페이지
+* 내부 문서 URL
+
+Shortcut Launcher는 이런 항목을 workflow 안에 버튼으로 배치합니다.
+
+즉:
+
+```text
+작업 동선 단축
++
+프로젝트별 바로가기 보관
+```
+
+을 위한 노드입니다.
+
+---
+
+#### 주요 기능
+
+|기능|설명|
+|-|-|
+|다중 버튼|여러 shortcut 버튼 생성|
+|Path 실행|로컬 폴더/파일 열기|
+|URL 실행|웹 URL 브라우저로 열기|
+|Tooltip|버튼 설명 표시|
+|Settings Modal|HTML5 설정창 제공|
+|JSON Export|shortcut preset 저장|
+|JSON Import|shortcut preset 불러오기|
+|Color Picker|버튼 배경색 / 글자색 지정|
+|Height-only resize|버튼 수에 맞춰 높이 자동 조정|
+
+---
+
+#스크린샷 : Shortcut Settings Modal
+#스크린샷 : Shortcut JSON Export Import
+#스크린샷 : Shortcut Color Picker
+
+---
+
+#### 사용 방법
+
+#### Step 1 — 노드 배치
+
+`Shortcut Launcher (TJ)` 노드를 배치합니다.
+
+이 노드는 실행 결과를 만드는 처리 노드가 아니라:
+
+```text
+workflow 작업용 런처 패널
+```
+
+입니다.
+
+---
+
+#### Step 2 — Settings 열기
+
+노드 내부의:
+
+```text
+⚙ Settings
+```
+
+버튼을 클릭합니다.
+
+---
+
+#### Step 3 — 버튼 추가
+
+`+ Add Button`으로 shortcut 항목을 추가합니다.
+
+각 항목은 다음 정보를 가집니다.
+
+|항목|설명|
+|-|-|
+|Button Name|노드에 표시될 버튼 이름|
+|Path / URL|열 대상 경로 또는 URL|
+|Description / Tooltip|마우스 hover 설명|
+
+---
+
+#### Step 4 — 저장
+
+`Save`를 누르면 노드에 버튼이 반영됩니다.
+
+버튼 클릭 시:
+
+* URL이면 브라우저 새 탭으로 열림
+* 로컬 path면 OS 기본 방식으로 열림
+
+---
+
+#### JSON Preset
+
+Shortcut Launcher는 JSON Export / Import를 지원합니다.
+
+추천 사용:
+
+* 프로젝트별 shortcut preset 저장
+* 다른 workflow로 shortcut 구성 이동
+* 팀 작업용 공통 링크 공유
+
+---
+
+#### 색상 설정
+
+Settings 안에서:
+
+* Button Background Color
+* Button Text Color
+
+를 지정할 수 있습니다.
+
+프로젝트별 launcher를 색으로 구분하기 좋습니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* output 폴더 바로 열기
+* custom node 폴더 바로 열기
+* README / Manual 바로 열기
+* GitHub issue 페이지 열기
+* Civitai 업로드 페이지 열기
+* 프로젝트 asset 폴더 열기
+
+---
+
+#### 주의 사항
+
+로컬 path는 실제 존재하는 경로여야 합니다.
+
+존재하지 않는 path는 열리지 않습니다.
+
+URL은 다음 형식을 권장합니다.
+
+```text
+https://example.com
 ```
 
 ---
 
-#### Recommended Usage
 
-Recommended combination example:
+
+---
+
+### 8-Add. VHS Hotkey Remote (Utility Extension)
+
+#### VHS Preview 전용 글로벌 단축키 시스템
+
+TJ VHS Hotkey Remote는 일반 노드가 아닙니다.
+
+대신:
 
 ```text
-Character prompt
-+
-Style prompt
-+
-Camera prompt
-+
-Lighting prompt
+VideoHelperSuite(VHS) preview를
+키보드 단축키로 직접 제어하는
+global utility extension
+```
+
+입니다.
+
+---
+
+#스크린샷 : VHS Hotkey Remote 사용 예시
+
+---
+
+#### 설치 위치
+
+```text
+ComfyUI/custom_nodes/ComfyUI-TJ_NODE/web/js/
+```
+
+파일명:
+
+```text
+tj_vhs_hotkey_remote.js
 ```
 
 ---
 
-### 6. Recommended Structure for Preview / Utility System
+#### 제거 방법
 
-TJ workflows recommend the following structure.
+필요 없으면:
+
+```text
+tj_vhs_hotkey_remote.js 삭제
+```
+
+만 하면 됩니다.
 
 ---
 
-#### Recommended Workflow
+#### 지원 단축키
+
+|단축키|기능|
+|-|-|
+|Space|Pause / Play|
+|Alt + H|Preview Hide|
+|Alt + M|Mute|
+|Alt + O|브라우저에서 열기|
+|Alt + S|Preview Save|
+|Alt + C|원본 경로 복사|
+|Alt + Y|Sync Preview|
+
+---
+
+#### 동작 방식
+
+현재 선택된:
+
+```text
+VHS preview node
+```
+
+를 기준으로 동작합니다.
+
+즉:
+
+```text
+노드 선택
+ ↓
+단축키 입력
+ ↓
+즉시 preview 제어
+```
+
+구조입니다.
+
+---
+
+#### 추천 사용 상황
+
+추천:
+
+* animation inspect
+* frame compare
+* VFI workflow
+* interpolation workflow
+* 반복 preview 체크
+
+---
+
+#스크린샷 : VHS shortcut control
+
+
+### 9. Preview / Utility System 추천 구조
+
+TJ workflow에서는 다음 구조 추천.
+
+---
+
+#### 추천 workflow
 
 ```text
 Generation
@@ -2804,80 +3680,84 @@ Save & Preview Video
 
 ---
 
-#### Advantages
+#### 장점
 
-* Structured previews
-* Simplified debugging
-* Improved workflow readability
-* Preserved snapshot checkpoints
+* preview 구조화
+* debug 단순화
+* workflow readability 향상
+* snapshot checkpoint 유지
 
 ---
 
-### 7. Common Issues
+### 7. 자주 발생하는 문제
 
 #### Preview black screen
 
-Check:
+확인:
 
-* Existence of IMAGE batch
-* Whether decode frames were generated
-* Browser autoplay restrictions
-
----
-
-#### Cannot close fullscreen
-
-Cause:
-
-* Overlay pointer conflict
-* Refresh overlay overlap
+* IMAGE batch 존재 여부
+* decode frame 생성 여부
+* browser autoplay 제한
 
 ---
 
-#### Solution
+#### Fullscreen close 안됨
 
-Using the latest TJ preview structure is recommended.
+원인:
 
----
-
-#### Preview restore fails
-
-Check:
-
-* Execution history
-* Snapshot metadata
-* Workflow save status
+* overlay pointer conflict
+* refresh overlay overlap
 
 ---
 
-#### Audio playback fails
+#### 해결
 
-Check:
+최신 TJ preview 구조 사용 권장.
 
-* Audio input connection
-* Browser autoplay policies
-* Muted state
+---
+
+#### Preview restore 실패
+
+확인:
+
+* execution history
+* snapshot metadata
+* workflow 저장 상태
+
+---
+
+#### Audio playback 안됨
+
+확인:
+
+* audio input 연결
+* browser autoplay 정책
+* muted 상태
 
 ---
 
 ### Final Notes
 
-The Preview / Utility System is the:
+Preview / Utility System은:
 
 ```text
-Visualization layer of TJ workflows
+TJ workflow의 시각화 계층
 ```
 
-The core of TJ_NODE isn't just generating simple previews, but:
+입니다.
+
+TJ_NODE의 핵심은 단순 preview 자체가 아니라:
 
 ```text
-Maintaining large-scale workflows
-in an operational structure
+대규모 workflow를
+운영 가능한 구조로 유지하는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final Preview Workflow showcase
+#스크린샷 : 최종 Preview Workflow showcase
 
 ---
 
@@ -2885,63 +3765,73 @@ in an operational structure
 
 ---
 
-### Introduction to Save Pipeline System
+### Save Pipeline System 소개
 
-The Save Pipeline System in TJ_NODE is not just a collection of simple save nodes.
+TJ_NODE의 Save Pipeline System은 단순 저장 노드가 아닙니다.
 
-This system is designed to:
+이 시스템은:
 
 ```text
-Structurally save and manage the results
-of large-scale workflows
+대규모 workflow의 결과물을
+구조적으로 저장 및 관리하기 위한 시스템
 ```
 
-In standard ComfyUI workflows, the following issues frequently occur:
+입니다.
 
-* Duplicated save locations
-* Difficulty organizing output files
-* Difficulty saving upscale results separately
-* Difficulty tracking relationships between original/post-processing
-* Eclipse workflow path tracking issues
-* Difficulty saving based on metadata
+일반적인 ComfyUI workflow에서는:
 
-To solve these, TJ_NODE provides:
+* 저장 위치 중복
+* 결과 파일 정리 어려움
+* upscale 결과 분리 저장 어려움
+* 원본/후처리 관계 추적 어려움
+* Eclipse workflow path 유지 문제
+* metadata 기반 저장 어려움
+
+문제가 자주 발생합니다.
+
+TJ_NODE는 이를 해결하기 위해:
 
 * Primary Save
 * Suffix Save
 * Eclipse Path Tracking
 * Save Chain Architecture
 
+시스템을 제공합니다.
+
 ---
 
-#Screenshot : Save Pipeline Overall Structure
+#스크린샷 : Save Pipeline 전체 구조
 
 ---
 
 ### Save Pipeline Architecture
 
-The core of the TJ Save structure is:
+TJ Save 구조의 핵심은:
 
 ```text
-"Manage saving on a workflow level"
+"저장을 workflow 단위로 관리"
 ```
 
-Meaning, instead of just:
+하는 것입니다.
+
+즉 단순히:
 
 ```text
-Saving an image
+이미지를 저장
 ```
 
-the goal is to:
+하는 것이 아니라:
 
 ```text
-Keep the entire workflow output structure
-in an organized form
+workflow 전체 결과 구조를
+정리된 형태로 유지
 ```
+
+하는 것이 목적입니다.
 
 ---
 
-#### Basic Structure
+#### 기본 구조
 
 ```text
 Primary Save
@@ -2953,89 +3843,93 @@ Final Result Groups
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
-* Originals
-* Upscales
-* Detail passes
-* Masks
-* Compares
-* Variations
+* 원본
+* upscale
+* detail pass
+* mask
+* compare
+* variation
 
-are continuously generated.
+결과가 계속 생성됩니다.
 
-If saved randomly, it becomes:
+이를 무작위 저장하면:
 
 ```text
-Impossible to manage the results
+결과 관리 자체가 불가능
 ```
 
-The TJ Save Pipeline is a system designed to structurally organize this.
+해집니다.
+
+TJ Save Pipeline은 이를 구조적으로 정리하기 위한 시스템입니다.
 
 ---
 
-#Screenshot : Organized save structure
+#스크린샷 : organized save structure
 
 ---
 
 ### 1. Save Image (Primary-TJ)
 
-#### Save Pipeline Base Node
+#### Save Pipeline 기준 노드
 
-Primary-TJ is the node that:
+Primary-TJ는:
 
 ```text
-Creates the base save location
+기준 저장 위치 생성
 ```
 
-It acts as the starting point of the TJ Save structure.
+노드입니다.
+
+TJ Save 구조의 시작점 역할을 수행합니다.
 
 ---
 
-#Screenshot : Primary-TJ overview
+#스크린샷 : Primary-TJ overview
 
 ---
 
-#### Key Roles
+#### 주요 역할
 
-Primary-TJ handles:
+Primary-TJ는:
 
-* Generating base save paths
-* Saving based on workflow standards
-* Providing the baseline for downstream suffixes
-* Managing naming structures
+* base save path 생성
+* workflow 기준 저장
+* downstream suffix 기준 제공
+* naming structure 관리
+
+를 수행합니다.
 
 ---
 
-#### Basic Usage
+#### 기본 사용 방법
 
-#### Step 1 — Connect IMAGE Input
-
-Connect an IMAGE to the:
+#### Step 1 — IMAGE 입력 연결
 
 ```text
 image
 ```
 
-slot.
+슬롯에 IMAGE 연결.
 
 ---
 
-#Screenshot : Primary image input
+#스크린샷 : Primary image input
 
 ---
 
-#### Step 2 — Configure filename_prefix
+#### Step 2 — filename_prefix 설정
 
-Example:
+예시:
 
 ```text
 project_main
 ```
 
-Or:
+또는:
 
 ```text
 %date_%time_project
@@ -3043,16 +3937,16 @@ Or:
 
 ---
 
-#### Supported Aliases
+#### 지원 Alias
 
-| Alias | Result |
-| - | - |
-| %date | YYYY-MM-DD |
-| %time | HH-MM-SS |
+|Alias|결과|
+|-|-|
+|%date|YYYY-MM-DD|
+|%time|HH-MM-SS|
 
 ---
 
-#### Usage Example
+#### 사용 예시
 
 ```text
 %date_%time_main
@@ -3066,47 +3960,51 @@ Or:
 
 ---
 
-#Screenshot : Filename example
+#스크린샷 : filename example
 
 ---
 
-#### Step 3 — Execute Queue
+#### Step 3 — Queue 실행
 
-Upon execution:
+실행 시:
 
-* Generates save paths
-* Saves metadata
-* Generates downstream save contexts
+* 저장 path 생성
+* metadata 저장
+* downstream save context 생성
 
-are automatically performed.
+자동 수행.
 
 ---
 
-#### Core Role of Primary Save
+#### Primary Save의 핵심 역할
 
-Primary-TJ is not a simple save node.
+Primary-TJ는 단순 저장 노드가 아닙니다.
 
-In reality, it functions closer to a:
+실제로는:
 
 ```text
 Save Context Provider
 ```
 
-Meaning downstream nodes can share the:
+역할에 가깝습니다.
 
-* Save path
-* Base filename
-* Suffix chain
+즉 downstream 노드들이:
+
+* save path
+* filename base
+* suffix chain
+
+를 공유할 수 있게 합니다.
 
 ---
 
-#Screenshot : Save chain context
+#스크린샷 : save chain context
 
 ---
 
-#### Recommended Usage
+#### 추천 사용 방식
 
-Recommended structure:
+추천 구조:
 
 ```text
 Generation
@@ -3120,20 +4018,20 @@ Suffix-TJ
 
 ---
 
-#### Advantages
+#### 장점
 
-| Advantage | Description |
-| - | - |
-| Organize Results | Maintains same sets |
-| Path Management | Preserves structures |
-| Naming Consistency | Filename uniformity |
-| Downstream Sync | Links subsequent saves |
+|장점|설명|
+|-|-|
+|결과 정리|동일 세트 유지|
+|path 관리|구조 유지|
+|naming consistency|파일명 일관성|
+|downstream sync|후속 저장 연동|
 
 ---
 
-### 2. Duplicate Save Handling System
+### 2. 중복 저장 처리 시스템
 
-If the same filename exists, the TJ Save system automatically increments:
+TJ Save 시스템은 동일 파일명 존재 시:
 
 ```text
 _001
@@ -3141,35 +4039,37 @@ _002
 _003
 ```
 
+자동 증가 저장.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In mass generation workflows:
+대량 generation workflow에서는:
 
 ```text
-Filename collision
+filename collision
 ```
 
-happens very frequently.
+이 매우 자주 발생합니다.
 
-The TJ Save system is designed to prevent overwrites as much as possible.
+TJ Save 시스템은 overwrite를 최대한 방지하도록 설계되었습니다.
 
 ---
 
-#### Example
+#### 예시
 
-Existing file:
+기존 파일:
 
 ```text
 main.png
 ```
 
-Already exists.
+이미 존재.
 
 ↓
 
-Auto-saves as:
+자동 저장:
 
 ```text
 main_001.png
@@ -3177,63 +4077,67 @@ main_001.png
 
 ---
 
-#Screenshot : Collision handling
+#스크린샷 : collision handling
 
 ---
 
 ### 3. Save Image (Suffix-TJ)
 
-#### Subsequent Save System
+#### 후속 저장 시스템
 
-Suffix-TJ is a node that:
-
-```text
-Inherits the Primary save baseline
-and saves subsequent results
-```
-
----
-
-#Screenshot : Suffix-TJ overview
-
----
-
-#### Core Purpose
-
-In large-scale workflows:
-
-* Upscales
-* Detail passes
-* Color corrections
-* Compare results
-
-are continuously generated.
-
-Suffix-TJ is a structure designed to keep them in the:
+Suffix-TJ는:
 
 ```text
-Same result set
+Primary 저장 기준을 이어받아
+후속 결과를 저장
 ```
+
+하는 노드입니다.
 
 ---
 
-#### Basic Structure
+#스크린샷 : Suffix-TJ overview
+
+---
+
+#### 핵심 목적
+
+대규모 workflow에서는:
+
+* upscale
+* detail pass
+* color correction
+* compare result
+
+등이 계속 생성됩니다.
+
+Suffix-TJ는 이를:
+
+```text
+같은 결과 세트
+```
+
+로 유지하기 위한 구조입니다.
+
+---
+
+#### 기본 구조
 
 ```text
 Primary-TJ
  ↓
-Creates base path
+base path 생성
 
 Suffix-TJ
  ↓
-Saves with appended suffix
+suffix append 저장
 ```
 
 ---
 
-#### Usage Examples
+#### 사용 예시
 
-#### Original Save
+#### 원본 저장
 
 ```text
 main.png
@@ -3241,7 +4145,7 @@ main.png
 
 ---
 
-#### Upscale Result
+#### upscale 결과
 
 ```text
 main_upscale.png
@@ -3249,7 +4153,7 @@ main_upscale.png
 
 ---
 
-#### Detail Result
+#### detail 결과
 
 ```text
 main_detail.png
@@ -3257,19 +4161,19 @@ main_detail.png
 
 ---
 
-#Screenshot : Suffix save example
+#스크린샷 : suffix save example
 
 ---
 
-#### Step 1 — Connect IMAGE
+#### Step 1 — IMAGE 연결
 
-Connect the subsequent result IMAGE.
+후속 결과 IMAGE 연결.
 
 ---
 
-#### Step 2 — Configure suffix
+#### Step 2 — suffix 설정
 
-Examples:
+예시:
 
 ```text
 upscale
@@ -3280,15 +4184,15 @@ compare
 
 ---
 
-#### Recommended Naming
+#### 추천 규칙
 
-Recommended method:
+추천 방식:
 
 ```text
-Function-based suffixes
+기능 기준 suffix
 ```
 
-Examples:
+예시:
 
 ```text
 upscale_4x
@@ -3298,45 +4202,47 @@ mask_clean
 
 ---
 
-#Screenshot : Suffix naming
+#스크린샷 : suffix naming
 
 ---
 
-#### Step 3 — Execute Save
+#### Step 3 — 저장 실행
 
-Suffix-TJ automatically:
+Suffix-TJ는 자동으로:
 
-* References the Primary context
-* Maintains the base filename
-* Saves by appending the suffix
+* Primary context 참조
+* base filename 유지
+* suffix append 저장
 
----
-
-#### Advantages
-
-| Advantage | Description |
-| - | - |
-| Grouping Results | Maintains related outputs |
-| Naming Consistency | Organizes filenames |
-| Save Chain Preservation | Tracks the workflow |
+수행.
 
 ---
 
-#### Why is this important?
+#### 장점
 
-In standard workflows, the problem of:
+|장점|설명|
+|-|-|
+|결과 그룹화|관련 결과 유지|
+|naming consistency|파일명 정리|
+|save chain 유지|workflow 추적 가능|
+
+---
+
+#### 왜 중요한가?
+
+일반 workflow에서는:
 
 ```text
-Final results getting mixed together
+최종 결과가 섞여버리는 문제
 ```
 
-frequently occurs.
+가 자주 발생합니다.
 
-The TJ Save structure solves this.
+TJ Save 구조는 이를 해결합니다.
 
 ---
 
-#Screenshot : Organized result folder
+#스크린샷 : organized result folder
 
 ---
 
@@ -3344,82 +4250,90 @@ The TJ Save structure solves this.
 
 #### Eclipse Save Compatibility System
 
-This node is a save system designed to:
+이 노드는:
 
 ```text
-Preserve the Eclipse original file structure
+Eclipse 원본 파일 구조 유지
 ```
+
+를 위한 저장 시스템입니다.
 
 ---
 
-#### Core Features
+#### 핵심 특징
 
-Standard save structures save based on the:
+일반 save 구조는:
 
 ```text
-Current workflow location
+현재 workflow 기준 저장
 ```
 
-But in Eclipse workflows, saving based on the:
+입니다.
+
+하지만 Eclipse workflow에서는:
 
 ```text
-Original file location
+원본 파일 위치 기준 저장
 ```
 
-is important.
+이 중요합니다.
 
 ---
 
-#### Key Features
+#### 주요 기능
 
-| Feature | Description |
-| - | - |
-| Original Path Tracking | Retains original paths |
-| Metadata Path Restore | Restores paths |
-| Relative Save | Maintains relative paths |
-| Suffix Append | Subsequent saves |
-
----
-
-#Screenshot : Eclipse save pipeline
+|기능|설명|
+|-|-|
+|original path tracking|원본 경로 유지|
+|metadata path restore|경로 복원|
+|relative save|상대 경로 유지|
+|suffix append|후속 저장|
 
 ---
 
-#### Internal Behavior
+#스크린샷 : Eclipse save pipeline
 
-The node calculates the save location based on:
+---
+
+#### 내부 동작
+
+노드는:
 
 ```text
-IMAGE + Original file metadata
+IMAGE + original file metadata
 ```
 
-Meaning:
+를 기반으로 저장 위치를 계산합니다.
+
+즉:
 
 ```text
-It can save subsequent results while
-maintaining the original file structure
+원본 파일 구조를 유지하면서
+후속 결과 저장
 ```
 
----
-
-#### Recommended Use Cases
-
-Recommended workflows:
-
-* Eclipse workflows
-* Dataset processing
-* Metadata-dependent pipelines
-* Original path preserving workflows
+가능.
 
 ---
 
-### 5. Recommended Save Chain Workflow Structure
+#### 추천 사용 상황
 
-We recommend the following save structure in TJ workflows:
+추천 workflow:
+
+* Eclipse workflow
+* dataset processing
+* metadata dependent pipeline
+* original path preserving workflow
 
 ---
 
-#### Recommended Structure
+### 5. Save Chain Workflow 추천 구조
+
+TJ workflow에서는 다음 save 구조를 추천합니다.
+
+---
+
+#### 추천 구조
 
 ```text
 Generation
@@ -3441,24 +4355,24 @@ Suffix-TJ
 
 ---
 
-#### Advantages
+#### 장점
 
-* Organizes result structures
-* Keeps the workflow trackable
-* Easy comparisons
-* Easy dataset management
-
----
-
-#Screenshot : Recommended save chain
+* 결과 구조 정리
+* workflow 추적 가능
+* compare 쉬움
+* dataset 관리 쉬움
 
 ---
 
-### 6. Recommended Save Structure Rules
+#스크린샷 : recommended save chain
 
-#### Recommended Folder Structure
+---
 
-Recommendation:
+### 6. 저장 구조 추천 규칙
+
+#### 추천 폴더 구조
+
+추천:
 
 ```text
 project/
@@ -3471,121 +4385,131 @@ project/
 
 ---
 
-#### Recommended Filename Structure
-
-Format recommendation:
+#### 추천 filename 구조
 
 ```text
 %date_%time_project
 ```
 
+형태 추천.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
 ```text
-File organization itself is workflow management
+파일 정리 자체가 workflow 관리
 ```
+
+가 되기 때문입니다.
 
 ---
 
-### 7. Save Metadata System
+### 7. Save Metadata 시스템
 
-The TJ Save structure internally maintains:
+TJ Save 구조는 내부적으로:
 
 ```text
-Save context metadata
+save context metadata
 ```
 
----
-
-#### Purpose
-
-So downstream nodes can share:
-
-* Path
-* Filename
-* Suffix chain
+를 유지합니다.
 
 ---
 
-#### Advantages
+#### 목적
 
-| Advantage | Description |
-| - | - |
-| Save Consistency | Uniform saving |
-| Downstream Sync | Maintains links |
-| Workflow Restore | Restores structures |
+downstream 노드들이:
 
----
+* path
+* filename
+* suffix chain
 
-#Screenshot : Save metadata flow
+를 공유할 수 있게 하기 위함.
 
 ---
 
-### 8. Common Issues
+#### 장점
 
-#### Overwriting Output Files
-
-Causes:
-
-* Same filename
-* Manual overwrite
-* Duplicate save paths
+|장점|설명|
+|-|-|
+|save consistency|저장 일관성|
+|downstream sync|연동 유지|
+|workflow restore|구조 복원|
 
 ---
 
-#### Solution
-
-Using TJ auto increment is recommended.
+#스크린샷 : save metadata flow
 
 ---
 
-#### Tangled Save Locations
+### 8. 자주 발생하는 문제
 
-Causes:
+#### 결과 파일 overwrite
 
-* No Primary context
-* Invalid save chain
-* Loss of metadata
+원인:
 
----
-
-#### Solution
-
-Recommended structure:
-
-Maintain the order of `Primary → Suffix`.
+* 동일 filename
+* manual overwrite
+* save path 중복
 
 ---
 
-#### Eclipse Path Restore Fails
+#### 해결
 
-Causes:
-
-* Missing original metadata
-* Using standard batch
-* Not using Eclipse batch
+TJ auto increment 사용 권장.
 
 ---
 
-#### Solution
+#### 저장 위치 꼬임
 
-Recommendation:
+원인:
 
-Use:
+* Primary context 없음
+* invalid save chain
+* metadata 유실
+
+---
+
+#### 해결
+
+추천 구조:
+
+```text
+Primary → Suffix
+```
+
+순서 유지.
+
+---
+
+#### Eclipse path restore 실패
+
+원인:
+
+* original metadata 없음
+* 일반 batch 사용
+* Eclipse batch 미사용
+
+---
+
+#### 해결
+
+추천:
 
 ```text
 Dynamic Image Batch(Eclipse-TJ)
 ```
 
+사용.
+
 ---
 
-#### Filename Anomalies
+#### 파일명 이상 현상
 
-Aliases not recommended:
+권장하지 않는 alias:
 
 ```text
 %D
@@ -3594,64 +4518,68 @@ Aliases not recommended:
 
 ---
 
-#### Recommended Aliases
-
-Recommend using:
+#### 권장 Alias
 
 ```text
 %date
 %time
 ```
 
----
-
-### 9. Recommended Operation for Save Pipeline System
-
-We recommend the following approaches for the TJ Save structure:
+사용 권장.
 
 ---
 
-#### Recommended
+### 9. Save Pipeline System 추천 운영 방식
+
+TJ Save 구조에서는 다음 방식 추천.
+
+---
+
+#### 추천
 
 ```text
-- Create base with Primary
-- Use Suffix for subsequent saves
-- Manage results per workflow
-- Function-based suffix naming
-- Maintain metadata
+- Primary 기준 생성
+- Suffix로 후속 저장
+- workflow 단위 결과 관리
+- 기능 기준 suffix naming
+- metadata 유지
 ```
 
 ---
 
-#### Not Recommended
+#### 비추천
 
 ```text
-- Using Save Image randomly
-- Overwrite saving
-- Subsequent saves without suffixes
-- Ignoring original paths
+- 무작위 Save Image 사용
+- overwrite 저장
+- suffix 없는 후속 저장
+- 원본 경로 무시
 ```
 
 ---
 
 ### Final Notes
 
-The Save Pipeline System is the:
+Save Pipeline System은:
 
 ```text
-Output management layer of TJ workflows
+TJ workflow의 결과 관리 계층
 ```
 
-The core of TJ_NODE is not just basic saving, but:
+입니다.
+
+TJ_NODE의 핵심은 단순 저장 자체가 아니라:
 
 ```text
-Managing the results of large-scale workflows
-in a structurally maintainable form
+대규모 workflow 결과를
+구조적으로 유지 가능한 형태로 관리하는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final Save Pipeline showcase
+#스크린샷 : 최종 Save Pipeline showcase
 
 ---
 
@@ -3659,75 +4587,87 @@ in a structurally maintainable form
 
 ---
 
-### Purpose of this Chapter
+### 이 챕터의 목적
 
-The previous chapters focused on:
+앞선 챕터들은:
 
-* Node descriptions
-* Feature descriptions
-* System structures
+* 노드 설명
+* 기능 설명
+* 구조 설명
 
-But what truly matters is:
+중심이었습니다.
+
+하지만 실제로 중요한 것은:
 
 ```text
-"How to design and operate workflows in real production"
+"실전 workflow를 어떻게 설계하고 운영하는가"
 ```
 
-TJ_NODE is not a simple utility node pack.
+입니다.
 
-TJ_NODE functions closely as a:
+TJ_NODE는 단순 utility node pack이 아닙니다.
+
+TJ_NODE는:
 
 ```text
 Workflow Operating Layer
 ```
 
-Meaning it is an architecture toolkit designed for:
+에 가까운 구조입니다.
 
-* Workflow structuring
-* Maintainability
-* Modularization
-* Scalability
-* Debugging
-* Output management
+즉:
+
+* workflow 구조
+* 유지보수
+* 모듈화
+* 확장성
+* 디버깅
+* 결과 관리
+
+를 고려한 architecture toolkit입니다.
 
 ---
 
-#Screenshot : Large-scale TJ workflow architecture
+#스크린샷 : 대규모 TJ workflow 전체 구조
 
 ---
 
-### TJ_NODE Workflow Philosophy
+### TJ_NODE Workflow 철학
 
-The core philosophy of TJ_NODE workflows is not about building:
+TJ_NODE workflow의 핵심 철학은:
 
 ```text
-"A workflow that just works"
+"작동하는 workflow"
 ```
 
-but rather building:
+가 아니라:
 
 ```text
-"A maintainable workflow"
+"유지 가능한 workflow"
 ```
 
----
-
-#### Problems with standard workflows
-
-As the scale grows:
-
-* Wire count increases
-* Routing gets tangled
-* Preview nodes proliferate
-* Save structures break down
-* Batch structures become chaotic
-* Workflows become uneditable
+를 만드는 것입니다.
 
 ---
 
-#### TJ Workflow Goals
+#### 일반 workflow의 문제
 
-TJ_NODE solves these through its:
+규모가 커질수록:
+
+* 와이어 증가
+* routing 꼬임
+* preview 노드 증가
+* save 구조 붕괴
+* batch 구조 혼잡
+* 수정 불가능 상태
+
+가 발생합니다.
+
+---
+
+#### TJ workflow 목표
+
+TJ_NODE는 이를:
 
 * Wireless Routing
 * Modular Workflow
@@ -3736,21 +4676,23 @@ TJ_NODE solves these through its:
 * Fake-Wire
 * Embedded Get
 
-structures.
+구조로 해결합니다.
 
 ---
 
-#### Core Concept
+#### 핵심 개념
 
-In a TJ workflow, what matters is:
+TJ workflow에서 중요한 것은:
 
 ```text
-"Dividing the workflow into sections"
+"workflow를 section 단위로 나누는 것"
 ```
+
+입니다.
 
 ---
 
-#### Recommended Section Structure
+#### 추천 Section 구조
 
 ```text
 INPUT
@@ -3768,22 +4710,22 @@ SAVE
 
 ---
 
-#Screenshot : Section workflow structure
+#스크린샷 : section workflow 구조
 
 ---
 
-### 1. Recommended TJ Workflow Structure
+### 1. TJ Workflow 추천 구조
 
 #### INPUT SECTION
 
-Role:
+역할:
 
-* Dataset input
-* Generating image batches
-* Maintaining metadata
-* Normalizing resolution
+* dataset 입력
+* image batch 생성
+* metadata 유지
+* resolution normalize
 
-Recommended Nodes:
+추천 노드:
 
 * Multi Image Loader
 * Dynamic Image Batch
@@ -3791,19 +4733,19 @@ Recommended Nodes:
 
 ---
 
-#Screenshot : INPUT SECTION
+#스크린샷 : INPUT SECTION
 
 ---
 
 #### GENERATION SECTION
 
-Role:
+역할:
 
-* Latent generation
-* Prompt pipeline
-* Sampler pipeline
+* latent generation
+* prompt pipeline
+* sampler pipeline
 
-Recommended Structure:
+추천 구조:
 
 ```text
 Prompt
@@ -3815,39 +4757,43 @@ Preview
 
 ---
 
-#### Important Recommendation
+#### 중요한 추천
 
-In the Generation section, we recommend:
+Generation section에서는:
 
 ```text
-Minimizing long visible wires
+긴 visible wire 최소화
 ```
 
-Meaning we recommend using:
+를 추천합니다.
+
+즉:
 
 * Set Node
 * Multi Router
 * Embedded Get
 
+사용 권장.
+
 ---
 
-#Screenshot : Generation routing
+#스크린샷 : generation routing
 
 ---
 
 #### EDIT SECTION
 
-Role:
+역할:
 
 * img2img
-* Detail passes
-* Color correction
-* Inpainting
-* Variations
+* detail pass
+* color correction
+* inpaint
+* variation
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Generation Result
@@ -3859,27 +4805,27 @@ Wireless Edit Branches
 
 ---
 
-#### Advantages
+#### 장점
 
-* Separates branches
-* Preserves edit workflow independence
-* Simplifies compare structures
+* branch 분리
+* edit workflow 독립성
+* 비교 구조 쉬움
 
 ---
 
-#Screenshot : Edit branches
+#스크린샷 : edit branches
 
 ---
 
 #### UPSCALE SECTION
 
-Role:
+역할:
 
-* Upscale
-* Restoration
-* Enhancement
+* upscale
+* restoration
+* enhancement
 
-Recommended Structure:
+추천 구조:
 
 ```text
 Upscale
@@ -3891,31 +4837,33 @@ Suffix Save
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Because Upscale results must:
+Upscale 결과는:
 
 ```text
-Absolutely maintain their relationship with the original
+원본과 반드시 연결 관계 유지
 ```
+
+되어야 하기 때문입니다.
 
 ---
 
-#Screenshot : Upscale workflow
+#스크린샷 : upscale workflow
 
 ---
 
 #### PREVIEW SECTION
 
-Role:
+역할:
 
-* Image inspection
-* Fullscreen inspection
-* Comparisons
-* Snapshots
-* Video playback
+* image inspect
+* fullscreen inspect
+* compare
+* snapshot
+* video playback
 
-Recommended Nodes:
+추천 노드:
 
 * Save & Preview Image
 * Smart Show
@@ -3923,20 +4871,20 @@ Recommended Nodes:
 
 ---
 
-#Screenshot : Preview section
+#스크린샷 : preview section
 
 ---
 
 #### SAVE SECTION
 
-Role:
+역할:
 
-* Organizing results
-* Suffix saving
-* Preserving metadata
-* Preserving Eclipse paths
+* 결과 정리
+* suffix save
+* metadata 유지
+* Eclipse path 유지
 
-Recommended Structure:
+추천 구조:
 
 ```text
 Primary Save
@@ -3946,47 +4894,51 @@ Suffix Save Chain
 
 ---
 
-#Screenshot : Save structure
+#스크린샷 : save structure
 
 ---
 
-### 2. Wireless Workflow Operating Methods
+### 2. Wireless Workflow 운영 방식
 
-The core of TJ_NODE workflows is the:
+TJ_NODE workflow의 핵심은:
 
 ```text
-"Wireless section architecture"
+"wireless section architecture"
 ```
 
+입니다.
+
 ---
 
-#### Recommended Method
-
-Recommend a structure where:
+#### 추천 방식
 
 ```text
-Inside a Section
+Section 내부
 =
-Short wires
+짧은 wire
 
-Between Sections
+Section 간 연결
 =
 Wireless
 ```
 
+구조 추천.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
 ```text
-Long wires themselves become a maintenance issue
+긴 wire 자체가 유지보수 문제
 ```
+
+가 되기 때문입니다.
 
 ---
 
-#### Recommended Example
+#### 추천 예시
 
 ```text
 INPUT
@@ -4004,31 +4956,33 @@ Embedded Get
 
 ---
 
-#Screenshot : Wireless section workflow
+#스크린샷 : wireless section workflow
 
 ---
 
-### 3. Provider Naming Conventions
+### 3. Provider Naming 규칙
 
-Provider naming is highly important.
+Provider naming은 매우 중요합니다.
 
-Incorrect naming causes:
+잘못된 naming은:
 
-* Tangled reconnects
-* Failure to understand the structure
-* Duplication issues
+* reconnect 꼬임
+* 구조 파악 실패
+* duplicate 문제
+
+를 발생시킵니다.
 
 ---
 
-#### Recommended Naming Structure
+#### 추천 Naming 구조
 
-Recommendation:
+추천:
 
 ```text
 SECTION_PURPOSE
 ```
 
-Examples:
+예시:
 
 ```text
 INPUT_MAIN_IMAGE
@@ -4039,7 +4993,7 @@ SAVE_COMPARE_IMAGE
 
 ---
 
-#### Not Recommended Naming
+#### 비추천 Naming
 
 ```text
 test
@@ -4050,84 +5004,89 @@ temp
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-As workflows grow:
-
-```text
-The provider names themselves act as a routing map
-```
-
----
-
-### 4. Embedded Get Operating Strategy
-
-In TJ workflows, we recommend:
+workflow 규모가 커질수록:
 
 ```text
-Actively using Embedded Get
+provider 이름 자체가 routing map
 ```
 
----
-
-#### Recommended Reasons
-
-| Advantage | Description |
-| - | - |
-| Fewer nodes | Reduces Get node overuse |
-| Simplified structure | Local receiving |
-| Improved readability | Cleans up the workflow |
+이 되기 때문입니다.
 
 ---
 
-#### Recommended Locations
+### 4. Embedded Get 운영 전략
 
-Recommend using on:
-
-* Preview Nodes
-* Save Nodes
-* Prompt Nodes
-* Utility Nodes
-
----
-
-#### Locations Not Recommended
-
-Do not recommend on:
+TJ workflow에서는:
 
 ```text
-Positions with heavily dynamic structures,
-such as the middle of complex batch splits
+embedded get 적극 사용
 ```
 
----
-
-#Screenshot : Embedded get architecture
+을 추천합니다.
 
 ---
 
-### 5. Multi Router Operating Strategy
+#### 추천 이유
 
-In TJ workflows, the:
+|장점|설명|
+|-|-|
+|노드 감소|Get Node 남발 감소|
+|구조 단순화|local receive|
+|readability 향상|workflow 정리|
+
+---
+
+#### 추천 사용 위치
+
+추천:
+
+* Preview Node
+* Save Node
+* Prompt Node
+* Utility Node
+
+---
+
+#### 비추천 위치
+
+비추천:
+
+```text
+복잡한 batch split 중간
+```
+
+처럼 dynamic 구조가 강한 위치.
+
+---
+
+#스크린샷 : embedded get architecture
+
+---
+
+### 5. Multi Router 운영 전략
+
+TJ workflow에서:
 
 ```text
 Multi Router
 ```
 
-is one of the most important architectural nodes.
+는 가장 중요한 architecture node 중 하나입니다.
 
 ---
 
-#### Core Roles
+#### 핵심 역할
 
-* Branch separation of workflows
-* Section modularization
-* Auto Set provider creation
-* Structuring downstream operations
+* workflow branch 분리
+* section modularization
+* Auto Set provider 생성
+* downstream 구조화
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Generation
@@ -4141,72 +5100,76 @@ Multi Router
 
 ---
 
-#### Advantages
+#### 장점
 
-* Branch independence
-* Structural readability
-* Improved maintainability
-
----
-
-#Screenshot : Multi Router workflow
+* branch 독립성
+* 구조 readability
+* 유지보수 향상
 
 ---
 
-### 6. Preview Operating Strategy
+#스크린샷 : Multi Router workflow
 
-The TJ preview system is not just for displaying outputs.
+---
 
-In reality, it acts more like a:
+### 6. Preview 운영 전략
+
+TJ preview 시스템은 단순 결과 표시가 아닙니다.
+
+실제로는:
 
 ```text
-Workflow inspection system
+workflow inspection system
 ```
+
+에 가깝습니다.
 
 ---
 
-#### Recommended Usage
-
-Instead of:
+#### 추천 사용 방식
 
 ```text
-Overusing Save Preview for every intermediate result
+중간 결과마다 Save Preview 남발
 ```
 
-We recommend using:
+보다는:
 
 ```text
-Preview checkpoints per section
+Section 단위 preview checkpoint
 ```
 
----
-
-#### Recommended Locations
-
-Recommend:
-
-* Final generation
-* Final upscale
-* Compare branches
-* Final saves
+를 추천합니다.
 
 ---
 
-#Screenshot : Preview checkpoints
+#### 추천 위치
+
+추천:
+
+* generation final
+* upscale final
+* compare branch
+* save final
 
 ---
 
-#### Snapshot Strategy
+#스크린샷 : preview checkpoints
 
-We recommend using the TJ snapshot system as a:
+---
+
+#### Snapshot 전략
+
+TJ snapshot 시스템은:
 
 ```text
-Checkpoint for comparing results
+결과 비교용 checkpoint
 ```
+
+로 사용하는 것을 추천합니다.
 
 ---
 
-#### Example
+#### 예시
 
 ```text
 Base Result
@@ -4222,21 +5185,23 @@ Compare
 
 ---
 
-#Screenshot : Snapshot compare
+#스크린샷 : snapshot compare
 
 ---
 
-### 7. Save Pipeline Operating Strategy
+### 7. Save Pipeline 운영 전략
 
-The TJ Save structure was designed to:
+TJ Save 구조는:
 
 ```text
-Maintain the result structures of the workflow
+workflow 결과 구조 유지
 ```
+
+를 목적으로 설계되었습니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Primary Save
@@ -4250,39 +5215,39 @@ Compare Suffix
 
 ---
 
-#### Advantages
+#### 장점
 
-* Result grouping
-* Trackable workflows
-* Easy dataset organization
+* 결과 그룹화
+* workflow 추적 가능
+* dataset 정리 쉬움
 
 ---
 
-#### Structure Not Recommended
+#### 비추천 구조
 
 ```text
-Using Save Image randomly
+Save Image 무작위 사용
 ```
 
 ---
 
-#### Why is this not recommended?
+#### 왜 비추천인가?
 
-Tracking the relationship between results becomes virtually impossible.
-
----
-
-#Screenshot : Organized save chain
+결과 관계 추적이 거의 불가능해집니다.
 
 ---
 
-### 8. Eclipse Workflow Operating Strategy
-
-TJ_NODE can be used mixed together with Eclipse workflows.
+#스크린샷 : organized save chain
 
 ---
 
-#### Core Structure
+### 8. Eclipse Workflow 운영 전략
+
+TJ_NODE는 Eclipse workflow와 혼합 사용 가능합니다.
+
+---
+
+#### 핵심 구조
 
 ```text
 Eclipse SetNode
@@ -4294,47 +5259,53 @@ TJ Workflow
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommended for:
+추천:
 
-* Dataset workflows
-* Metadata workflows
-* File-tracking workflows
+* dataset workflow
+* metadata workflow
+* file-tracking workflow
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-TJ_NODE is not an:
+TJ_NODE는:
 
 ```text
 Eclipse replacement
 ```
 
-Instead, it acts as a:
+가 아닙니다.
+
+대신:
 
 ```text
 Eclipse bridge layer
 ```
 
----
-
-#Screenshot : Eclipse bridge workflow
+역할입니다.
 
 ---
 
-### 9. Large Scale Workflow Strategies
+#스크린샷 : Eclipse bridge workflow
 
-#### The Most Important Rule
+---
+
+### 9. 대규모 Workflow 추천 전략
+
+#### 가장 중요한 원칙
 
 ```text
-"Divide the workflow into sections"
+"workflow를 section 단위로 분리"
 ```
+
+할 것.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 INPUT
@@ -4347,189 +5318,204 @@ SAVE
 
 ---
 
-#### Reason
+#### 이유
 
-This structure is strongest for:
+이 구조가:
 
-* Maintainability
-* Readability
-* Debugging
-* Reusability
+* 유지보수
+* readability
+* debug
+* reuse
 
----
-
-#### Recommended Rules
-
-| Rule | Reason |
-| - | - |
-| Minimize long wires | Readability |
-| Use wireless sections | Modularity |
-| Naming provider rules | Debugging |
-| Maintain Save chains | Result tracking |
-| Use preview checkpoints | Comparing |
+에 가장 강합니다.
 
 ---
 
-#Screenshot : Recommended large workflow
+#### 추천 규칙
+
+|규칙|이유|
+|-|-|
+|긴 wire 최소화|readability|
+|wireless section 사용|modularity|
+|provider naming 규칙화|debug|
+|Save chain 유지|result tracking|
+|Preview checkpoint 사용|compare|
 
 ---
 
-### 10. TJ Workflow Debug Strategies
+#스크린샷 : recommended large workflow
 
-#### Recommended Debug Sequence
+---
 
-#### Phase 1
+### 10. TJ Workflow Debug 전략
 
-Check provider connections using:
+#### 추천 Debug 순서
+
+#### 1단계
 
 ```text
 Show ALL Wires
 ```
 
+로 provider 연결 확인.
+
 ---
 
-#### Phase 2
-
-Inspect data types using:
+#### 2단계
 
 ```text
 Smart Show
 ```
 
+로 데이터 타입 검사.
+
 ---
 
-#### Phase 3
-
-Do a step-by-step comparison using:
+#### 3단계
 
 ```text
 Save Preview Snapshot
 ```
 
+으로 단계별 비교.
+
 ---
 
-#### Phase 4
-
-Refresh providers using:
+#### 4단계
 
 ```text
 Refresh ALL Get Nodes
 ```
 
+로 provider refresh.
+
 ---
 
-#### Recommended Debug Nodes
+#### 추천 Debug 노드
 
-Recommend using:
+추천:
 
-* Smart Show
+* Show Any
+* Smart Converter
 * Save Preview
 * Multi Router
 
 ---
 
-#Screenshot : Debug workflow
+#스크린샷 : debug workflow
 
 ---
 
-### 11. Reload-Safe Workflow Strategies
+### 11. Reload-Safe Workflow 전략
 
-TJ_NODE emphasizes reload-safe structures in its design.
+TJ_NODE는 reload-safe 구조를 중요하게 설계합니다.
 
 ---
 
-#### Recommended Approaches
+#### 추천 방식
 
 ```text
-- Maintain provider names
-- Maintain Auto Set structures
-- Maintain save chains
-- Save the workflow frequently
+- provider 이름 유지
+- Auto Set 구조 유지
+- save chain 유지
+- workflow 저장 자주 수행
 ```
 
 ---
 
-#### Not Recommended
+#### 비추천
 
 ```text
-- Renaming providers randomly
-- Overusing duplicate providers
-- Unstable dynamic branches
+- provider 무작위 rename
+- duplicate provider 남발
+- unstable dynamic branch
 ```
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
 ```text
-Reload stability
+reload 안정성
 =
-Workflow survivability
+workflow 생존성
 ```
+
+이기 때문입니다.
 
 ---
 
-### 12. Recommended TJ_NODE Operation Philosophy
+### 12. TJ_NODE 추천 운영 철학
 
-TJ_NODE workflows do not aim for:
+TJ_NODE workflow는:
 
 ```text
-"A workflow that merely works"
+"작동만 하는 workflow"
 ```
+
+를 목표로 하지 않습니다.
 
 ---
 
-#### TJ_NODE Goals
+#### TJ_NODE의 목표
 
-The goals of TJ_NODE are:
+TJ_NODE의 목표는:
 
 ```text
-- Maintainable workflows
-- Scalable workflows
-- Easy-to-read workflows
-- Recoverable workflows
+- 유지 가능한 workflow
+- 확장 가능한 workflow
+- 읽기 쉬운 workflow
+- 복구 가능한 workflow
 ```
+
+입니다.
 
 ---
 
-#### The Most Important Concept
+#### 가장 중요한 개념
 
-The core of TJ workflows is:
+TJ workflow의 핵심은:
 
 ```text
-"Workflow Architecture"
+"workflow architecture"
 ```
+
+입니다.
 
 ---
 
 ### Final Notes
 
-TJ_NODE is not a simple utility node pack.
+TJ_NODE는 단순 utility node pack이 아닙니다.
 
-TJ_NODE is a:
+TJ_NODE는:
 
 ```text
 Large Scale Workflow Architecture Toolkit
 ```
 
-The core of TJ_NODE is not:
+입니다.
+
+TJ_NODE의 핵심은:
 
 ```text
-Removing wires
+와이어 제거
 ```
 
-but:
+가 아니라:
 
 ```text
-Building large-scale workflows into
-structures that are actually operational
+대규모 workflow를
+실제로 운영 가능한 구조로 만드는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final TJ workflow showcase
+#스크린샷 : 최종 TJ workflow showcase
 
 ---
 
@@ -4537,607 +5523,671 @@ structures that are actually operational
 
 ---
 
-### Purpose of this Chapter
+### 이 챕터의 목적
 
-The previous chapters centered on:
+앞선 챕터들은:
 
-* Node descriptions
-* Workflow structures
-* Operation methods
+* 노드 설명
+* workflow 구조
+* 운영 방식
 
-However, in actual large-scale workflows, it is crucial to have the:
+중심이었습니다.
 
-```text
-"Ability to understand why problems occur
-and how to recover from them"
-```
-
-Because TJ_NODE is not a simple utility node pack but a:
+하지만 실제 대규모 workflow에서는:
 
 ```text
-Workflow architecture layer
+"문제가 발생했을 때
+왜 그런지 이해하고
+복구할 수 있는 능력"
 ```
 
-understanding its internal systems is important, such as:
+이 매우 중요합니다.
 
-* Fake-wires
-* Embedded Get
-* Provider registries
-* Preview lifecycles
-* Reload-safe restores
+TJ_NODE는 단순 utility node pack이 아니라:
+
+```text
+workflow architecture layer
+```
+
+이기 때문에:
+
+* fake-wire
+* embedded get
+* provider registry
+* preview lifecycle
+* reload-safe restore
+
+같은 내부 시스템 이해가 중요합니다.
 
 ---
 
-#Screenshot : TJ internal system overview
+#스크린샷 : TJ internal system overview
 
 ---
 
 ### 1. Fake-Wire Internal System
 
-The TJ Fake-Wire structure is:
+TJ Fake-Wire는:
 
 ```text
-Physical connections maintained
+실제 연결 유지
 +
-Visual connections minimized
+시각적 연결 최소화
 ```
+
+구조입니다.
 
 ---
 
-#### Core Purpose
+#### 핵심 목적
 
-To keep the workflow in a:
+workflow를:
 
 ```text
-Readable state
+읽기 가능한 상태
 ```
+
+로 유지하기 위함입니다.
 
 ---
 
-#### Internal Structure
+#### 내부 구조
 
-TJ Fake-Wire does not actually remove the:
+TJ Fake-Wire는 실제로:
 
 ```text
-LiteGraph connections
+LiteGraph connection
 ```
 
-Instead, it uses a structure of:
+자체를 제거하는 것이 아닙니다.
 
-* Connection visibility control
-* Transparent rendering
-* Hover rendering
-* Debug rendering
+대신:
+
+* connection visibility control
+* transparent rendering
+* hover rendering
+* debug rendering
+
+구조를 사용합니다.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Because:
+즉:
 
 ```text
-Logical connections are maintained
+논리 연결은 유지
 ```
 
-operations like:
+되기 때문에:
 
-* Execution
-* Save
-* Reload
-* Restore
+* execution
+* save
+* reload
+* restore
 
-work normally.
+가 정상 동작합니다.
 
 ---
 
-#Screenshot : Fake-wire render structure
+#스크린샷 : fake-wire render structure
 
 ---
 
 ### 2. Realtime Wire Hover System
 
-Realtime Wires View Mode is a system that:
+Realtime Wires View Mode는:
 
 ```text
-Shows wires only on hover
+hover 시에만 wire 표시
 ```
+
+하는 시스템입니다.
 
 ---
 
-#### Purpose
+#### 목적
 
-Normally maintain a:
-
-```text
-Clean workflow
-```
-
-state.
-
-When needed, it allows for:
+평소에는:
 
 ```text
-Temporary connection inspections
+clean workflow
 ```
+
+상태 유지.
+
+필요 시에만:
+
+```text
+temporary connection inspect
+```
+
+가능.
 
 ---
 
-#### Recommended Settings
+#### 추천 설정
 
-In general TJ workflows, we recommend the state:
+TJ workflow에서는 일반적으로:
 
 ```text
 Realtime Wires View Mode = ON
 Show ALL Wires = OFF
 ```
 
----
-
-#### Why is this important?
-
-This structure provides the best balance of:
-
-* Readability
-* Debugging
-* Clutter reduction
+상태를 추천합니다.
 
 ---
 
-#Screenshot : Hover wire example
+#### 왜 중요한가?
+
+이 구조가:
+
+* readability
+* debug
+* clutter reduction
+
+균형이 가장 좋습니다.
+
+---
+
+#스크린샷 : hover wire example
 
 ---
 
 ### 3. Show ALL Wires System
 
-Show ALL Wires is a mode that:
+Show ALL Wires는:
 
 ```text
-Forcefully shows all hidden wires
+모든 hidden wire 강제 표시
 ```
 
----
-
-#### Recommended Use Cases
-
-Recommended for:
-
-* Provider tracing
-* Wireless debugging
-* Connection verification
-* Routing inspections
+모드입니다.
 
 ---
 
-#### Precautions
+#### 추천 사용 상황
 
-In large-scale workflows, this can cause a:
+추천:
+
+* provider trace
+* wireless debug
+* connection verify
+* routing inspect
+
+---
+
+#### 주의 사항
+
+대규모 workflow에서는:
 
 ```text
-Spike in wire clutter
+와이어 clutter 급증
 ```
 
-Recommended to keep OFF during normal operations.
+가능.
+
+일반 workflow 작업 중에는 OFF 추천.
 
 ---
 
-#Screenshot : Show ALL Wires enabled
+#스크린샷 : Show ALL Wires enabled
 
 ---
 
 ### 4. Provider Registry System
 
-The core of the TJ wireless structure is the:
+TJ wireless 구조의 핵심은:
 
 ```text
 Provider Registry
 ```
 
----
-
-#### Role
-
-A system that manages active providers by:
-
-* Registering
-* Managing
-* Reconnecting
-* Cleaning up
+입니다.
 
 ---
 
-#### Information Managed Internally
+#### 역할
 
-| Information | Description |
-| - | - |
-| Provider Name | setnode_name |
-| Source Node | Set provider |
-| Type | IMAGE / STRING etc. |
-| Connection State | Status of the connection |
+현재 활성 provider를:
+
+* 등록
+* 관리
+* reconnect
+* cleanup
+
+하는 시스템입니다.
 
 ---
 
-#### Why is this important?
+#### 내부적으로 관리되는 정보
 
-The Get list is actually generated:
+| 정보               | 설명               |
+| ---------------- | ---------------- |
+| provider name    | setnode_name     |
+| source node      | Set provider     |
+| type             | IMAGE / STRING 등 |
+| connection state | 연결 상태            |
+
+---
+
+#### 왜 중요한가?
+
+Get 리스트는 실제로:
 
 ```text
-Based on the Provider Registry
+Provider Registry 기반
 ```
+
+으로 생성됩니다.
 
 ---
 
-#Screenshot : Provider registry flow
+#스크린샷 : provider registry flow
 
 ---
 
 ### 5. Embedded Get Internal Logic
 
-Embedded Get internally uses a:
+Embedded Get는 내부적으로:
 
 ```text
-Wireless receive widget
+wireless receive widget
 ```
 
-structure.
+구조를 사용합니다.
 
 ---
 
-#### Internal Operations
+#### 내부 동작
 
-Embedded Get performs:
+embedded get는:
 
-1. Querying the provider registry
-2. Verifying types
-3. Removing invalid providers
-4. Handling reconnects
+1. provider registry 조회
+2. 타입 확인
+3. invalid provider 제거
+4. reconnect 처리
+
+를 수행합니다.
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-TJ_NODE runs both:
+TJ_NODE는:
 
 ```text
-Get Nodes
-and
+Get Node
+와
 Embedded Get
 ```
 
-on the same wireless lifecycle.
+를 동일 wireless lifecycle 위에서 동작시킵니다.
 
-Structurally, they are the exact same system.
-
----
-
-#### Why is this important?
-
-Thanks to this structure, it maintains:
-
-* Provider sync
-* Reload-safe reconnects
-* Fake-wire consistency
+즉 구조적으로 같은 시스템입니다.
 
 ---
 
-#Screenshot : Embedded get lifecycle
+#### 왜 중요한가?
+
+이 구조 덕분에:
+
+* provider sync
+* reload-safe reconnect
+* fake-wire consistency
+
+가 유지됩니다.
+
+---
+
+#스크린샷 : embedded get lifecycle
 
 ---
 
 ### 6. Refresh ALL Get Nodes
 
-#### The Most Important Recovery Feature
+#### 가장 중요한 복구 기능
 
-The right-click menu:
+우클릭 메뉴:
 
 ```text
 Refresh ALL Get Nodes
 ```
 
-is an extremely important repair tool.
+는 매우 중요한 repair 기능입니다.
 
 ---
 
-#### Role
+#### 역할
 
-Performs the following tasks:
+다음 작업 수행:
 
-* Provider rescan
-* Invalid provider cleanup
-* Dropdown rebuild
-* Reconnect refresh
-
----
-
-#### When to use this?
-
-Recommended situations:
-
-| Situation | Description |
-| - | - |
-| Provider Rename | After changing names |
-| Workflow Reload | After reloading |
-| Eclipse Sync Issue | Provider mismatch |
-| Get List Anomaly | Tangled lists |
+* provider rescan
+* invalid provider cleanup
+* dropdown rebuild
+* reconnect refresh
 
 ---
 
-#### Recommended Habit
+#### 언제 사용하는가?
 
-In large workflows, we recommend running:
+추천 상황:
+
+| 상황              | 설명                |
+| --------------- | ----------------- |
+| provider rename | 이름 변경 후           |
+| workflow reload | reload 이후         |
+| Eclipse sync 문제 | provider mismatch |
+| get 목록 이상       | 리스트 꼬임            |
+
+---
+
+#### 추천 습관
+
+대규모 workflow에서는:
 
 ```text
-Refresh after altering provider structures
+provider 구조 변경 후
+Refresh 실행
 ```
+
+권장.
 
 ---
 
-#Screenshot : Refresh ALL Get Nodes
+#스크린샷 : Refresh ALL Get Nodes
 
 ---
 
 ### 7. Wireless Reconnect System
 
-TJ_NODE is heavily designed around a:
+TJ_NODE는:
 
 ```text
-Reload-safe reconnect
+reload-safe reconnect
 ```
 
-structure.
+구조를 중요하게 설계합니다.
 
 ---
 
-#### Role
+#### 역할
 
-After a workflow reload, it automatically performs:
+workflow reload 후:
 
-* Provider reconnects
-* Fake-wire rebuilds
-* Embedded Get reconnects
+* provider reconnect
+* fake-wire rebuild
+* embedded get reconnect
+
+자동 수행.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
 ```text
-Reload stability
+reload 안정성
 =
-Workflow survivability
+workflow 생존성
 ```
+
+이기 때문입니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
-Recommend using:
+추천:
 
 ```text
-Stable provider naming
+안정적인 provider naming
 ```
+
+사용.
 
 ---
 
-#### Not Recommended Structure
+#### 비추천 구조
 
 ```text
-Random provider renaming
-Duplicate providers
+random provider rename
+duplicate provider
 ```
 
 ---
 
-#Screenshot : Reconnect restore
+#스크린샷 : reconnect restore
 
 ---
 
 ### 8. Preview Lifecycle System
 
-The TJ preview system is not a simple image viewer.
+TJ preview 시스템은 단순 image viewer가 아닙니다.
 
-It acts closer to a:
-
-```text
-Preview lifecycle architecture
-```
-
----
-
-#### Managed States
-
-| State | Description |
-| - | - |
-| preview image | Current preview |
-| snapshot | Copied preview |
-| fullscreen state | Zoomed state |
-| grid state | Batch grid |
-| restore metadata | Reload restore |
-
----
-
-#### Why is this important?
-
-Standard previews frequently suffer from:
+실제로는:
 
 ```text
-Loss of preview upon reload
+preview lifecycle architecture
 ```
 
-The TJ preview is designed to minimize this.
+에 가깝습니다.
 
 ---
 
-#Screenshot : Preview lifecycle
+#### 관리되는 상태
+
+| 상태               | 설명             |
+| ---------------- | -------------- |
+| preview image    | 현재 preview     |
+| snapshot         | 복사 preview     |
+| fullscreen state | 확대 상태          |
+| grid state       | batch grid     |
+| restore metadata | reload restore |
+
+---
+
+#### 왜 중요한가?
+
+일반 preview는:
+
+```text
+reload 시 preview 유실
+```
+
+이 자주 발생합니다.
+
+TJ preview는 이를 최소화하도록 설계되었습니다.
+
+---
+
+#스크린샷 : preview lifecycle
 
 ---
 
 ### 9. Snapshot Preview System
 
-The TJ preview copy is not a:
+TJ preview copy는:
 
 ```text
-Live mirror
+live mirror
 ```
 
-Instead, it is a:
+가 아닙니다.
+
+대신:
 
 ```text
-Detach snapshot
+detach snapshot
 ```
 
-structure.
+구조입니다.
 
 ---
 
-#### Purpose
+#### 목적
 
-Recommended for:
+추천 사용:
 
-* Comparisons
-* Checkpoints
-* Preserving results
-
----
-
-#### Advantages
-
-| Advantage | Description |
-| - | - |
-| Enables Comparisons | Preserves previous results |
-| Workflow Records | Results per stage |
-| Easy Debugging | Tracks issues |
+* compare
+* checkpoint
+* result preserve
 
 ---
 
-#Screenshot : Snapshot compare
+#### 장점
+
+| 장점          | 설명       |
+| ----------- | -------- |
+| compare 가능  | 이전 결과 유지 |
+| workflow 기록 | 단계별 결과   |
+| debug 용이    | 문제 추적    |
+
+---
+
+#스크린샷 : snapshot compare
 
 ---
 
 ### 10. Video Preview Internal System
 
-Save & Preview Video operates on an:
+Save & Preview Video는:
 
 ```text
 HTML5 video architecture
 ```
 
-base.
+기반으로 동작합니다.
 
 ---
 
-#### Internal Features
+#### 내부 기능
 
-Manages:
+* playback
+* audio sync
+* frame preview
+* decode restore
+* video snapshot
 
-* Playback
-* Audio sync
-* Frame previews
-* Decode restores
-* Video snapshots
+관리.
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-The results of a video decode can be used downstream as an:
+video decode 결과는:
 
 ```text
 IMAGE batch
 ```
 
+로 downstream 사용 가능.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Meaning you can process a:
+즉:
 
 ```text
-Video workflow
+video workflow
 =
-Image workflow
+image workflow
 ```
+
+처럼 처리 가능.
 
 ---
 
-#Screenshot : Video internal flow
+#스크린샷 : video internal flow
 
 ---
 
 ### 11. Mutex Protection System
 
-Save & Preview Video prevents simultaneous connection of:
+Save & Preview Video는:
 
 ```text
 image + video direct input
 ```
 
----
-
-#### Reason
-
-Simultaneous connections could cause:
-
-* Ambiguous states
-* Invalid decodes
-* Playback mismatches
+동시 연결을 방지합니다.
 
 ---
 
-#### Reload-Safe Purpose
+#### 이유
 
-Designed to allow:
+동시 연결 시:
+
+* ambiguous state
+* invalid decode
+* playback mismatch
+
+발생 가능.
+
+---
+
+#### reload-safe 목적
+
+reload 후에도:
 
 ```text
-Stale source cleanups
+stale source cleanup
 ```
 
-even after reloading.
+가능하도록 설계.
 
 ---
 
-#Screenshot : Mutex protection
+#스크린샷 : mutex protection
 
 ---
 
 ### 12. Save Lifecycle System
 
-The TJ Save structure manages the:
+TJ Save 구조는:
 
 ```text
-Save context lifecycle
+save context lifecycle
 ```
 
----
-
-#### Managed Items
-
-| Item | Description |
-| - | - |
-| Base path | Base save location |
-| Suffix chain | Subsequent saves |
-| Metadata | Save information |
-| Collision handling | Handling duplicates |
+를 관리합니다.
 
 ---
 
-#### Purpose
+#### 관리 항목
 
-To structurally maintain the:
+| 항목                 | 설명       |
+| ------------------ | -------- |
+| base path          | 기준 저장 위치 |
+| suffix chain       | 후속 저장    |
+| metadata           | save 정보  |
+| collision handling | 중복 처리    |
+
+---
+
+#### 목적
+
+workflow 결과를:
 
 ```text
-Workflow results
+구조적으로 유지
 ```
+
+하기 위함.
 
 ---
 
-#Screenshot : Save lifecycle
+#스크린샷 : save lifecycle
 
 ---
 
 ### 13. Collision Handling System
 
-If the same filename exists, it auto-increments:
+동일 filename 존재 시:
 
 ```text
 _001
@@ -5145,261 +6195,266 @@ _002
 _003
 ```
 
+자동 증가 저장.
+
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In mass generations, an:
+대량 generation에서는:
 
 ```text
-Overwrite accident
+overwrite 사고
 ```
 
-is very common.
+가 매우 흔합니다.
 
-TJ Saves prevent this as much as possible.
-
----
-
-#Screenshot : Collision example
+TJ Save는 이를 최대한 방지.
 
 ---
 
-### 14. Common Issues
-
-#### Get node isn't connecting
-
-Check:
-
-* Whether provider exists
-* Duplicate providers
-* Workflow reload state
+#스크린샷 : collision example
 
 ---
 
-#### Solution
+### 14. 자주 발생하는 문제
 
-Recommendation:
+#### Get 연결이 안 되는 경우
 
-Run:
+확인:
+
+* provider 존재 여부
+* duplicate provider
+* workflow reload 상태
+
+---
+
+#### 해결
+
+추천:
 
 ```text
 Refresh ALL Get Nodes
 ```
 
----
-
-#### Provider list doesn't appear
-
-Causes:
-
-* Set Node deleted
-* Invalid provider
-* Stale registry
+실행.
 
 ---
 
-#### Solution
+#### Provider 리스트 안 뜸
 
-* Verify provider
-* Reconnect
-* Save workflow and reload
+원인:
+
+* Set Node 삭제
+* invalid provider
+* stale registry
+
+---
+
+#### 해결
+
+* provider 확인
+* reconnect
+* workflow 저장 후 reload
 
 ---
 
 #### Preview Black Screen
 
-Check:
+확인:
 
-* Existence of IMAGE batch
-* Whether decode frames generated
-* Browser autoplay policies
+* IMAGE batch 존재 여부
+* decode frame 생성 여부
+* browser autoplay 정책
 
 ---
 
-#### Cannot close fullscreen
+#### Fullscreen 종료 안 됨
 
-Cause:
+원인:
 
 ```text
-Overlay pointer conflict
+overlay pointer conflict
 ```
 
 ---
 
-#### Solution
+#### 해결
 
-Recommend using the latest TJ preview structure.
-
----
-
-#### Video Playback fails
-
-Check:
-
-* fps settings
-* Muted state
-* Autoplay restrictions
+최신 TJ preview 구조 사용 권장.
 
 ---
 
-#### Audio Controller doesn't appear
+#### Video Playback 안 됨
 
-Check for input connections to:
+확인:
+
+* fps 설정
+* muted 상태
+* autoplay 제한
+
+---
+
+#### Audio Controller 안 뜸
+
+확인:
 
 * audio_a
 * audio_b
 
----
-
-#### Save Path tangled
-
-Causes:
-
-* Missing Primary context
-* Invalid save chain
+입력 여부.
 
 ---
 
-#### Solution
+#### Save Path 꼬임
 
-Recommendation:
+원인:
 
-Maintain the structure:
+* Primary context 없음
+* invalid save chain
+
+---
+
+#### 해결
+
+추천:
 
 ```text
 Primary → Suffix
 ```
 
+구조 유지.
+
 ---
 
 ### 15. Workflow Repair Guide
 
-#### Recommended Recovery Sequence
+#### 추천 복구 순서
 
-#### Phase 1
-
-Check connections using:
+#### 1단계
 
 ```text
 Show ALL Wires
 ```
 
+로 연결 확인.
+
 ---
 
-#### Phase 2
-
-Inspect data using:
+#### 2단계
 
 ```text
 Smart Show
 ```
 
+로 데이터 검사.
+
 ---
 
-#### Phase 3
-
-Execute:
+#### 3단계
 
 ```text
 Refresh ALL Get Nodes
 ```
 
----
-
-#### Phase 4
-
-Save workflow and reload.
+실행.
 
 ---
 
-#### Recommended Debug Nodes
+#### 4단계
 
-Recommend:
+workflow 저장 후 reload.
 
-* Smart Show
+---
+
+#### 추천 Debug 노드
+
+추천:
+
+* Show Any
+* Smart Converter
 * Save Preview
 * Multi Router
 
 ---
 
-#Screenshot : Debug workflow
+#스크린샷 : debug workflow
 
 ---
 
-### 16. Reload-Safe Workflow Design Strategies
+### 16. Reload-Safe Workflow 설계 전략
 
-We recommend the following structures in TJ workflows.
+TJ workflow에서는 다음 구조를 추천.
 
 ---
 
-#### Recommended
+#### 추천
 
 ```text
-- Stable provider naming
-- Maintain Auto Set
-- Maintain section architecture
-- Maintain save chains
+- stable provider naming
+- Auto Set 유지
+- section architecture 유지
+- save chain 유지
 ```
 
 ---
 
-#### Not Recommended
+#### 비추천
 
 ```text
-- Duplicate providers
-- Random renaming
-- Unstable branches
-- Giant visible wires
+- duplicate provider
+- random rename
+- unstable branch
+- giant visible wire
 ```
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-In large-scale workflows:
+대규모 workflow에서는:
 
 ```text
-Reload-safe structures
+reload-safe 구조
 =
-Workflow maintainability
+workflow 유지보수 가능성
 ```
+
+이기 때문입니다.
 
 ---
 
 ### 17. Recommended Best Practices
 
-Recommended operation methods for TJ workflows.
+TJ workflow 추천 운영 방식.
 
 ---
 
-#### Recommended
+#### 추천
 
-| Recommendation | Reason |
-| - | - |
-| Use Embedded Get | Simplifies workflows |
-| Structured Multi Router | Section separation |
-| Preview Checkpoints | Comparisons |
-| Maintain Save Chains | Organize results |
-| Set naming rules for providers | Debugging |
+| 추천                  | 이유           |
+| ------------------- | ------------ |
+| Embedded Get 사용     | workflow 단순화 |
+| Multi Router 구조화    | section 분리   |
+| Preview checkpoint  | compare      |
+| Save Chain 유지       | 결과 정리        |
+| provider naming 규칙화 | debug        |
 
 ---
 
-#### Recommended Preview Strategy
+#### 추천 Preview 전략
 
 ```text
-Overusing intermediate previews
+중간 preview 남발
 ❌
 
-Section checkpoint previews
+section checkpoint preview
 ⭕
 ```
 
 ---
 
-#### Recommended Save Strategy
-
-Maintain the structure:
+#### 추천 Save 전략
 
 ```text
 Primary Save
@@ -5407,11 +6462,13 @@ Primary Save
 Suffix Chain
 ```
 
+구조 유지.
+
 ---
 
 ### 18. Anti-Patterns
 
-#### Absolutely Not Recommended Structures
+#### 절대 비추천 구조
 
 ---
 
@@ -5427,7 +6484,7 @@ MAIN_IMAGE
 
 #### Giant Visible Wire
 
-A long visible wire crossing the entire workflow.
+workflow 전체를 가로지르는 긴 visible wire.
 
 ---
 
@@ -5441,59 +6498,65 @@ temp
 
 ---
 
-#### Save Image Overuse
+#### Save Image 남발
 
-Random saving without a Save structure.
+Save 구조 없이 무작위 저장.
 
 ---
 
 #### Dynamic Chaos Workflow
 
-Giant workflows with no branch structures.
+branch 구조 없는 giant workflow.
 
 ---
 
-#### Why are these dangerous?
+#### 왜 위험한가?
 
-These structures create states where:
+이런 구조는:
 
-* Debugging is difficult
-* Reconnects are unstable
-* Saving becomes chaotic
-* Maintenance is impossible
+* debug 어려움
+* reconnect 불안정
+* save 혼잡
+* 유지보수 불가능
+
+상태를 만듭니다.
 
 ---
 
-#Screenshot : Anti-pattern workflow
+#스크린샷 : anti-pattern workflow
 
 ---
 
 ### Final Notes
 
-TJ_NODE is not a simple utility node pack.
+TJ_NODE는 단순 utility node pack이 아닙니다.
 
-TJ_NODE is a:
+TJ_NODE는:
 
 ```text
 Workflow Architecture Toolkit
 ```
 
-The core of TJ_NODE is not:
+입니다.
+
+TJ_NODE의 핵심은:
 
 ```text
-Removing wires
+와이어 제거
 ```
 
-but:
+가 아니라:
 
 ```text
-Maintaining large-scale workflows
-in a truly operational state
+대규모 workflow를
+실제로 운영 가능한 상태로 유지하는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final architecture showcase
+#스크린샷 : final architecture showcase
 
 ---
 
@@ -5501,448 +6564,481 @@ in a truly operational state
 
 ---
 
-### Purpose of this Chapter
+### 이 챕터의 목적
 
-One of the biggest features of TJ_NODE is that it is an:
+TJ_NODE의 가장 큰 특징 중 하나는:
 
 ```text
-"HTML5-based UI system that goes beyond
-simple LiteGraph nodes"
+"단순 LiteGraph 노드 수준을 넘어선 HTML5 기반 UI 시스템"
 ```
 
-Many TJ nodes internally use:
+이라는 점입니다.
 
-* HTML5 overlays
-* Custom DOMs
-* Dynamic UIs
-* Interactive previews
-* Realtime controls
-* Custom players
+많은 TJ 노드는 내부적으로:
 
-In other words, TJ_NODE is not a simple:
+* HTML5 overlay
+* custom DOM
+* dynamic UI
+* interactive preview
+* realtime control
+* custom player
+
+구조를 사용합니다.
+
+즉 TJ_NODE는 단순:
 
 ```text
 ComfyUI utility node
 ```
 
-but rather acts as a:
+가 아니라:
 
 ```text
 Workflow Interface Layer
 ```
 
+에 가까운 구조입니다.
+
 ---
 
-#Screenshot : TJ HTML5 UI overview
+#스크린샷 : TJ HTML5 UI overview
 
 ---
 
 ### 1. HTML5 Overlay System
 
-TJ_NODE doesn't handle many of its features through just:
+TJ_NODE는 많은 기능을:
 
 ```text
 Canvas draw
 ```
 
-Instead, it actively utilizes an:
+만으로 처리하지 않습니다.
+
+대신:
 
 ```text
 HTML5 DOM Overlay
 ```
 
-system.
+시스템을 적극 활용합니다.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-The default LiteGraph UI has issues with:
+기본 LiteGraph UI는:
 
-* Limited interaction
-* Limited previews
-* Limited media controls
+* 제한된 interaction
+* 제한된 preview
+* 제한된 media control
 
-TJ_NODE expands this through:
+문제가 있습니다.
 
-* DOM overlays
-* Interactive UIs
-* Custom controls
+TJ_NODE는 이를:
 
----
+* DOM overlay
+* interactive UI
+* custom controls
 
-#### Utilized Features
-
-| Feature | Description |
-| - | - |
-| HTML5 video | Video playback |
-| HTML5 audio | Audio player |
-| DOM overlay | Custom UIs |
-| Fullscreen preview | Image inspection |
-| Dynamic controller | Runtime UIs |
+구조로 확장합니다.
 
 ---
 
-#Screenshot : Overlay UI structure
+#### 사용되는 기능
+
+| 기능                 | 설명             |
+| ------------------ | -------------- |
+| HTML5 video        | video playback |
+| HTML5 audio        | audio player   |
+| DOM overlay        | custom UI      |
+| fullscreen preview | image inspect  |
+| dynamic controller | runtime UI     |
+
+---
+
+#스크린샷 : overlay UI structure
 
 ---
 
 ### 2. Smart Preview Overlay System
 
-The TJ Preview system is not just simple image drawing.
+TJ Preview 시스템은 단순 image draw가 아닙니다.
 
-In reality, it is an:
+실제로는:
 
 ```text
-Overlay-driven preview architecture
+overlay-driven preview architecture
 ```
 
----
-
-#### Managed Elements
-
-| Element | Description |
-| - | - |
-| Image layer | Preview |
-| Overlay layer | Buttons |
-| Fullscreen layer | Fullscreen UI |
-| Interaction layer | Mouse/Keyboard |
+구조입니다.
 
 ---
 
-#### Why is this important?
+#### 관리되는 요소
 
-Thanks to this structure, features like:
-
-* Fullscreen
-* Preview restores
-* Snapshots
-* Keyboard controls
-
-become possible.
+| 요소                | 설명             |
+| ----------------- | -------------- |
+| image layer       | preview        |
+| overlay layer     | buttons        |
+| fullscreen layer  | fullscreen UI  |
+| interaction layer | mouse/keyboard |
 
 ---
 
-#Screenshot : Preview overlay layers
+#### 왜 중요한가?
+
+이 구조 덕분에:
+
+* fullscreen
+* preview restore
+* snapshot
+* keyboard control
+
+같은 기능이 가능해집니다.
 
 ---
 
-### 3. Save & Preview Image HTML5 Features
-
-Save & Preview Image is the node that utilizes the TJ HTML5 structure the most actively.
+#스크린샷 : preview overlay layers
 
 ---
 
-#### Included Features
+### 3. Save & Preview Image HTML5 기능
 
-| Feature | Description |
-| - | - |
-| Fullscreen overlay | Zoom views |
-| Grid layout | Batch grid |
-| Refresh overlay | Preview refresh |
-| Keyboard navigation | Arrow key movement |
-| Fit-center | Center alignment |
-| Snapshot restore | Maintain previews |
+Save & Preview Image는 TJ HTML5 구조를 가장 적극적으로 사용하는 노드입니다.
 
 ---
 
-#Screenshot : Save Preview HTML5 UI
+#### 포함 기능
+
+| 기능                  | 설명              |
+| ------------------- | --------------- |
+| fullscreen overlay  | 확대 보기           |
+| grid layout         | batch grid      |
+| refresh overlay     | preview refresh |
+| keyboard navigation | 방향키 이동          |
+| fit-center          | 중앙 정렬           |
+| snapshot restore    | preview 유지      |
+
+---
+
+#스크린샷 : Save Preview HTML5 UI
 
 ---
 
 ### 4. Fullscreen Overlay System
 
-#### Purpose
+#### 목적
 
-A system to inspect images at:
+이미지를:
 
 ```text
-Actual detail levels
+실제 디테일 수준으로 검사
 ```
 
----
-
-#### Key Features
-
-| Feature | Description |
-| - | - |
-| Fullscreen preview | Full screen |
-| Zoom inspect | Zoom inspection |
-| Batch navigation | Previous/Next |
-| ESC close | Close fullscreen |
+하기 위한 시스템입니다.
 
 ---
 
-#### How to Enter
+#### 주요 기능
 
-Methods:
-
-* Click image
-* F/f key
-
----
-
-#### How to Close
-
-| Method | Description |
-| - | - |
-| ESC | Close |
-| X button | Close |
-| Background click | Close |
+| 기능                 | 설명            |
+| ------------------ | ------------- |
+| fullscreen preview | 전체 화면         |
+| zoom inspect       | 확대 검사         |
+| batch navigation   | 이전/다음         |
+| ESC close          | fullscreen 종료 |
 
 ---
 
-#Screenshot : Fullscreen viewer
+#### 진입 방법
+
+방법:
+
+* 이미지 클릭
+* F/f 키
 
 ---
 
-#### Important Fixes
+#### 종료 방법
 
-In the past, TJ previews had a pointer conflict issue between the:
+| 방식               | 설명    |
+| ---------------- | ----- |
+| ESC              | 종료    |
+| X 버튼             | close |
+| background click | close |
+
+---
+
+#스크린샷 : fullscreen viewer
+
+---
+
+#### 중요한 수정 사항
+
+TJ preview는 과거:
 
 ```text
 refresh overlay
 ```
 
-and the:
+와:
 
 ```text
 close button
 ```
 
-The current structure resolves this via:
+pointer 충돌 문제가 존재했습니다.
+
+현재 구조는:
 
 ```text
-Overlay pointer layer separation
+overlay pointer layer 분리
 ```
+
+를 통해 해결.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-This issue caused phenomena where:
+이 문제는:
 
 ```text
-Fullscreen wouldn't close
+fullscreen 종료 안 됨
 ```
 
-Currently, it uses a structure with:
+현상을 발생시켰습니다.
 
-* Independent X buttons
-* Separated refresh overlays
-* Eliminated pointer conflicts
+현재는:
+
+* X 버튼 독립
+* refresh overlay 분리
+* pointer conflict 제거
+
+구조 사용.
 
 ---
 
-#Screenshot : Overlay pointer separation
+#스크린샷 : overlay pointer separation
 
 ---
 
 ### 5. Keyboard Control System
 
-TJ previews support keyboard navigation.
+TJ preview는 keyboard navigation 지원.
 
 ---
 
-#### Supported Keys
+#### 지원 키
 
-| Key | Function |
-| - | - |
-| F/f | Fullscreen |
-| ESC | Close fullscreen |
-| ← | Previous image |
-| → | Next image |
+| 키   | 기능            |
+| --- | ------------- |
+| F/f | fullscreen    |
+| ESC | fullscreen 종료 |
+| ←   | 이전 이미지        |
+| →   | 다음 이미지        |
 
 ---
 
-#### Purpose
+#### 목적
 
-To:
+대량 batch inspect 시:
 
 ```text
-Minimize mouse movement
+마우스 이동 최소화
 ```
 
-during mass batch inspections.
+하기 위함.
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommended workflows:
+추천 workflow:
 
-* Image compares
-* Batch inspections
-* Detail pass compares
+* image compare
+* batch inspect
+* detail pass compare
 
 ---
 
-#Screenshot : Keyboard navigation
+#스크린샷 : keyboard navigation
 
 ---
 
 ### 6. Smart Grid System
 
-The TJ preview grid is not a simple tile draw.
+TJ preview grid는 단순 tile draw가 아닙니다.
 
-In reality, it is a:
+실제로는:
 
 ```text
-Dynamic responsive preview grid
+dynamic responsive preview grid
 ```
 
-structure.
+구조입니다.
 
 ---
 
-#### Features
+#### 특징
 
-| Feature | Description |
-| - | - |
-| 2px spacing | Clean separation |
-| Fit-center | Center alignment |
-| Aspect retain | Maintains aspect ratios |
-| Resize-safe | Stable layouts |
-
----
-
-#### Why is this important?
-
-Standard grids frequently suffer from:
-
-* Broken ratios
-* Overlapping images
-* Resize artifacts
-
-The TJ grid is designed to minimize this.
+| 특징          | 설명         |
+| ----------- | ---------- |
+| 2px spacing | 깔끔한 구분     |
+| fit-center  | 중앙 정렬      |
+| aspect 유지   | 비율 유지      |
+| resize-safe | 안정적 layout |
 
 ---
 
-#Screenshot : Smart grid example
+#### 왜 중요한가?
+
+일반 grid는:
+
+* 비율 깨짐
+* 이미지 겹침
+* resize artifact
+
+문제가 자주 발생합니다.
+
+TJ grid는 이를 최소화하도록 설계되었습니다.
+
+---
+
+#스크린샷 : smart grid example
 
 ---
 
 ### 7. Node Resize Strategy
 
-TJ previews minimize:
+TJ preview는:
 
 ```text
-Force changing node.size during execution
+실행 중 node.size 강제 변경
 ```
 
+을 최소화합니다.
+
 ---
 
-#### Current Structure
+#### 현재 구조
 
-Upon node creation, it secures a:
+노드 생성 시:
 
 ```text
-Default preview area
+기본 preview area 확보
 ```
 
-and then utilizes a:
+후:
 
-* Fit-center
-* Preserve user resize
+* fit-center
+* user resize 유지
 
-structure.
-
----
-
-#### Why is this important?
-
-Automatic resizing causes issues like:
-
-* Workflow layout collapses
-* Broken user positioning
-* Preview jumps
+구조 사용.
 
 ---
 
-#### Current Recommended Structure
+#### 왜 중요한가?
+
+자동 resize는:
+
+* workflow layout 붕괴
+* 사용자 위치 깨짐
+* preview jump
+
+문제를 발생시킵니다.
+
+---
+
+#### 현재 추천 구조
 
 ```text
-Provide initial preview area
+초기 preview area 제공
 +
-Retain user resizing
+사용자 resize 유지
 ```
 
 ---
 
-#Screenshot : Resize-safe preview
+#스크린샷 : resize-safe preview
 
 ---
 
 ### 8. Preview Restore System
 
-TJ previews support a:
+TJ preview는:
 
 ```text
-Reload-safe restore
+reload-safe restore
 ```
 
-structure.
+구조를 지원합니다.
 
 ---
 
-#### States Maintained
+#### 유지되는 상태
 
-| State | Description |
-| - | - |
-| Preview image | Last result |
-| Grid state | Batch state |
-| Fullscreen state | Fullscreen view |
-| Snapshot | Detached preview |
+| 상태               | 설명             |
+| ---------------- | -------------- |
+| preview image    | 마지막 결과         |
+| grid state       | batch 상태       |
+| fullscreen state | fullscreen     |
+| snapshot         | detach preview |
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-With standard previews, suffering from:
+일반 preview는:
 
 ```text
-Loss of results after reload
+reload 후 결과 유실
 ```
 
-is very common.
+이 매우 흔합니다.
 
-TJ previews are designed to minimize this.
+TJ preview는 이를 최소화하도록 설계되었습니다.
 
 ---
 
-#Screenshot : Preview restore
+#스크린샷 : preview restore
 
 ---
 
 ### 9. Snapshot Detach System
 
-A TJ preview copy is not a:
+TJ preview copy는:
 
 ```text
-Live mirror
+live mirror
 ```
 
-Instead, it is a:
+가 아닙니다.
+
+대신:
 
 ```text
-Detached snapshot
+detach snapshot
 ```
 
-structure.
+구조입니다.
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-Copied previews can be used for:
+복사된 preview를:
 
-* Comparisons
-* Checkpoints
-* Workflow records
+* compare
+* checkpoint
+* workflow 기록
+
+용도로 사용 가능.
 
 ---
 
-#### Example
+#### 예시
 
 ```text
 Base Result Snapshot
@@ -5954,29 +7050,29 @@ Compare
 
 ---
 
-#Screenshot : Snapshot compare workflow
+#스크린샷 : snapshot compare workflow
 
 ---
 
-### 10. Save & Preview Video HTML5 System
+### 10. Save & Preview Video HTML5 시스템
 
-Save & Preview Video is the most complex node among TJ HTML5 structures.
-
----
-
-#### Supported Features
-
-| Feature | Description |
-| - | - |
-| HTML5 video player | Playback |
-| Audio controller | Audio control |
-| Dual audio UI | A/B playback |
-| Decode preview | Frame inspection |
-| Playback restore | Reload restore |
+Save & Preview Video는 TJ HTML5 구조 중 가장 복잡한 노드입니다.
 
 ---
 
-#Screenshot : Video HTML5 UI
+#### 지원 기능
+
+| 기능                 | 설명             |
+| ------------------ | -------------- |
+| HTML5 video player | playback       |
+| audio controller   | audio control  |
+| dual audio UI      | A/B playback   |
+| decode preview     | frame inspect  |
+| playback restore   | reload restore |
+
+---
+
+#스크린샷 : video HTML5 UI
 
 ---
 
@@ -5984,44 +7080,46 @@ Save & Preview Video is the most complex node among TJ HTML5 structures.
 
 #### IMAGE Batch Playback
 
-Structure:
-
 ```text
 IMAGE batch
  ↓
 HTML5 playback
 ```
 
+구조.
+
 ---
 
-#### Purpose
+#### 목적
 
-Recommended for:
+추천 사용:
 
 * AnimateDiff
 * VFI
-* Interpolation
-* Frame inspection
+* interpolation
+* frame inspect
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-Playback is not just a simple preview, it is an:
+playback은 단순 preview가 아니라:
 
 ```text
-Interactive playback layer
+interactive playback layer
 ```
+
+구조입니다.
 
 ---
 
-#Screenshot : Image batch playback
+#스크린샷 : image batch playback
 
 ---
 
 ### 12. Video Decode System
 
-When inputting a VIDEO, it automatically performs:
+VIDEO 입력 시:
 
 ```text
 video
@@ -6031,217 +7129,235 @@ frame decode
 IMAGE batch
 ```
 
+자동 수행.
+
 ---
 
-#### Advantages
+#### 장점
 
-Decode results can be used downstream just like a:
+decode 결과를:
 
 ```text
-Standard IMAGE workflow
+일반 IMAGE workflow
 ```
+
+처럼 downstream 사용 가능.
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommend for:
+추천:
 
-* Frame edits
-* img2img animations
-* Frame upscales
+* frame edit
+* img2img animation
+* frame upscale
 * VFI
 
 ---
 
-#Screenshot : Decode workflow
+#스크린샷 : decode workflow
 
 ---
 
 ### 13. Audio Controller System
 
-TJ video uses a:
+TJ video는:
 
 ```text
-Dynamic audio controller
+dynamic audio controller
 ```
 
-structure.
+구조를 사용합니다.
 
 ---
 
-#### Controller Creation Rules
+#### controller 생성 규칙
 
-| Input State | Controller |
-| - | - |
-| audio_a | 1 |
-| audio_b | 1 |
-| audio_a+b | 2 |
+| 입력 상태     | controller |
+| --------- | ---------- |
+| audio_a   | 1개         |
+| audio_b   | 1개         |
+| audio_a+b | 2개         |
 
 ---
 
-#### Purpose
+#### 목적
 
-To create:
+workflow 상태에 따라:
 
 ```text
-Only the necessary UIs
+필요한 UI만 생성
 ```
 
-depending on the workflow state.
+하기 위함.
 
 ---
 
-#Screenshot : Dual audio controller
+#스크린샷 : dual audio controller
 
 ---
 
 ### 14. Audio Only Mode
 
-If save_type is:
+save_type:
 
 ```text
 audio only
 ```
 
-Dedicated audio mode UI is enabled.
+일 경우:
+
+전용 audio mode UI 활성화.
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommend for:
+추천:
 
-* Soundtrack exports
-* Audio debugging
-* Remux inspections
+* soundtrack export
+* audio debug
+* remux inspect
 
 ---
 
-#Screenshot : Audio only mode
+#스크린샷 : audio only mode
 
 ---
 
 ### 15. HTML5 Interaction Safety
 
-TJ HTML5 UI places high importance on a:
+TJ HTML5 UI는:
 
 ```text
-Pointer safety
+pointer safety
 ```
 
-design.
+구조를 중요하게 설계합니다.
 
 ---
 
-#### Main Monitored Targets
+#### 주요 관리 대상
 
-| Target | Description |
-| - | - |
-| Overlay pointer | Click handling |
-| Fullscreen layer | Interactions |
-| Refresh layer | Preview control |
-| Drag event | Prevent workflow conflicts |
-
----
-
-#### Why is this important?
-
-If HTML5 overlays are poorly designed, it causes issues like:
-
-* Missed clicks
-* Drag conflicts
-* Stuck fullscreens
-
-TJ_NODE is designed to minimize these.
+| 대상               | 설명              |
+| ---------------- | --------------- |
+| overlay pointer  | click 처리        |
+| fullscreen layer | interaction     |
+| refresh layer    | preview control |
+| drag event       | workflow 충돌 방지  |
 
 ---
 
-#Screenshot : Pointer safety structure
+#### 왜 중요한가?
+
+HTML5 overlay는 잘못 설계하면:
+
+* click 누락
+* drag 충돌
+* fullscreen stuck
+
+문제가 발생합니다.
+
+TJ_NODE는 이를 최소화하도록 설계.
 
 ---
 
-### 16. Realtime UI Performance Strategy
+#스크린샷 : pointer safety structure
 
-The TJ preview system emphasizes:
+---
+
+### 16. Realtime UI Performance 전략
+
+TJ preview 시스템은:
 
 ```text
-Realtime UI performance
+실시간 UI 성능
 ```
 
-in its design.
+을 중요하게 설계합니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
-| Recommendation | Reason |
-| - | - |
-| Checkpoint previews | Reduces rendering |
-| Section previews | Simplifies structures |
-| Snapshot compares | Reduces reloads |
+| 추천                 | 이유        |
+| ------------------ | --------- |
+| checkpoint preview | 렌더 감소     |
+| section preview    | 구조 단순화    |
+| snapshot compare   | reload 감소 |
 
 ---
 
-#### Not Recommended
+#### 비추천
 
 ```text
-Overusing previews across the entire workflow
-```
-
----
-
-#### Why is this important?
-
-Mass HTML5 previews can cause:
-
-* Browser memory spikes
-* Overlay overload
-* Interaction lag
-
----
-
-### 17. TJ HTML5 UI Philosophy
-
-The HTML5 structure of TJ_NODE is not simply for decoration.
-
-The objective is to:
-
-```text
-Make the workflow an interface that can actually be operated
+workflow 전체 preview 남발
 ```
 
 ---
 
-#### Core Philosophy
+#### 왜 중요한가?
 
-TJ_NODE was designed in the direction of:
+대량 HTML5 preview는:
+
+* browser memory 증가
+* overlay 증가
+* interaction lag
+
+가능.
+
+---
+
+### 17. TJ HTML5 UI 철학
+
+TJ_NODE의 HTML5 구조는 단순 decoration이 아닙니다.
+
+목적은:
 
 ```text
-Building a production workflow UI layer
-inside ComfyUI
+workflow를 실제 운영 가능한 인터페이스로 만드는 것
 ```
+
+입니다.
+
+---
+
+#### 핵심 철학
+
+TJ_NODE는:
+
+```text
+ComfyUI 내부에
+실전 workflow UI layer를 구축
+```
+
+하는 방향으로 설계되었습니다.
 
 ---
 
 ### Final Notes
 
-The TJ HTML5 UI System is the:
+TJ HTML5 UI System은:
 
 ```text
-Interaction layer of TJ workflows
+TJ workflow의 interaction layer
 ```
 
-The core of TJ_NODE is not just generating simple previews, but:
+입니다.
+
+TJ_NODE의 핵심은 단순 preview가 아니라:
 
 ```text
-Maintaining large-scale workflows
-in a usable state
+대규모 workflow를
+실제로 사용 가능한 상태로 유지하는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final HTML5 UI showcase
+#스크린샷 : final HTML5 UI showcase
 
 ---
 
@@ -6249,53 +7365,63 @@ in a usable state
 
 ---
 
-### Purpose of this Chapter
+### 이 챕터의 목적
 
-The previous chapters focused on:
+앞선 챕터들은:
 
-* Node features
-* System structures
-* Internal architectures
+* 노드 기능
+* 시스템 구조
+* 내부 architecture
 
-But what truly matters is:
+설명이 중심이었습니다.
+
+하지만 실제로 중요한 것은:
 
 ```text
-"How do we construct workflows in reality?"
+"실전에서 어떻게 workflow를 구성하는가"
 ```
 
-In this chapter, we explain based on actual workflows:
+입니다.
 
-* Real production workflows
-* Recommended architectures
-* Section structures
-* Routing strategies
-* Save strategies
-* Debugging strategies
+이 챕터에서는:
+
+* 실제 production workflow
+* recommended architecture
+* section 구조
+* routing 전략
+* save 전략
+* debug 전략
+
+를 실제 workflow 기준으로 설명합니다.
 
 ---
 
-#Screenshot : TJ production workflow overview
+#스크린샷 : TJ production workflow overview
 
 ---
 
-### Basic Philosophy of TJ Workflows
+### TJ Workflow 기본 철학
 
-The core of TJ workflows is not making:
-
-```text
-"One giant workflow"
-```
-
-The core is:
+TJ workflow의 핵심은:
 
 ```text
-"Connecting small workflow sections
-wirelessly"
+"거대한 workflow 하나"
 ```
+
+를 만드는 것이 아닙니다.
+
+핵심은:
+
+```text
+"작은 workflow section들을
+wireless로 연결하는 것"
+```
+
+입니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 INPUT
@@ -6313,36 +7439,38 @@ SAVE
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-This structure is strongest for:
+이 구조는:
 
-* Readability
-* Debugging
-* Reload-safety
-* Maintenance
+* readability
+* debug
+* reload-safe
+* 유지보수
+
+에 가장 강합니다.
 
 ---
 
-#Screenshot : Section workflow architecture
+#스크린샷 : section workflow architecture
 
 ---
 
 ### 1. Basic Image Generation Workflow
 
-#### Purpose
+#### 목적
 
-The most basic example for:
+가장 기본적인:
 
 ```text
 text → image generation
 ```
 
-workflows.
+workflow 예시입니다.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Prompt Text
@@ -6358,41 +7486,43 @@ Primary Save
 
 ---
 
-#### Workflow Description
+#### workflow 설명
 
-| Stage | Role |
-| - | - |
-| Prompt Text | Structure prompts |
-| Concatenate | Combine prompts |
-| KSampler | Generate |
-| Save Preview | Check results |
-| Primary Save | Base save |
-
----
-
-#Screenshot : Basic generation workflow
+| 단계           | 역할        |
+| ------------ | --------- |
+| Prompt Text  | 프롬프트 구조화  |
+| Concatenate  | prompt 결합 |
+| KSampler     | 생성        |
+| Save Preview | 결과 확인     |
+| Primary Save | 기준 저장     |
 
 ---
 
-#### Recommended Reason
+#스크린샷 : basic generation workflow
 
-This structure is great for maintaining:
+---
 
-* Prompt modularity
-* Preview checkpoints
-* Save consistency
+#### 추천 이유
+
+이 구조는:
+
+* prompt modularity
+* preview checkpoint
+* save consistency
+
+유지에 좋습니다.
 
 ---
 
 ### 2. Wireless Generation Workflow
 
-#### Purpose
+#### 목적
 
-A structure to remove long visible wires.
+긴 visible wire 제거 구조.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Prompt Section
@@ -6410,29 +7540,29 @@ Embedded Get
 
 ---
 
-#### Advantages
+#### 장점
 
-| Advantage | Description |
-| - | - |
-| Workflow Simplification | Removes long wires |
-| Improved Readability | Clear structures |
-| Section Modularity | Improves maintenance |
+| 장점                 | 설명        |
+| ------------------ | --------- |
+| workflow 단순화       | 긴 wire 제거 |
+| readability 향상     | 구조 명확     |
+| section modularity | 유지보수 향상   |
 
 ---
 
-#Screenshot : Wireless generation workflow
+#스크린샷 : wireless generation workflow
 
 ---
 
 ### 3. Multi Image Dataset Workflow
 
-#### Purpose
+#### 목적
 
-Mass dataset processing workflow.
+대량 dataset 처리 workflow.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Multi Image Loader
@@ -6446,56 +7576,58 @@ Processing Branches
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommended situations:
+추천 상황:
 
-* Fashion datasets
-* Pose datasets
-* img2img batches
-* Upscale datasets
+* fashion dataset
+* pose dataset
+* img2img batch
+* upscale dataset
 
 ---
 
-#### Important Point
+#### 중요한 포인트
 
-In dataset workflows:
+dataset workflow에서는:
 
 ```text
-Resolution normalization
+resolution normalize
 ```
 
-is extremely important.
+가 매우 중요합니다.
 
 ---
 
-#### Recommended Settings
+#### 추천 설정
 
-| Item | Recommendation |
-| - | - |
-| resize mode | long edge |
-| scale mode | center crop |
-| Maintain metadata | Eclipse batch |
+| 항목          | 추천            |
+| ----------- | ------------- |
+| resize mode | long edge     |
+| scale mode  | center crop   |
+| metadata 유지 | Eclipse batch |
 
 ---
 
-#Screenshot : Dataset workflow
+#스크린샷 : dataset workflow
 
 ---
 
 ### 4. Large Scale Prompt Architecture
 
-#### Purpose
+#### 목적
 
-A workflow for managing complex prompts in a:
+복잡한 prompt를:
 
 ```text
-Modular structure
+모듈 구조
 ```
+
+로 관리하기 위한 workflow.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Character Prompt
@@ -6519,15 +7651,15 @@ Text Concatenate
 
 ---
 
-#### Advantages
+#### 장점
 
-* Prompt reusability
-* Section management
-* Easier compare workflows
+* prompt 재사용
+* section 관리
+* compare workflow 쉬움
 
 ---
 
-#### Recommended Naming
+#### 추천 naming
 
 ```text
 PROMPT_CHARACTER
@@ -6537,23 +7669,25 @@ PROMPT_LIGHTING
 
 ---
 
-#Screenshot : Modular prompt architecture
+#스크린샷 : modular prompt architecture
 
 ---
 
 ### 5. Multi Router Production Workflow
 
-#### Purpose
+#### 목적
 
-A structure to separate a workflow into:
+workflow를:
 
 ```text
-Production branches
+production branch
 ```
+
+로 분리하기 위한 구조.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Generation
@@ -6568,33 +7702,37 @@ Multi Router
 
 ---
 
-#### Why is this important?
+#### 왜 중요한가?
 
-This structure is highly resilient for:
+이 구조는:
 
-* Branch independence
-* Workflow readability
-* Simplified debugging
+* branch 독립성
+* workflow readability
+* debug 단순화
+
+에 매우 강합니다.
 
 ---
 
-#Screenshot : Production router workflow
+#스크린샷 : production router workflow
 
 ---
 
 ### 6. Preview Checkpoint Workflow
 
-#### Purpose
+#### 목적
 
-A structure to manage intermediate results as:
+중간 결과를:
 
 ```text
-Checkpoints
+checkpoint
 ```
+
+형태로 관리하기 위한 구조.
 
 ---
 
-#### Recommended Approach
+#### 추천 방식
 
 ```text
 Generation Result
@@ -6610,33 +7748,35 @@ Compare
 
 ---
 
-#### Advantages
+#### 장점
 
-| Advantage | Description |
-| - | - |
-| Result Comparisons | Retains previous results |
-| Debugging | Step-by-step checks |
-| Checkpoints | Workflow records |
+| 장점         | 설명          |
+| ---------- | ----------- |
+| 결과 비교      | 이전 결과 유지    |
+| debug      | 단계별 확인      |
+| checkpoint | workflow 기록 |
 
 ---
 
-#Screenshot : Checkpoint workflow
+#스크린샷 : checkpoint workflow
 
 ---
 
 ### 7. Upscale Production Workflow
 
-#### Purpose
+#### 목적
 
-A structure for maintaining upscale results:
+upscale 결과를:
 
 ```text
-Linked with the original
+원본과 연결된 상태
 ```
+
+로 유지하기 위한 구조.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Base Result
@@ -6654,38 +7794,38 @@ Suffix Save
 
 ---
 
-#### Advantages
+#### 장점
 
-* Maintains relationships between results
-* Easy to compare
-* Easy to organize datasets
-
----
-
-#### Recommended Suffixes
-
-| Suffix | Purpose |
-| - | - |
-| upscale | Upscale |
-| detail | Detail pass |
-| compare | For comparisons |
-| mask | Mask |
+* 결과 관계 유지
+* compare 쉬움
+* dataset 정리 쉬움
 
 ---
 
-#Screenshot : Upscale save chain
+#### 추천 suffix
+
+| suffix  | 목적          |
+| ------- | ----------- |
+| upscale | 업스케일        |
+| detail  | detail pass |
+| compare | 비교용         |
+| mask    | 마스크         |
+
+---
+
+#스크린샷 : upscale save chain
 
 ---
 
 ### 8. Animation Workflow
 
-#### Purpose
+#### 목적
 
-An animation workflow based on IMAGE batches.
+IMAGE batch 기반 animation workflow.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Frame Generator
@@ -6699,44 +7839,46 @@ Preview Playback
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommend for:
+추천:
 
 * AnimateDiff
-* Interpolation
+* interpolation
 * VFI
-* Frame comparisons
+* frame compare
 
 ---
 
-#### Recommended FPS
+#### 추천 fps
 
-| Purpose | Recommendation |
-| - | - |
-| Preview | 12~16 |
-| Standard | 24 |
-| Cinematic | 30 |
+| 용도        | 추천    |
+| --------- | ----- |
+| preview   | 12~16 |
+| standard  | 24    |
+| cinematic | 30    |
 
 ---
 
-#Screenshot : Animation workflow
+#스크린샷 : animation workflow
 
 ---
 
 ### 9. Video Decode Workflow
 
-#### Purpose
+#### 목적
 
-Converting existing mp4 files to an:
+기존 mp4를:
 
 ```text
 IMAGE batch workflow
 ```
 
+로 변환.
+
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Video Input
@@ -6750,34 +7892,36 @@ Frame Processing
 
 ---
 
-#### Recommended Usage
+#### 추천 사용
 
-Recommend for:
+추천:
 
-* Frame upscales
-* img2img animations
+* frame upscale
+* img2img animation
 * VFI
-* Frame repair
+* frame repair
 
 ---
 
-#Screenshot : Video decode workflow
+#스크린샷 : video decode workflow
 
 ---
 
 ### 10. Compare Workflow
 
-#### Purpose
+#### 목적
 
-A structure for comparing multiple results:
+여러 결과를:
 
 ```text
-Simultaneously
+동시에 비교
 ```
+
+하기 위한 구조.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Base Result
@@ -6795,28 +7939,28 @@ Snapshot
 
 ---
 
-#### Recommended Nodes
+#### 추천 노드
 
-Recommend using:
+추천:
 
 * Save & Preview Image
 * Smart Show
 
 ---
 
-#Screenshot : Compare workflow
+#스크린샷 : compare workflow
 
 ---
 
 ### 11. Eclipse Compatible Workflow
 
-#### Purpose
+#### 목적
 
-Mixing Eclipse workflows with TJ workflows.
+Eclipse workflow와 TJ workflow 혼합 사용.
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
 Eclipse SetNode
@@ -6830,47 +7974,53 @@ Eclipse Save
 
 ---
 
-#### Important Feature
+#### 중요한 특징
 
-TJ_NODE is not an:
+TJ_NODE는:
 
 ```text
 Eclipse replacement
 ```
 
-Instead, it acts as a:
+가 아닙니다.
+
+대신:
 
 ```text
-Workflow bridge layer
+workflow bridge layer
 ```
 
----
-
-#### Recommended Usage
-
-Recommend for:
-
-* Dataset workflows
-* Metadata workflows
-* Original path preserving workflows
+역할입니다.
 
 ---
 
-#Screenshot : Eclipse bridge workflow
+#### 추천 사용
+
+추천:
+
+* dataset workflow
+* metadata workflow
+* original path preserving workflow
 
 ---
 
-### 12. Large Scale Workflow Strategies
+#스크린샷 : Eclipse bridge workflow
 
-#### The Most Important Rule
+---
+
+### 12. Large Scale Workflow 전략
+
+#### 가장 중요한 규칙
 
 ```text
-Divide workflows into sections
+workflow를 section 단위로 분리
 ```
+
+할 것.
 
 ---
 
-#### Recommended Sections
+#### 추천 Section
 
 ```text
 INPUT
@@ -6883,68 +8033,64 @@ SAVE
 
 ---
 
-#### Recommended Structure
+#### 추천 구조
 
 ```text
-Inside Section
+Section 내부
 =
-Short wires
+짧은 wire
 
-Between Sections
+Section 간
 =
 Wireless
 ```
 
 ---
 
-#### Advantages
+#### 장점
 
-Improves:
+* readability
+* reload-safe
+* 유지보수
+* debug
 
-* Readability
-* Reload-safety
-* Maintenance
-* Debugging
+향상.
 
 ---
 
-#Screenshot : Large workflow example
+#스크린샷 : large workflow example
 
 ---
 
 ### 13. Recommended Best Practices
 
-Recommended operating methods for TJ workflows.
+TJ workflow 추천 운영 방식.
 
 ---
 
-#### Recommended
+#### 추천
 
-| Recommendation | Reason |
-| - | - |
-| Use Embedded Get | Reduces node count |
-| Structure Multi Router | Manages branches |
-| Preview Checkpoints | For comparisons |
-| Maintain Save Chains | Track results |
-| Standardize provider naming | Debugging |
+| 추천                  | 이유        |
+| ------------------- | --------- |
+| Embedded Get 사용     | 노드 감소     |
+| Multi Router 구조화    | branch 관리 |
+| Preview checkpoint  | compare   |
+| Save Chain 유지       | 결과 추적     |
+| Provider naming 규칙화 | debug     |
 
 ---
 
-#### Recommended Preview Strategy
-
-Recommend using a:
+#### 추천 Preview 전략
 
 ```text
 Section checkpoint preview
 ```
 
-structure.
+구조 추천.
 
 ---
 
-#### Recommended Save Strategy
-
-Maintain the:
+#### 추천 Save 전략
 
 ```text
 Primary
@@ -6952,114 +8098,126 @@ Primary
 Suffix Chain
 ```
 
-structure.
+구조 유지.
 
 ---
 
-### 14. Anti-Pattern Workflows
+### 14. Anti-Pattern Workflow
 
-#### Giant Workflows
+#### Giant Workflow
 
-A structure not recommended:
+추천하지 않는 구조:
 
 ```text
-A giant workflow where all nodes are
-connected by a single continuous line of wires
+모든 노드를
+한 줄 wire로 연결
 ```
+
+하는 giant workflow.
 
 ---
 
-#### Issues
+#### 문제점
 
-* Total loss of readability
-* Difficult debugging
-* Unstable reconnects
-* Save chaos
+* readability 붕괴
+* debug 어려움
+* reconnect 불안정
+* save chaos
 
 ---
 
 #### Duplicate Provider Chaos
 
-Duplicate providers like:
-
 ```text
 MAIN_IMAGE
 MAIN_IMAGE
 MAIN_IMAGE
 ```
+
+같은 duplicate provider.
 
 ---
 
 #### Save Chaos
 
-Structures that use:
+suffix 없이:
 
 ```text
-Random Save Images
+무작위 Save Image 사용
 ```
 
-without suffixes.
+구조.
 
 ---
 
-#### Why is this dangerous?
+#### 왜 위험한가?
 
-It makes tracking the relationship between results virtually impossible.
+결과 관계 추적이 거의 불가능해집니다.
 
 ---
 
-#Screenshot : Anti-pattern workflow
+#스크린샷 : anti-pattern workflow
 
 ---
 
 ### 15. TJ Workflow Production Philosophy
 
-The goal of a TJ workflow is not:
+TJ workflow의 목표는:
 
 ```text
-"A workflow that just works"
+"작동하는 workflow"
 ```
+
+가 아닙니다.
 
 ---
 
-#### Core Goals
+#### 핵심 목표
 
-The core of a TJ workflow is:
+TJ workflow의 핵심은:
 
 ```text
-- A maintainable workflow
-- A recoverable workflow
-- A scalable workflow
-- An easy-to-read workflow
+- 유지 가능한 workflow
+- 복구 가능한 workflow
+- 확장 가능한 workflow
+- 읽기 쉬운 workflow
 ```
+
+입니다.
 
 ---
 
-#### The Most Important Concept
+#### 가장 중요한 개념
 
-TJ_NODE is a:
+TJ_NODE는:
 
 ```text
 Workflow Architecture Toolkit
 ```
 
+입니다.
+
 ---
 
 ### Final Notes
 
-The core of a TJ workflow is not:
+TJ workflow의 핵심은:
 
 ```text
-Removing wires
+와이어 제거
 ```
 
-The true core is:
+가 아닙니다.
+
+진짜 핵심은:
 
 ```text
-Making large-scale workflows
-into structures that can actually be operated
+대규모 workflow를
+실제로 운영 가능한 구조로 만드는 것
 ```
+
+입니다.
 
 ---
 
-#Screenshot : Final production workflow showcase
+#스크린샷 : final production workflow showcase

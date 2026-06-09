@@ -117,7 +117,7 @@ function scheduleWirelessRepair(graph, delay = 0) {
 }
 
 let globalShowWire = false;
-let realtimeWireHoverEnabled = false; 
+let realtimeWireHoverEnabled = true; 
 
 const origRenderLink = LGraphCanvas.prototype.renderLink;
 LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow, color, start_dir, end_dir, num_sublines) {
