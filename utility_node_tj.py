@@ -83,6 +83,12 @@ class TJ_SaveAndPreviewImage:
     CATEGORY = " ✨ TJ_Node/Image"
     OUTPUT_NODE = True
 
+    @classmethod
+    def VALIDATE_INPUTS(cls, **kwargs):
+        # get_name is filled by TJ_NODE embedded GET at runtime.
+        # Python INPUT_TYPES only knows ["(none)"], so allow saved dynamic provider values.
+        return True
+
     def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
         now = datetime.now()
         parsed_prefix = now.strftime(filename_prefix)

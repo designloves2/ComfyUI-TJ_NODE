@@ -520,7 +520,7 @@ class TJ_PromptEnhancer:
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.05}),
                 "repeat_penalty": ("FLOAT", {"default": 1.15, "min": 1.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE (generating)"}),
             },
             "optional": {
@@ -662,7 +662,7 @@ class TJ_ImageToPrompt:
                 "n_ctx": ("INT", {"default": 4096, "min": 512, "max": 32768, "step": 512}),
                 "max_tokens": ("INT", {"default": 400, "min": 50, "max": 2048, "step": 50}),
                 "temperature": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE (analyzing)"}),
             },
             "optional": {"clip": ("CLIP",)},

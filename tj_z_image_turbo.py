@@ -174,6 +174,7 @@ class TJ_ZImageTurbo:
                         "min": 0,
                         "max": 0xffffffffffffffff,
                         "control_after_generate": True,
+                        "step": 1,
                     },
                 ),
                 "steps": ("INT", {"default": 8, "min": 1, "max": 100}),
@@ -188,7 +189,6 @@ class TJ_ZImageTurbo:
                 "lora_slots": ("INT", {"default": 0, "min": 0, "max": MAX_LORA_SLOTS}),
             },
             "optional": {
-                "global_prompt_input": ("STRING", {"forceInput": True}),
                 "image": (
                     "IMAGE",
                     {"tooltip": "Connect an image to switch this node to img2img. The image is VAE-encoded as the starting latent and 'denoise' becomes the change strength (lower = closer to the source). Leave unconnected for plain text-to-image."},
@@ -248,7 +248,6 @@ class TJ_ZImageTurbo:
         lora_slots,
         get_name="(none)",
         auto_set=False,
-        global_prompt_input="",
         image=None,
         width=0,
         height=0,
@@ -257,10 +256,6 @@ class TJ_ZImageTurbo:
         vae_override=None,
         **lora_kwargs,
     ):
-        global_prompt_input = str(global_prompt_input or "").strip()
-        if global_prompt_input:
-            positive = f"{global_prompt_input}\n{positive}".strip()
-
         # Resolution: explicit width AND height win (rounded to divisible_by);
         # otherwise derive from ratio_preset + megapixels.
         if int(width) > 0 and int(height) > 0:

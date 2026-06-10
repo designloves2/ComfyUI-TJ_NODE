@@ -33,7 +33,8 @@ class TJ_PromptStudio:
             handler_options = ["NO_VISION_HANDLERS_AVAILABLE"]
         return {
             "required": {
-                "get_name": (["(none)"], {"default": "(none)"}),
+                "get_name_prompt": (["(none)"], {"default": "(none)"}),
+                "get_name_image": (["(none)"], {"default": "(none)"}),
                 "set_name": ("STRING", {"default": "Prompt_Studio"}),
                 "mode": (cls.MODE_OPTIONS, {"default": "Auto"}),
                 "raw_prompt": ("STRING", {"multiline": True, "default": ""}),
@@ -57,7 +58,7 @@ class TJ_PromptStudio:
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.05}),
                 "repeat_penalty": ("FLOAT", {"default": 1.15, "min": 1.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE"}),
             },
             "optional": {
@@ -74,7 +75,7 @@ class TJ_PromptStudio:
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         if kwargs.get("lock_in"):
-            return "LOCKED|" + "|".join(str(kwargs.get(k, "")) for k in sorted(kwargs) if k not in {"seed", "clip", "image"})
+            return "LOCKED|" + "|".join(str(kwargs.get(k, "")) for k in sorted(kwargs) if k not in {"seed", "clip", "image", "get_name_prompt", "get_name_image"})
         return float("nan")
 
     RETURN_TYPES = ("STRING", "STRING")
@@ -84,6 +85,8 @@ class TJ_PromptStudio:
 
     def run(
         self,
+        get_name_prompt="(none)",
+        get_name_image="(none)",
         get_name="(none)",
         set_name="Prompt_Studio",
         mode="Auto",
@@ -125,7 +128,7 @@ class TJ_PromptStudio:
             if image is None:
                 raise ValueError("Prompt Studio (TJ): Image input is required for Image to Prompt mode. Use Auto or Prompt Enhancer mode if no image is connected.")
             return TJ_ImageToPrompt().describe(
-                get_name=get_name,
+                get_name=get_name_image if get_name_image != "(none)" else get_name,
                 set_name=set_name,
                 image=image,
                 model_backend=model_backend,
@@ -148,7 +151,7 @@ class TJ_PromptStudio:
             )
 
         return TJ_PromptEnhancer().enhance(
-            get_name=get_name,
+            get_name=get_name_prompt if get_name_prompt != "(none)" else get_name,
             set_name=set_name,
             raw_prompt=raw_prompt,
             model_backend=model_backend,
