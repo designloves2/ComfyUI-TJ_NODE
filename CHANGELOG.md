@@ -2,6 +2,84 @@
 
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
+---
+## [2.0.2] - 2026-06-11
+
+### [Added]
+
+* `Prompt Studio (TJ)`에 독립 입력 구조 추가
+
+  * `get_name_prompt`
+
+    * `raw_prompt_input` 전용 fake-wire 연결
+  * `get_name_image`
+
+    * `image` 전용 fake-wire 연결
+  * 이미지 입력과 프롬프트 입력을 완전히 분리하여 사용 가능
+
+### [Changed]
+
+* `Prompt Studio (TJ)`
+
+  * Prompt Enhancer / Image to Prompt 통합 구조 개선
+  * 모드별 입력 처리 로직 분리
+  * Prompt 입력과 Image 입력이 동시에 연결되어 있어도 각 모드는 자신의 입력만 사용하도록 변경
+
+* `Z-Image Turbo (TJ)`
+
+  * embedded get 연결 대상 수정
+  * `get_name`이 `image` 입력 슬롯에만 연결되도록 변경
+  * `global_prompt_input`은 STRING 입력으로 유지
+
+### [Removed]
+
+* `tj_cover_autoset_bridge.js` 제거
+
+  * Cover AutoSet 우회 구조 제거
+  * Native AutoSet Core 방식으로 통일
+
+### [Fixed]
+
+* `Save & Preview Image (TJ)`
+
+  * dynamic get_name 검증 문제 수정
+  * provider 값이 `(none)`으로 강제 리셋되며 발생하던 실행 오류 수정
+
+* `Save & Preview Video (TJ)`
+
+  * Video Preview 리사이즈 동기화 문제 수정
+  * 노드 크기 변경 후 Preview 영역이 고정되던 문제 수정
+
+* `Batch to Multi Image Output (TJ)`
+
+  * embedded get_name provider reconnect 안정성 개선
+  * provider scan 타이밍 문제로 인한 `(none)` 리셋 가능성 제거
+
+* `Prompt Studio (TJ)`
+
+  * seed 위젯 `control_after_generate` 지원 추가
+  * ComfyUI Seed 증분 동작 정상화
+
+* `Prompt Enhancer (TJ)`
+
+  * seed 위젯 `control_after_generate` 지원 추가
+  * Seed 증가 동작 정상화
+
+* `Image to Prompt (TJ)`
+
+  * seed 위젯 `control_after_generate` 지원 추가
+  * Seed 증가 동작 정상화
+
+* `utility_node_tj.js`
+
+  * 구버전 embedded get receiver 로직 정리
+  * provider scan 지연 시 `(none)` 강제 리셋 방지
+
+* 전체 Fake-Wire Lifecycle
+
+  * provider scan 실패를 provider 삭제로 판단하지 않도록 개선
+  * reload-safe reconnect 안정성 향상
+  * embedded get 노드들의 provider 유지 로직 통일
 
 ---
 
