@@ -132,12 +132,17 @@ LLM workflow systems, prompt workflow pipelines, and cover expansion architectur
 Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
 
 - TooBusy Nodes - 너무바쁜베짱이
-  https://github.com/designloves2/toobusy
-  https://www.youtube.com/@%EB%84%88%EB%AC%B4%EB%B0%94%EC%81%9C%EB%B2%A0%EC%A7%B1%EC%9D%B4
+  https://github.com/designloves2/toobusy<br>
+  https://www.youtube.com/@%EB%84%88%EB%AC%B4%EB%B0%94%EC%81%9C%EB%B2%A0%EC%A7%B1%EC%9D%B4<br>
 
 - comfyui-deno-custom-nodes
-  https://github.com/Deno2026/comfyui-deno-custom-nodes
-  https://www.youtube.com/@Denoise-AI
+  https://github.com/Deno2026/comfyui-deno-custom-nodes<br>
+  https://www.youtube.com/@Denoise-AI<br>
+  
+- RebelsPromptEnhancer node
+  https://github.com/designloves2/RebelsPromptEnhancer<br>
+  https://www.youtube.com/@realrebelai<br>
+
   
 Several nodes were heavily reworked and integrated into the TJ wireless workflow architecture.
 
