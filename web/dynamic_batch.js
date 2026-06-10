@@ -103,89 +103,103 @@ function attachTJGetReceiver(node, opts = {}) {
     const inputIndex = opts.inputIndex ?? 0;
     const inputName = opts.inputName || node.inputs?.[inputIndex]?.name || "images";
     const outputIndex = opts.outputIndex;
+    const defaultType = opts.defaultType || node.inputs?.[inputIndex]?.type || "IMAGE";
+    const defaultOutputType = opts.defaultOutputType || node.outputs?.[outputIndex]?.type || "IMAGE";
     const getW = node.widgets?.find(w => w.name === widgetName);
     if (!getW || getW._tj_get_receiver_attached) return;
     getW._tj_get_receiver_attached = true;
-    getW.options = { ...(getW.options || {}), values: tjGetAllSetNames(node.graph) };
+
+    const refreshProviderValues = () => {
+        const values = tjGetAllSetNames(node.graph);
+        const next = Array.isArray(values) ? [...values] : ["(none)"];
+        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) next.push(getW.value);
+        getW.options = { ...(getW.options || {}), values: next };
+        return next;
+    };
+
+    const removeWirelessInputOnly = (target) => {
+        const input = target.inputs?.[inputIndex];
+        if (!target.graph || !input || input.link == null) return;
+        if (tjIsWirelessLink(target.graph, input.link)) {
+            target._tj_connecting_wireless = true;
+            try { tjSafeRemoveLink(target.graph, input.link); }
+            finally { target._tj_connecting_wireless = false; }
+            input.link = null;
+        }
+    };
 
     node._tjUpdateGetReceiverOptions = function() {
         const w = this.widgets?.find(x => x.name === widgetName);
-        const values = tjGetAllSetNames(this.graph);
-        if (w && w.options) w.options.values = values;
-        if (w && w.value && w.value !== "(none)" && !values.includes(w.value)) {
-            w.value = "(none)";
-            this._tjConnectGetReceiver?.("(none)");
-        } else if (this.inputs?.[inputIndex]) {
-            this.inputs[inputIndex].label = tjLabelName(this.graph, w?.value) ? `◀ ${tjLabelName(this.graph, w?.value)}` : "";
-        }
+        if (!w) return;
+        refreshProviderValues();
+        const label = tjLabelName(this.graph, w.value);
+        if (this.inputs?.[inputIndex]) this.inputs[inputIndex].label = label ? `◀ ${label}` : "";
     };
 
     node._tjConnectGetReceiver = function(setName, connectOpts = {}) {
         if (!this.graph || !this.inputs?.[inputIndex]) return;
-        const values = tjGetAllSetNames(this.graph);
-        if (tjIsSeparator(setName)) setName = "(none)";
-        if (setName && setName !== "(none)" && !values.includes(setName) && !(window.TJ_NODE_findProviderByValue && window.TJ_NODE_findProviderByValue(this.graph, setName))) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w) w.value = "(none)";
-            setName = "(none)";
+        const w = this.widgets?.find(x => x.name === widgetName);
+        if (tjIsSeparator(setName)) {
+            if (w) w.value = w._tj_previous_value || w.value || "(none)";
+            return;
         }
-        const wantsWireless = !!(setName && setName !== "(none)" && !tjIsSeparator(setName));
-        const currentLinkId = this.inputs[inputIndex].link;
-        const currentIsWireless = tjIsWirelessLink(this.graph, currentLinkId);
+        const selected = setName || "(none)";
+        if (w && w.value !== selected) w.value = selected;
+        if (w) w._tj_previous_value = selected;
 
-        // TJ_NODE34: Direct user wire has priority during workflow reload/auto sync.
-        // If a normal ComfyUI wire already exists, do NOT remove it just because get_name
-        // contains an old wireless value. Only a user-driven combo callback may force
-        // switching from direct mode to wireless mode.
+        const input = this.inputs[inputIndex];
+        const currentLinkId = input.link;
+        const currentIsWireless = tjIsWirelessLink(this.graph, currentLinkId);
+        input.name = inputName;
+
         if (currentLinkId != null && !currentIsWireless && !connectOpts.forceWireless) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w && w.value !== "(none)") w.value = "(none)";
-            this.inputs[inputIndex].name = inputName;
-            this.inputs[inputIndex].label = "";
+            input.label = "";
             app.canvas?.setDirty(true, true);
             return;
         }
 
-        // Preserve normal direct wires on workflow reload.
-        // Only wireless links created by TJ_NODE may be removed automatically when get_name is (none).
-        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
-            this._tj_connecting_wireless = true;
-            tjSafeRemoveLink(this.graph, currentLinkId);
-            this._tj_connecting_wireless = false;
-        }
-
-        this.inputs[inputIndex].name = inputName;
-        if (!setName || setName === "(none)") {
-            this.inputs[inputIndex].label = "";
+        if (!selected || selected === "(none)") {
+            removeWirelessInputOnly(this);
+            input.label = "";
             if (currentLinkId == null || currentIsWireless) {
-                this.inputs[inputIndex].type = opts.defaultType || this.inputs[inputIndex].type || "IMAGE";
-                if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = opts.defaultOutputType || this.outputs[outputIndex].type || "IMAGE";
+                input.type = defaultType;
+                if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = defaultOutputType;
             }
             app.canvas?.setDirty(true, true);
             return;
         }
-        const sourceInfo = tjFindSetterSourceInfo(this.graph, setName);
-        if (!sourceInfo) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w) w.value = "(none)";
-            this.inputs[inputIndex].label = "";
+
+        const provider = window.TJ_NODE_findProviderByValue ? window.TJ_NODE_findProviderByValue(this.graph, selected) : null;
+        if (!provider) {
+            input.label = `◀ ${tjLabelName(this.graph, selected) || selected}`;
+            window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
+            window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
             app.canvas?.setDirty(true, true);
             return;
         }
-        if (!tjCanConnect(sourceInfo, this, inputIndex)) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w) w.value = "(none)";
-            this.inputs[inputIndex].label = "";
-            app.canvas?.setDirty(true, true);
-            return;
+
+        const normalizedValue = provider.displayName || selected;
+        if (w && w.value !== normalizedValue) w.value = normalizedValue;
+        if (w) w._tj_previous_value = normalizedValue;
+
+        if (window.TJ_NODE_forceReconnectConsumer) {
+            window.TJ_NODE_forceReconnectConsumer(this, normalizedValue, inputIndex);
+        } else {
+            const sourceInfo = tjFindSetterSourceInfo(this.graph, normalizedValue);
+            if (sourceInfo && tjCanConnect(sourceInfo, this, inputIndex)) {
+                removeWirelessInputOnly(this);
+                this._tj_connecting_wireless = true;
+                try {
+                    sourceInfo.node.connect(sourceInfo.slot, this, inputIndex);
+                    window.TJ_NODE_markWirelessLink?.(this.graph, this, inputIndex, normalizedValue);
+                } finally { this._tj_connecting_wireless = false; }
+            }
         }
-        this.inputs[inputIndex].label = `◀ ${tjLabelName(this.graph, setName)}`;
-        this._tj_connecting_wireless = true;
-        sourceInfo.node.connect(sourceInfo.slot, this, inputIndex);
-        if (window.TJ_NODE_markWirelessLink) window.TJ_NODE_markWirelessLink(this.graph, this, inputIndex, setName);
-        this._tj_connecting_wireless = false;
-        const t = tjGetOutputSlot(sourceInfo.node, sourceInfo.slot)?.type || "*";
-        this.inputs[inputIndex].type = t;
+
+        const sourceInfo = tjFindSetterSourceInfo(this.graph, normalizedValue);
+        const t = tjGetOutputSlot(sourceInfo?.node, sourceInfo?.slot)?.type || defaultType || "*";
+        input.label = `◀ ${provider.labelName || tjLabelName(this.graph, normalizedValue)}`;
+        input.type = t;
         if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = t;
         app.canvas?.setDirty(true, true);
     };
@@ -193,35 +207,35 @@ function attachTJGetReceiver(node, opts = {}) {
     const origCb = getW.callback;
     getW.callback = function(v) {
         if (origCb) origCb.call(this, v);
-        if (tjIsSeparator(v)) { getW.value = getW._tj_previous_value || "(none)"; return; }
+        if (tjIsSeparator(v)) { getW.value = getW._tj_previous_value || getW.value || "(none)"; return; }
         getW._tj_previous_value = v;
         node._tjConnectGetReceiver(v, { forceWireless: true });
     };
+
     const origConnChange = node.onConnectionsChange;
     node.onConnectionsChange = function(type, index, connected) {
         if (origConnChange) origConnChange.apply(this, arguments);
-
-        if (type === LiteGraph.INPUT && index === inputIndex && connected && !this._tj_connecting_wireless) {
-            const lid = this.inputs?.[inputIndex]?.link;
-            if (lid != null && !tjIsWirelessLink(this.graph, lid)) {
-                const w = this.widgets?.find(x => x.name === widgetName);
-                if (w && w.value !== "(none)") w.value = "(none)";
-                if (this.inputs?.[inputIndex]) this.inputs[inputIndex].label = "";
-                app.canvas?.setDirty(true, true);
-                return;
-            }
-        }
-        if (type === LiteGraph.INPUT && index === inputIndex && !connected && !this._tj_connecting_wireless) {
+        if (type === LiteGraph.INPUT && index === inputIndex) {
             const w = this.widgets?.find(x => x.name === widgetName);
-            if (w && w.value && w.value !== "(none)") w.value = "(none)";
-            this.inputs[inputIndex].label = "";
+            if (connected && !this._tj_connecting_wireless) {
+                const lid = this.inputs?.[inputIndex]?.link;
+                if (lid != null && !tjIsWirelessLink(this.graph, lid)) {
+                    if (w && w.value !== "(none)") w.value = "(none)";
+                    this.inputs[inputIndex].label = "";
+                }
+            } else if (!connected && !this._tj_connecting_wireless) {
+                const selected = w?.value;
+                if (selected && selected !== "(none)") {
+                    this.inputs[inputIndex].label = `◀ ${tjLabelName(this.graph, selected) || selected}`;
+                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
+                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
+                }
+            }
             app.canvas?.setDirty(true, true);
         }
     };
-    requestAnimationFrame(() => {
-        node._tjUpdateGetReceiverOptions?.();
-        node._tjConnectGetReceiver(getW.value);
-    });
+    requestAnimationFrame(() => { refreshProviderValues(); node._tjUpdateGetReceiverOptions?.(); node._tjConnectGetReceiver?.(getW.value); });
+    setTimeout(() => { refreshProviderValues(); node._tjUpdateGetReceiverOptions?.(); if (getW.value && getW.value !== "(none)") node._tjConnectGetReceiver?.(getW.value); }, 500);
 }
 
 function tjUpdateBatchAutoSets(node) {

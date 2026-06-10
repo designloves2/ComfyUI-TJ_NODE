@@ -20,6 +20,116 @@ function applyTJTheme(node) {
     node.title_text_color = "#FFFFFF";
 }
 
+
+
+const TJ_SEED_TARGET_NODE_TYPES = new Set(["TJ_ZImageTurbo", "TJ_ImageToPrompt", "TJ_PromptEnhancer", "TJ_PromptStudio"]);
+const TJ_SEED_MAX_SAFE = 0x1fffffffffffff;
+const TJ_SEED_HOOK_VERSION = "TJ_SEED_V2_27";
+function tjSeedWidget(node) { return node?.widgets?.find(w => w.name === "seed"); }
+function tjSeedControlWidget(node) { return node?.widgets?.find(w => w.name === "control_after_generate"); }
+function tjNormalizeSeedControl(value) {
+    const v = String(value || "fixed").toLowerCase();
+    if (v.includes("random")) return "randomize";
+    if (v.includes("decrement") || v.includes("decrease")) return "decrement";
+    if (v.includes("increment") || v.includes("increase")) return "increment";
+    return "fixed";
+}
+function tjSeedControlMode(node) {
+    const ctrlW = tjSeedControlWidget(node);
+    if (ctrlW) return tjNormalizeSeedControl(ctrlW.value);
+    const seedW = tjSeedWidget(node);
+    const opts = seedW?.options || {};
+    return tjNormalizeSeedControl(
+        opts.control_after_generate ??
+        opts.controlAfterGenerate ??
+        seedW?.control_after_generate ??
+        node?.properties?.control_after_generate ??
+        node?.properties?.seed_control_after_generate ??
+        "fixed"
+    );
+}
+function tjApplySeedControl(node, beforeValue = undefined) {
+    if (!node || !TJ_SEED_TARGET_NODE_TYPES.has(node.type) || node._tj_seed_applying) return;
+    const seedW = tjSeedWidget(node);
+    if (!seedW) return;
+    const mode = tjSeedControlMode(node);
+    if (mode === "fixed") return;
+
+    const current = Number(seedW.value ?? 0);
+    const before = Number(beforeValue ?? current);
+    // If ComfyUI's native control_after_generate already changed the seed, do not double-apply.
+    if (beforeValue !== undefined && Number.isFinite(current) && Number.isFinite(before) && current !== before) return;
+
+    let next = Number.isFinite(before) ? Math.floor(before) : 0;
+    if (mode === "increment") next = Math.min(TJ_SEED_MAX_SAFE, next + 1);
+    else if (mode === "decrement") next = Math.max(0, next - 1);
+    else if (mode === "randomize") next = Math.floor(Math.random() * TJ_SEED_MAX_SAFE);
+
+    node._tj_seed_applying = true;
+    try {
+        seedW.value = next;
+        try { seedW.callback?.(next, node, seedW); } catch (_) {}
+        node.widgets_values = node.widgets?.map(w => w.value);
+    } finally {
+        node._tj_seed_applying = false;
+    }
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+}
+function tjInstallSeedQueueHook() {
+    if (!app || typeof app.queuePrompt !== "function") return false;
+    if (window.TJ_NODE_seed_queue_hook_version === TJ_SEED_HOOK_VERSION) return true;
+    const original = app.queuePrompt._tj_seed_original || app.queuePrompt.bind(app);
+    const wrapped = function(...args) {
+        const before = new Map();
+        try {
+            app.graph?._nodes?.forEach(node => {
+                if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) {
+                    const v = tjSeedWidget(node)?.value;
+                    before.set(node.id, v);
+                    node._tj_seed_before_queue = v;
+                }
+            });
+        } catch (_) {}
+        const result = original(...args);
+        const applyAll = () => {
+            try {
+                app.graph?._nodes?.forEach(node => {
+                    if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) tjApplySeedControl(node, before.get(node.id));
+                });
+            } catch (err) {
+                console.warn("[TJ_NODE] seed control_after_generate queue hook skipped", err);
+            }
+        };
+        setTimeout(applyAll, 120);
+        setTimeout(applyAll, 600);
+        return result;
+    };
+    wrapped._tj_seed_original = original;
+    app.queuePrompt = wrapped;
+    window.TJ_NODE_seed_queue_hook_version = TJ_SEED_HOOK_VERSION;
+    return true;
+}
+function tjEnsureSeedQueueHook() {
+    if (tjInstallSeedQueueHook()) return;
+    setTimeout(() => tjInstallSeedQueueHook(), 500);
+    setTimeout(() => tjInstallSeedQueueHook(), 1500);
+}
+function installSeedAfterGenerate(node) {
+    if (!node || node._tj_seed_after_generate_installed) return;
+    node._tj_seed_after_generate_installed = true;
+    tjEnsureSeedQueueHook();
+    const origOnExecuted = node.onExecuted;
+    node.onExecuted = function(message) {
+        const res = origOnExecuted?.apply(this, arguments);
+        const before = this._tj_seed_before_queue;
+        setTimeout(() => tjApplySeedControl(this, before), 0);
+        setTimeout(() => tjApplySeedControl(this, before), 120);
+        return res;
+    };
+}
+
+
 function attachSetSync(node) {
     if (window.TJ_NODE_attachProviderNameSync) return window.TJ_NODE_attachProviderNameSync(node);
 }
@@ -60,8 +170,20 @@ function removeLink(graph, linkId) {
 
 function attachEmbeddedGet(node, opts = {}) {
     const widgetName = opts.widgetName || "get_name";
-    const inputIndex = opts.inputIndex ?? 0;
-    const inputName = opts.inputName || node.inputs?.[inputIndex]?.name || "input";
+    const requestedInputName = opts.inputName || null;
+    const foundIndex = requestedInputName
+        ? node.inputs?.findIndex(i => (i?.widget?.name || i?.name) === requestedInputName)
+        : -1;
+
+    // Safety rule: embedded GET must bind by slot name.
+    // Do not fall back to inputIndex 0. Z-Image Turbo embedded GET is image-slot only.
+    if (requestedInputName && foundIndex < 0) {
+        console.warn(`[TJ_NODE Z-Image Turbo] embedded get target input not found: ${requestedInputName}`);
+        return;
+    }
+
+    const inputIndex = foundIndex >= 0 ? foundIndex : (opts.inputIndex ?? 0);
+    const inputName = requestedInputName || node.inputs?.[inputIndex]?.name || "input";
     const defaultType = opts.defaultType || node.inputs?.[inputIndex]?.type || "*";
     const getW = node.widgets?.find(w => w.name === widgetName);
     if (!getW || !node.inputs?.[inputIndex] || getW._tj_get_attached) return;
@@ -118,7 +240,13 @@ function attachEmbeddedGet(node, opts = {}) {
         input.name = inputName;
 
         if (!selected || selected === "(none)") {
-            removeWirelessInputOnly(this);
+            // User explicitly selected none: disconnect the previous GET link from the image slot.
+            if (input.link != null) {
+                this._tj_connecting_wireless = true;
+                try { removeLink(this.graph, input.link); }
+                finally { this._tj_connecting_wireless = false; }
+                input.link = null;
+            }
             input.label = "";
             input.type = defaultType;
             app.canvas?.setDirty(true, true);
@@ -888,6 +1016,23 @@ function zRemovePreviewToggleWidgetIfExists(node) {
     }
 }
 
+function zRemoveLegacyGlobalPromptInput(node) {
+    if (!node?.inputs) return;
+    for (let i = node.inputs.length - 1; i >= 0; i--) {
+        const input = node.inputs[i];
+        const name = input?.widget?.name || input?.name || "";
+        if (name === "global_prompt_input") {
+            if (input.link != null && node.graph) {
+                try { node.graph.removeLink(input.link); } catch (_) {}
+            }
+            try { node.removeInput(i); } catch (_) { node.inputs.splice(i, 1); }
+        }
+    }
+}
+
+function zInstallSeedAfterGenerate(node) { installSeedAfterGenerate(node); }
+
+
 app.registerExtension({
     name: "TJ.ZImageTurbo",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
@@ -899,8 +1044,10 @@ app.registerExtension({
             if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
             applyTJTheme(this);
             attachSetSync(this);
-            attachEmbeddedGet(this, { inputIndex: 0, inputName: "image", defaultType: "IMAGE" });
+            zRemoveLegacyGlobalPromptInput(this);
+            attachEmbeddedGet(this, { inputName: "image", defaultType: "IMAGE" });
             installAutoSet(this);
+            zInstallSeedAfterGenerate(this);
             tjApplyOutputArrowState(this, tjAutosetEnabled(this));
 
             // auto_set above ratio_preset
@@ -931,8 +1078,10 @@ app.registerExtension({
             requestAnimationFrame(() => {
                 applyTJTheme(this);
                 attachSetSync(this);
-                attachEmbeddedGet(this, { inputIndex: 0, inputName: "image", defaultType: "IMAGE" });
+                zRemoveLegacyGlobalPromptInput(this);
+            attachEmbeddedGet(this, { inputName: "image", defaultType: "IMAGE" });
                 installAutoSet(this);
+                zInstallSeedAfterGenerate(this);
                 zInstallOriginalButtons(this);
                 setWidgetHeight(this, "positive", "tj_z_positive_h", 120);
                 setWidgetHeight(this, "negative", "tj_z_negative_h", 90);

@@ -5,7 +5,13 @@ import { app } from "../../scripts/app.js";
 
 const LGraphNode = LiteGraph.LGraphNode;
 const MAX_PORTS = 20;
-const AUTO_SET_PROVIDER_TYPES = new Set(["TJ_MultiRouter", "TJ_BatchToMultiOutput", "TJ_MultiImageLoader", "TJ_SceneMaker", "TJ_ZImageTurbo"]);
+const AUTO_SET_PROVIDER_TYPES = new Set([
+    "TJ_MultiRouter",
+    "TJ_BatchToMultiOutput",
+    "TJ_MultiImageLoader",
+    "TJ_ZImageTurbo",
+    "TJ_SceneMaker"
+]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";
 const ECLIPSE_PROVIDER_PREFIX = "Eclipse / ";
@@ -46,7 +52,7 @@ function hasDirectNonWirelessInput(node, inputIndex = 0) {
 }
 
 function getConsumerWidget(node) {
-    return node?.widgets?.find(x => x.name === "get_name" || (node?.type === "TJ_GetNode" && x.name === "set_name")) || null;
+    return node?.widgets?.find(x => x.name === "get_name" || String(x.name || "").startsWith("get_name_") || (node?.type === "TJ_GetNode" && x.name === "set_name")) || null;
 }
 
 function isWirelessProviderNode(node) {
@@ -130,7 +136,7 @@ LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow,
         const hasNamedProvider = !!(originW && originW.value && originW.value.trim() !== "");
         const hasAutoSetOutput = !!(isAutoSetProviderNode(origin) && (!autoSetW || autoSetW.value) && origin?.properties?.auto_sets && String(origin.properties.auto_sets[link.origin_slot] || "").trim() !== "");
         let selectedValue = null;
-        const targetGetW = target?.widgets?.find(w => w.name === "get_name" || (target?.type === "TJ_GetNode" && w.name === "set_name"));
+        const targetGetW = target?.widgets?.find(w => w.name === "get_name" || String(w.name || "").startsWith("get_name_") || (target?.type === "TJ_GetNode" && w.name === "set_name"));
         if (targetGetW) selectedValue = targetGetW.value;
         if (!selectedValue && target?.type === "TJ_MultiGetNode" && target._selectors) {
             selectedValue = target._selectors()?.[link.target_slot]?.value || null;

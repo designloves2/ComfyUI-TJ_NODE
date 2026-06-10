@@ -309,6 +309,18 @@ function setAudioPreview(node, metas) {
   node.setDirtyCanvas?.(true,true);
 }
 
+function reflowViewer(node) {
+  if (!node) return;
+  try {
+    build(node);
+    node.setDirtyCanvas?.(true, true);
+    node.graph?.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+  } catch (e) {
+    console.warn("[TJ_NODE] video viewer reflow failed", e);
+  }
+}
+
 function getTJGraphLink(graph, linkId) {
   if (!graph || linkId == null) return null;
   return graph.links?.[linkId] || graph.links?.get?.(linkId) || null;
@@ -351,6 +363,73 @@ function enforceImageVideoMutex(node, changedIndex, connected) {
   }
 }
 
+function setWidgetHidden(widget, hidden) {
+  if (!widget) return;
+  if (!widget._tj_video_adv_saved) widget._tj_video_adv_saved = { type: widget.type, computeSize: widget.computeSize, draw: widget.draw, mouse: widget.mouse };
+  widget.type = hidden ? "hidden" : widget._tj_video_adv_saved.type;
+  widget.hidden = !!hidden;
+  widget.disabled = !!hidden;
+  widget.computeSize = hidden ? () => [0, -4] : widget._tj_video_adv_saved.computeSize;
+  if (hidden) { widget.draw = () => {}; widget.mouse = () => false; }
+  else {
+    if (widget._tj_video_adv_saved.draw !== undefined) widget.draw = widget._tj_video_adv_saved.draw; else delete widget.draw;
+    if (widget._tj_video_adv_saved.mouse !== undefined) widget.mouse = widget._tj_video_adv_saved.mouse; else delete widget.mouse;
+  }
+}
+
+function moveWidgetToBottom(node, widget) {
+  if (!node?.widgets || !widget) return;
+  const idx = node.widgets.indexOf(widget);
+  if (idx >= 0 && idx !== node.widgets.length - 1) {
+    node.widgets.splice(idx, 1);
+    node.widgets.push(widget);
+  }
+}
+
+function installVideoAdvancedToggle(node) {
+  if (!node || node._tj_video_adv_toggle_installed) return;
+  node._tj_video_adv_toggle_installed = true;
+  if (!node.properties) node.properties = {};
+  if (node.properties.tj_video_advanced === undefined) node.properties.tj_video_advanced = false;
+
+  const names = ["begin_frame", "end_frame", "save_type", "audio_monitor", "filename_prefix", "path"];
+  const apply = () => {
+    const show = !!node.properties.tj_video_advanced;
+    for (const name of names) setWidgetHidden(node.widgets?.find(w => w.name === name), !show);
+    if (node._tj_video_adv_btn) node._tj_video_adv_btn.textContent = show ? "Hide advanced settings" : "Show advanced settings";
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+    reflowViewer(node);
+  };
+
+  const row = document.createElement("div");
+  row.style.cssText = "display:flex;align-items:center;justify-content:center;padding:2px;height:22px;box-sizing:border-box;width:100%;max-width:100%;";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Show advanced settings";
+  btn.style.cssText = "width:100%;height:20px;background:#151515;color:#ddd;border:1px solid #555;border-radius:2px;cursor:pointer;font-size:11px;line-height:18px;box-sizing:border-box;";
+  row.appendChild(btn);
+  node._tj_video_adv_btn = btn;
+
+  const widget = node.addDOMWidget("tj_video_advanced_toggle", "btn", row, { serialize:false, hideOnZoom:false });
+  widget.computeSize = function(width) {
+    const w = Math.max(180, Number(width || node.size?.[0] || MIN_W) - 20);
+    row.style.width = `${w}px`;
+    row.style.maxWidth = `${w}px`;
+    return [w, 26];
+  };
+  moveWidgetToBottom(node, widget);
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    node.properties.tj_video_advanced = !node.properties.tj_video_advanced;
+    apply();
+  });
+
+  requestAnimationFrame(apply);
+}
+
 app.registerExtension({
   name: "TJ.SaveAndPreviewVideo.ForceViewer",
   async beforeRegisterNodeDef(nodeType, nodeData) {
@@ -359,7 +438,7 @@ app.registerExtension({
     const created = nodeType.prototype.onNodeCreated;
     nodeType.prototype.onNodeCreated = function() {
       const r = created?.apply(this, arguments);
-      try { build(this); armImageVideoMutex(this, 300); } catch (e) { console.warn("[TJ_NODE] video viewer create failed", e); }
+      try { build(this); installVideoAdvancedToggle(this); armImageVideoMutex(this, 300); } catch (e) { console.warn("[TJ_NODE] video viewer create failed", e); }
       return r;
     };
 
@@ -368,7 +447,7 @@ app.registerExtension({
       this.__tjv_mutex_ready = false;
       const r = configured?.apply(this, arguments);
       queueMicrotask(() => {
-        try { build(this); restoreLastPreview(this); armImageVideoMutex(this, 500); }
+        try { build(this); installVideoAdvancedToggle(this); restoreLastPreview(this); armImageVideoMutex(this, 500); }
         catch (e) { console.warn("[TJ_NODE] video viewer configure failed", e); }
       });
       return r;
@@ -380,6 +459,13 @@ app.registerExtension({
       try {
         if (type === LiteGraph.INPUT && (index === 0 || index === 1)) enforceImageVideoMutex(this, index, connected);
       } catch (e) { console.warn("[TJ_NODE] image/video mutex failed", e); }
+      return r;
+    };
+
+    const resized = nodeType.prototype.onResize;
+    nodeType.prototype.onResize = function(size) {
+      const r = resized?.apply(this, arguments);
+      reflowViewer(this);
       return r;
     };
 

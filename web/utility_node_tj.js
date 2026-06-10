@@ -275,135 +275,151 @@ function attachTJGetReceiver(node, opts = {}) {
     const inputIndex = opts.inputIndex ?? 0;
     const inputName = opts.inputName || (node.inputs?.[inputIndex]?.name || "input");
     const outputIndex = opts.outputIndex;
+    const defaultType = opts.defaultType || node.inputs?.[inputIndex]?.type || "*";
+    const defaultOutputType = opts.defaultOutputType || node.outputs?.[outputIndex]?.type || "*";
     const getW = node.widgets?.find(w => w.name === widgetName);
     if (!getW || getW._tj_get_receiver_attached) return;
     getW._tj_get_receiver_attached = true;
-    getW.options = { ...(getW.options || {}), values: tjSmartGetAllSetNames(node.graph) };
 
-    node._tjUpdateGetReceiverOptions = function() {
-        const w = this.widgets?.find(x => x.name === widgetName);
-        const values = tjSmartGetAllSetNames(this.graph);
-        if (w && w.options) w.options.values = values;
-        if (w && w.value && w.value !== "(none)" && !values.includes(w.value)) {
-            w.value = "(none)";
-            this._tjConnectGetReceiver?.("(none)");
-        } else if (w) {
-            tjSmartMarkGetLabel(this, w.value);
+    const refreshProviderValues = () => {
+        const values = tjSmartGetAllSetNames(node.graph);
+        const next = Array.isArray(values) ? [...values] : ["(none)"];
+        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) next.push(getW.value);
+        getW.options = { ...(getW.options || {}), values: next };
+        return next;
+    };
+
+    const removeWirelessInputOnly = (target) => {
+        const input = target.inputs?.[inputIndex];
+        if (!target.graph || !input || input.link == null) return;
+        if (tjIsWirelessLink(target.graph, input.link)) {
+            target._tj_connecting_wireless = true;
+            try { tjSafeRemoveLink(target.graph, input.link); }
+            finally { target._tj_connecting_wireless = false; }
+            input.link = null;
         }
     };
 
-    node._tjConnectGetReceiver = function(setName) {
+    node._tjUpdateGetReceiverOptions = function() {
+        const w = this.widgets?.find(x => x.name === widgetName);
+        if (!w) return;
+        refreshProviderValues();
+        const label = tjSmartLabelName(this.graph, w.value);
+        if (this.inputs?.[inputIndex]) this.inputs[inputIndex].label = label ? `◀ ${label}` : "";
+    };
+
+    node._tjConnectGetReceiver = function(setName, connectOpts = {}) {
         if (!this.graph || !this.inputs?.[inputIndex]) return;
-        const values = tjSmartGetAllSetNames(this.graph);
-        if (tjSmartIsSeparator(setName)) setName = "(none)";
-        if (setName && setName !== "(none)" && !values.includes(setName) && !(window.TJ_NODE_findProviderByValue && window.TJ_NODE_findProviderByValue(this.graph, setName))) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w) w.value = "(none)";
-            setName = "(none)";
+        const w = this.widgets?.find(x => x.name === widgetName);
+        if (tjSmartIsSeparator(setName)) {
+            if (w) w.value = w._tj_previous_value || w.value || "(none)";
+            return;
         }
-        const wantsWireless = !!(setName && setName !== "(none)" && !tjSmartIsSeparator(setName));
-        const currentLinkId = this.inputs[inputIndex].link;
+
+        const selected = setName || "(none)";
+        if (w && w.value !== selected) w.value = selected;
+        if (w) w._tj_previous_value = selected;
+
+        const input = this.inputs[inputIndex];
+        const currentLinkId = input.link;
         const currentIsWireless = tjIsWirelessLink(this.graph, currentLinkId);
+        input.name = inputName;
 
-        // Important: direct user wires must survive workflow reload.
-        // When get_name is (none), only remove links that TJ_NODE created as wireless links.
-        // A normal ComfyUI wire should stay connected and continue to act as the primary input.
-        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
-            this._tj_connecting_wireless = true;
-            tjSafeRemoveLink(this.graph, currentLinkId);
-            this._tj_connecting_wireless = false;
+        if (currentLinkId != null && !currentIsWireless && !connectOpts.forceWireless) {
+            input.label = "";
+            app.canvas?.setDirty(true, true);
+            return;
         }
 
-        if (!setName || setName === "(none)") {
-            this.inputs[inputIndex].name = inputName;
-            this.inputs[inputIndex].label = "";
-            if (currentLinkId == null || currentIsWireless) {
-                this.inputs[inputIndex].type = opts.defaultType || this.inputs[inputIndex].type || "*";
-                if (outputIndex !== undefined && this.outputs?.[outputIndex]) {
-                    this.outputs[outputIndex].type = opts.defaultOutputType || this.outputs[outputIndex].type || "*";
+        if (!selected || selected === "(none)") {
+            removeWirelessInputOnly(this);
+            input.label = "";
+            if (currentLinkId == null || currentIsWireless) input.type = defaultType;
+            if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = defaultOutputType;
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+
+        const provider = window.TJ_NODE_findProviderByValue ? window.TJ_NODE_findProviderByValue(this.graph, selected) : null;
+        if (!provider) {
+            input.label = `◀ ${tjSmartLabelName(this.graph, selected) || selected}`;
+            window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
+            window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+
+        const normalizedValue = provider.displayName || selected;
+        if (w && w.value !== normalizedValue) w.value = normalizedValue;
+        if (w) w._tj_previous_value = normalizedValue;
+
+        if (window.TJ_NODE_forceReconnectConsumer) {
+            window.TJ_NODE_forceReconnectConsumer(this, normalizedValue, inputIndex);
+        } else {
+            const sourceInfo = tjSmartFindSetterSourceInfo(this.graph, normalizedValue);
+            if (sourceInfo && tjCanConnect(sourceInfo, this, inputIndex)) {
+                removeWirelessInputOnly(this);
+                this._tj_connecting_wireless = true;
+                try {
+                    sourceInfo.node.connect(sourceInfo.slot, this, inputIndex);
+                    window.TJ_NODE_markWirelessLink?.(this.graph, this, inputIndex, normalizedValue);
+                } finally {
+                    this._tj_connecting_wireless = false;
                 }
             }
-            app.canvas?.setDirty(true, true);
-            return;
         }
-        const sourceInfo = tjSmartFindSetterSourceInfo(this.graph, setName);
-        if (!sourceInfo) {
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w) w.value = "(none)";
-            this.inputs[inputIndex].label = "";
-            app.canvas?.setDirty(true, true);
-            return;
-        }
-        if (!tjCanConnect(sourceInfo, this, inputIndex)) {
-            // Provider exists but has no connectable source right now (for example Eclipse Set input disconnected).
-            // Keep get_name selection and label; just leave the actual hidden link disconnected.
-            const normalizedValue = sourceInfo.displayName || setName;
-            const w = this.widgets?.find(x => x.name === widgetName);
-            if (w && w.value !== normalizedValue) w.value = normalizedValue;
-            this.inputs[inputIndex].label = `◀ ${tjSmartLabelName(this.graph, normalizedValue)}`;
-            this.inputs[inputIndex].name = inputName;
-            if (outputIndex !== undefined && this.outputs?.[outputIndex]) {
-                this.outputs[outputIndex].type = opts.defaultOutputType || this.outputs[outputIndex].type || "*";
-            }
-            app.canvas?.setDirty(true, true);
-            return;
-        }
-        const normalizedValue = sourceInfo.displayName || setName;
-        const valueW = this.widgets?.find(x => x.name === widgetName);
-        if (valueW && valueW.value !== normalizedValue) valueW.value = normalizedValue;
-        this.inputs[inputIndex].label = `◀ ${tjSmartLabelName(this.graph, normalizedValue)}`;
-        this.inputs[inputIndex].name = inputName;
-        this._tj_connecting_wireless = true;
-        sourceInfo.node.connect(sourceInfo.slot, this, inputIndex);
-        if (window.TJ_NODE_markWirelessLink) window.TJ_NODE_markWirelessLink(this.graph, this, inputIndex, normalizedValue);
-        this._tj_connecting_wireless = false;
-        const srcOut = tjGetOutputSlot(sourceInfo.node, sourceInfo.slot);
-        const t = srcOut?.type || "*";
-        this.inputs[inputIndex].type = t;
-        if (outputIndex !== undefined && this.outputs?.[outputIndex]) {
-            this.outputs[outputIndex].type = t;
-        }
+
+        const sourceInfo = tjSmartFindSetterSourceInfo(this.graph, normalizedValue);
+        const t = tjGetOutputSlot(sourceInfo?.node, sourceInfo?.slot)?.type || defaultType || "*";
+        input.name = inputName;
+        input.type = t;
+        input.label = `◀ ${provider.labelName || tjSmartLabelName(this.graph, normalizedValue)}`;
+        if (outputIndex !== undefined && this.outputs?.[outputIndex]) this.outputs[outputIndex].type = t;
         app.canvas?.setDirty(true, true);
     };
 
     const origCb = getW.callback;
     getW.callback = function(v) {
         if (origCb) origCb.call(this, v);
-        if (tjSmartIsSeparator(v)) { getW.value = getW._tj_previous_value || "(none)"; return; }
+        if (tjSmartIsSeparator(v)) { getW.value = getW._tj_previous_value || getW.value || "(none)"; return; }
         getW._tj_previous_value = v;
-        node._tjConnectGetReceiver(v);
+        node._tjConnectGetReceiver(v, { forceWireless: true });
     };
 
     const origConnChange = node.onConnectionsChange;
     node.onConnectionsChange = function(type, index, connected) {
         if (origConnChange) origConnChange.apply(this, arguments);
-        if (type === LiteGraph.INPUT && index === inputIndex && !connected && !this._tj_connecting_wireless) {
+        if (type === LiteGraph.INPUT && index === inputIndex) {
             const w = this.widgets?.find(x => x.name === widgetName);
-            const selected = w?.value;
-            const provider = selected && selected !== "(none)" && !tjSmartIsSeparator(selected) && window.TJ_NODE_findProviderByValue
-                ? window.TJ_NODE_findProviderByValue(this.graph, selected)
-                : null;
-            if (provider) {
-                // Temporary wireless link cleanup; keep selection and wait for repair/reconnect.
-                this.inputs[inputIndex].label = `◀ ${tjSmartLabelName(this.graph, selected)}`;
-                if (window.TJ_NODE_scheduleWirelessRepair) window.TJ_NODE_scheduleWirelessRepair(this.graph, 80);
-                app.canvas?.setDirty(true, true);
-                return;
+            if (connected && !this._tj_connecting_wireless) {
+                const lid = this.inputs?.[inputIndex]?.link;
+                if (lid != null && !tjIsWirelessLink(this.graph, lid)) {
+                    if (w && w.value !== "(none)") w.value = "(none)";
+                    this.inputs[inputIndex].label = "";
+                }
+            } else if (!connected && !this._tj_connecting_wireless) {
+                const selected = w?.value;
+                if (selected && selected !== "(none)") {
+                    this.inputs[inputIndex].label = `◀ ${tjSmartLabelName(this.graph, selected) || selected}`;
+                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
+                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
+                }
             }
-            if (w && w.value && w.value !== "(none)") w.value = "(none)";
-            this.inputs[inputIndex].label = "";
             app.canvas?.setDirty(true, true);
         }
     };
 
     requestAnimationFrame(() => {
+        refreshProviderValues();
         node._tjUpdateGetReceiverOptions?.();
-        node._tjConnectGetReceiver(getW.value);
+        node._tjConnectGetReceiver?.(getW.value);
     });
+    setTimeout(() => {
+        refreshProviderValues();
+        node._tjUpdateGetReceiverOptions?.();
+        if (getW.value && getW.value !== "(none)") node._tjConnectGetReceiver?.(getW.value);
+    }, 500);
 }
-
-
-
 
 function tjComputePackedImageGrid(count, drawW, drawH) {
     // Smart contain grid.
@@ -1249,8 +1265,15 @@ app.registerExtension({
                 btnRow.appendChild(pasteBtn);
                 btnRow.appendChild(clearBtn);
 
+                const ownerNode = this;
                 const domWidget = this.addDOMWidget("tj_prompt_tools", "btn", btnRow, { serialize: false, hideOnZoom: false });
-                domWidget.computeSize = function() { return [0, 24]; };
+                domWidget.computeSize = function(width) {
+                    const w = Math.max(120, Number(width || ownerNode.size?.[0] || 360) - 20);
+                    btnRow.style.width = `${w}px`;
+                    btnRow.style.maxWidth = `${w}px`;
+                    btnRow.style.boxSizing = "border-box";
+                    return [w, 24];
+                };
 
                 requestAnimationFrame(() => {
                     const textWidget = this.widgets?.find(w => w.name === "text");
@@ -1445,9 +1468,14 @@ app.registerExtension({
                     if (tjSmartIsSeparator(setName)) setName = "(none)";
                     const values = tjSmartGetAllSetNames(this.graph);
                     if (setName && setName !== "(none)" && !values.includes(setName) && !(window.TJ_NODE_findProviderByValue && window.TJ_NODE_findProviderByValue(this.graph, setName))) {
-                        const w = this.widgets?.find(x => x.name === "get_name");
-                        if (w) w.value = "(none)";
-                        setName = "(none)";
+                        // Provider scan can be temporarily late during reload/delete/refresh.
+                        // Keep the saved get_name and let wireless repair reconnect later.
+                        this.inputs[0].name = "input";
+                        tjSmartMarkGetLabel(this, setName);
+                        window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
+                        window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
+                        app.canvas?.setDirty(true, true);
+                        return;
                     }
 
                     const wantsWireless = !!(setName && setName !== "(none)" && !tjSmartIsSeparator(setName));
@@ -1564,6 +1592,7 @@ app.registerExtension({
 
                     if (!this.properties) this.properties = {};
                     this.properties.saved_grid_size = [size[0], size[1]];
+                    try { syncSmartShowDomWidths(); } catch (_) {}
                     
                     if (origOnResize) origOnResize.apply(this, arguments);
                 };
@@ -1653,7 +1682,28 @@ app.registerExtension({
                 container.appendChild(mediaEl);
                 container.appendChild(controlBar);
 
+                const ownerNode = this;
                 const domWidget = this.addDOMWidget("tj_smart_display", "div", container, { serialize: false, hideOnZoom: false });
+                const syncSmartShowDomWidths = () => {
+                    const w = Math.max(180, Number(ownerNode.size?.[0] || 360) - 20);
+                    for (const el of [container, uploadBtn, viewerBtn]) {
+                        if (!el?.style) continue;
+                        el.style.width = `${w}px`;
+                        el.style.maxWidth = `${w}px`;
+                        el.style.boxSizing = "border-box";
+                    }
+                    if (controlBar?.style) {
+                        controlBar.style.width = `${w}px`;
+                        controlBar.style.maxWidth = `${w}px`;
+                        controlBar.style.boxSizing = "border-box";
+                    }
+                };
+                domWidget.computeSize = function(width) {
+                    const w = Math.max(180, Number(width || ownerNode.size?.[0] || 360) - 20);
+                    syncSmartShowDomWidths();
+                    const widgetH = Math.max(80, Number(ownerNode.size?.[1] || 300) - 120);
+                    return [w, widgetH];
+                };
                 
                 document.addEventListener('tj_sync_movies', () => {
                     if (this.tj_display_type === "video_file" || this.tj_display_type === "audio_file") {

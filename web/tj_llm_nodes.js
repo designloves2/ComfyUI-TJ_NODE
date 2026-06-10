@@ -7,6 +7,116 @@ function applyTJTheme(node) {
     node.title_text_color = "#FFFFFF";
 }
 
+
+
+const TJ_SEED_TARGET_NODE_TYPES = new Set(["TJ_ZImageTurbo", "TJ_ImageToPrompt", "TJ_PromptEnhancer", "TJ_PromptStudio"]);
+const TJ_SEED_MAX_SAFE = 0x1fffffffffffff;
+const TJ_SEED_HOOK_VERSION = "TJ_SEED_V2_27";
+function tjSeedWidget(node) { return node?.widgets?.find(w => w.name === "seed"); }
+function tjSeedControlWidget(node) { return node?.widgets?.find(w => w.name === "control_after_generate"); }
+function tjNormalizeSeedControl(value) {
+    const v = String(value || "fixed").toLowerCase();
+    if (v.includes("random")) return "randomize";
+    if (v.includes("decrement") || v.includes("decrease")) return "decrement";
+    if (v.includes("increment") || v.includes("increase")) return "increment";
+    return "fixed";
+}
+function tjSeedControlMode(node) {
+    const ctrlW = tjSeedControlWidget(node);
+    if (ctrlW) return tjNormalizeSeedControl(ctrlW.value);
+    const seedW = tjSeedWidget(node);
+    const opts = seedW?.options || {};
+    return tjNormalizeSeedControl(
+        opts.control_after_generate ??
+        opts.controlAfterGenerate ??
+        seedW?.control_after_generate ??
+        node?.properties?.control_after_generate ??
+        node?.properties?.seed_control_after_generate ??
+        "fixed"
+    );
+}
+function tjApplySeedControl(node, beforeValue = undefined) {
+    if (!node || !TJ_SEED_TARGET_NODE_TYPES.has(node.type) || node._tj_seed_applying) return;
+    const seedW = tjSeedWidget(node);
+    if (!seedW) return;
+    const mode = tjSeedControlMode(node);
+    if (mode === "fixed") return;
+
+    const current = Number(seedW.value ?? 0);
+    const before = Number(beforeValue ?? current);
+    // If ComfyUI's native control_after_generate already changed the seed, do not double-apply.
+    if (beforeValue !== undefined && Number.isFinite(current) && Number.isFinite(before) && current !== before) return;
+
+    let next = Number.isFinite(before) ? Math.floor(before) : 0;
+    if (mode === "increment") next = Math.min(TJ_SEED_MAX_SAFE, next + 1);
+    else if (mode === "decrement") next = Math.max(0, next - 1);
+    else if (mode === "randomize") next = Math.floor(Math.random() * TJ_SEED_MAX_SAFE);
+
+    node._tj_seed_applying = true;
+    try {
+        seedW.value = next;
+        try { seedW.callback?.(next, node, seedW); } catch (_) {}
+        node.widgets_values = node.widgets?.map(w => w.value);
+    } finally {
+        node._tj_seed_applying = false;
+    }
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+}
+function tjInstallSeedQueueHook() {
+    if (!app || typeof app.queuePrompt !== "function") return false;
+    if (window.TJ_NODE_seed_queue_hook_version === TJ_SEED_HOOK_VERSION) return true;
+    const original = app.queuePrompt._tj_seed_original || app.queuePrompt.bind(app);
+    const wrapped = function(...args) {
+        const before = new Map();
+        try {
+            app.graph?._nodes?.forEach(node => {
+                if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) {
+                    const v = tjSeedWidget(node)?.value;
+                    before.set(node.id, v);
+                    node._tj_seed_before_queue = v;
+                }
+            });
+        } catch (_) {}
+        const result = original(...args);
+        const applyAll = () => {
+            try {
+                app.graph?._nodes?.forEach(node => {
+                    if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) tjApplySeedControl(node, before.get(node.id));
+                });
+            } catch (err) {
+                console.warn("[TJ_NODE] seed control_after_generate queue hook skipped", err);
+            }
+        };
+        setTimeout(applyAll, 120);
+        setTimeout(applyAll, 600);
+        return result;
+    };
+    wrapped._tj_seed_original = original;
+    app.queuePrompt = wrapped;
+    window.TJ_NODE_seed_queue_hook_version = TJ_SEED_HOOK_VERSION;
+    return true;
+}
+function tjEnsureSeedQueueHook() {
+    if (tjInstallSeedQueueHook()) return;
+    setTimeout(() => tjInstallSeedQueueHook(), 500);
+    setTimeout(() => tjInstallSeedQueueHook(), 1500);
+}
+function installSeedAfterGenerate(node) {
+    if (!node || node._tj_seed_after_generate_installed) return;
+    node._tj_seed_after_generate_installed = true;
+    tjEnsureSeedQueueHook();
+    const origOnExecuted = node.onExecuted;
+    node.onExecuted = function(message) {
+        const res = origOnExecuted?.apply(this, arguments);
+        const before = this._tj_seed_before_queue;
+        setTimeout(() => tjApplySeedControl(this, before), 0);
+        setTimeout(() => tjApplySeedControl(this, before), 120);
+        return res;
+    };
+}
+
+
 function attachSetSync(node) {
     if (window.TJ_NODE_attachProviderNameSync) return window.TJ_NODE_attachProviderNameSync(node);
 }
@@ -98,9 +208,18 @@ function attachEmbeddedGet(node, opts = {}) {
         const currentIsWireless = isWireless(this.graph, currentLinkId);
 
         if (!wantsWireless) {
+            // Explicit none must fully disconnect the embedded GET link.
+            // Older builds could leave a real visible wire behind; remove any current link,
+            // wireless or not, because this slot is owned by get_name.
+            if (currentLinkId != null) {
+                this._tj_connecting_wireless = true;
+                try { removeLink(this.graph, currentLinkId); }
+                finally { this._tj_connecting_wireless = false; }
+                input.link = null;
+            }
             input.name = inputName;
             input.label = "";
-            if (currentLinkId == null || currentIsWireless) input.type = defaultType;
+            input.type = defaultType;
             app.canvas?.setDirty(true, true);
             return;
         }
@@ -497,7 +616,10 @@ function installBase(node, config) {
     attachSetSync(node);
     attachEmbeddedGet(node, { inputIndex: 0, inputName: config.inputName || "input", defaultType: config.inputType || "STRING" });
     attachBackendVisibility(node);
-    if (node.type === "TJ_PromptEnhancer" || node.type === "TJ_ImageToPrompt" || node.type === "TJ_PromptStudio") installAdvancedToggle(node);
+    if (node.type === "TJ_PromptEnhancer" || node.type === "TJ_ImageToPrompt" || node.type === "TJ_PromptStudio") {
+        installAdvancedToggle(node);
+        installSeedAfterGenerate(node);
+    }
     updateLLMVisibility(node);
     node.setDirtyCanvas?.(true, true);
 }
