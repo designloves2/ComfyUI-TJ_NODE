@@ -5,7 +5,7 @@ import { app } from "../../scripts/app.js";
 
 const LGraphNode = LiteGraph.LGraphNode;
 const MAX_PORTS = 20;
-const AUTO_SET_PROVIDER_TYPES = new Set(["TJ_MultiRouter", "TJ_BatchToMultiOutput", "TJ_MultiImageLoader"]);
+const AUTO_SET_PROVIDER_TYPES = new Set(["TJ_MultiRouter", "TJ_BatchToMultiOutput", "TJ_MultiImageLoader", "TJ_SceneMaker", "TJ_ZImageTurbo"]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";
 const ECLIPSE_PROVIDER_PREFIX = "Eclipse / ";

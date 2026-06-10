@@ -6,7 +6,7 @@ from server import PromptServer
 
 
 class TJShortcutLauncher:
-    CATEGORY = " ✨ TJ Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Utility"
     RETURN_TYPES = ()
     FUNCTION = "run"
     OUTPUT_NODE = True

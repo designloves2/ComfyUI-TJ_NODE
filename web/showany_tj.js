@@ -51,20 +51,28 @@ function tjShowAnyAttachEmbeddedGet(node) {
     if (!getW || !node.inputs?.[0]) return;
 
     node._tj_show_any_get_attached = true;
-    getW.options = { ...(getW.options || {}), values: tjShowAnyValues(node.graph) };
+
+    const refreshProviderValues = () => {
+        const values = tjShowAnyValues(node.graph);
+        const next = Array.isArray(values) ? [...values] : ["(none)"];
+        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) {
+            next.push(getW.value);
+        }
+        getW.options = { ...(getW.options || {}), values: next };
+        return next;
+    };
+
+    refreshProviderValues();
 
     node._tjShowAnyUpdateGetOptions = function() {
         const w = this.widgets?.find(x => x.name === "get_name");
         if (!w) return;
-        const values = tjShowAnyValues(this.graph);
-        w.options = { ...(w.options || {}), values };
+        const values = refreshProviderValues();
         if (w.value && w.value !== "(none)" && !values.includes(w.value)) {
-            w.value = "(none)";
-            this._tjShowAnyConnectGet?.("(none)");
-        } else {
-            const label = tjShowAnyLabel(this.graph, w.value);
-            if (this.inputs?.[0]) this.inputs[0].label = label ? `◀ ${label}` : "";
+            w.options = { ...(w.options || {}), values: [...values, w.value] };
         }
+        const label = tjShowAnyLabel(this.graph, w.value);
+        if (this.inputs?.[0]) this.inputs[0].label = label ? `◀ ${label}` : "";
     };
 
     node._tjShowAnyConnectGet = function(value) {
@@ -75,14 +83,6 @@ function tjShowAnyAttachEmbeddedGet(node) {
         const wantsWireless = !!(value && value !== "(none)" && !tjShowAnyIsSeparator(value));
         const currentLinkId = input.link;
         const currentIsWireless = tjShowAnyIsWireless(this.graph, currentLinkId);
-
-        // Preserve normal user-created direct wires when get_name is (none).
-        // Only remove TJ wireless links, or replace the current link when user selects a provider.
-        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
-            this._tj_connecting_wireless = true;
-            tjShowAnyRemoveLink(this.graph, currentLinkId);
-            this._tj_connecting_wireless = false;
-        }
 
         if (!wantsWireless) {
             input.name = "any";
@@ -99,17 +99,33 @@ function tjShowAnyAttachEmbeddedGet(node) {
         if (w && w.value !== normalizedValue) w.value = normalizedValue;
 
         input.name = "any";
-        input.label = `◀ ${tjShowAnyLabel(this.graph, normalizedValue)}`;
+        input.label = `◀ ${tjShowAnyLabel(this.graph, normalizedValue) || normalizedValue}`;
 
-        if (sourceInfo?.node && sourceInfo.slot != null && sourceInfo.node.outputs?.[sourceInfo.slot]) {
-            this._tj_connecting_wireless = true;
-            sourceInfo.node.connect(sourceInfo.slot, this, 0);
-            if (window.TJ_NODE_markWirelessLink) window.TJ_NODE_markWirelessLink(this.graph, this, 0, normalizedValue);
-            this._tj_connecting_wireless = false;
-            const t = sourceInfo.node.outputs?.[sourceInfo.slot]?.type || "*";
-            input.type = t;
-            if (this.outputs?.[0]) this.outputs[0].type = t;
+        // Critical: provider scan can be temporarily empty during refresh/delete/reload.
+        // Never remove the existing fake-wire until a real replacement source is found.
+        if (!(sourceInfo?.node && sourceInfo.slot != null && sourceInfo.node.outputs?.[sourceInfo.slot])) {
+            if (window.TJ_NODE_scheduleWirelessRepair) {
+                window.TJ_NODE_scheduleWirelessRepair(this.graph, 80);
+                window.TJ_NODE_scheduleWirelessRepair(this.graph, 300);
+                window.TJ_NODE_scheduleWirelessRepair(this.graph, 900);
+            }
+            app.canvas?.setDirty(true, true);
+            return;
         }
+
+        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
+            this._tj_connecting_wireless = true;
+            tjShowAnyRemoveLink(this.graph, currentLinkId);
+            this._tj_connecting_wireless = false;
+        }
+
+        this._tj_connecting_wireless = true;
+        sourceInfo.node.connect(sourceInfo.slot, this, 0);
+        if (window.TJ_NODE_markWirelessLink) window.TJ_NODE_markWirelessLink(this.graph, this, 0, normalizedValue);
+        this._tj_connecting_wireless = false;
+        const t = sourceInfo.node.outputs?.[sourceInfo.slot]?.type || "*";
+        input.type = t;
+        if (this.outputs?.[0]) this.outputs[0].type = t;
         app.canvas?.setDirty(true, true);
     };
 
@@ -117,7 +133,8 @@ function tjShowAnyAttachEmbeddedGet(node) {
     getW.callback = function(v) {
         if (origCb) origCb.call(this, v);
         if (tjShowAnyIsSeparator(v)) {
-            getW.value = getW._tj_previous_value || "(none)";
+            // Separator clicks are not a real provider change. Keep the current saved value.
+            getW.value = getW._tj_previous_value || getW.value || "(none)";
             return;
         }
         getW._tj_previous_value = v;
@@ -134,11 +151,15 @@ function tjShowAnyAttachEmbeddedGet(node) {
                 const provider = selected && selected !== "(none)" && window.TJ_NODE_findProviderByValue
                     ? window.TJ_NODE_findProviderByValue(this.graph, selected)
                     : null;
-                if (provider) {
-                    if (window.TJ_NODE_scheduleWirelessRepair) window.TJ_NODE_scheduleWirelessRepair(this.graph, 80);
-                } else if (w && w.value !== "(none)") {
-                    w.value = "(none)";
-                    this.inputs[0].label = "";
+                if (selected && selected !== "(none)") {
+                    // Do not reset get_name on transient provider loss. Keep the selected value
+                    // and let the global wireless repair reconnect when providers settle.
+                    this.inputs[0].label = `◀ ${tjShowAnyLabel(this.graph, selected) || selected}`;
+                    if (window.TJ_NODE_scheduleWirelessRepair) {
+                        window.TJ_NODE_scheduleWirelessRepair(this.graph, 80);
+                        window.TJ_NODE_scheduleWirelessRepair(this.graph, 300);
+                        window.TJ_NODE_scheduleWirelessRepair(this.graph, 900);
+                    }
                 }
             }
             app.canvas?.setDirty(true, true);
@@ -146,9 +167,30 @@ function tjShowAnyAttachEmbeddedGet(node) {
     };
 
     requestAnimationFrame(() => {
+        refreshProviderValues();
         node._tjShowAnyUpdateGetOptions?.();
         node._tjShowAnyConnectGet?.(getW.value);
     });
+    setTimeout(() => {
+        refreshProviderValues();
+        node._tjShowAnyUpdateGetOptions?.();
+        node._tjShowAnyConnectGet?.(getW.value);
+    }, 140);
+}
+
+
+function tjShowAnyInnerWidth(node, fallback = 360) {
+    const w = Number(node?.size?.[0] || fallback);
+    return Math.max(120, w - 20);
+}
+
+function tjShowAnySyncCopyRow(node) {
+    const row = node?._tj_show_any_copy_row;
+    if (!row?.style) return;
+    const inner = tjShowAnyInnerWidth(node);
+    row.style.width = `${inner}px`;
+    row.style.maxWidth = `${inner}px`;
+    row.style.boxSizing = "border-box";
 }
 
 function tjShowAnySetText(node, text) {
@@ -181,7 +223,8 @@ app.registerExtension({
 
             // Prompt Text 방식 그대로: DOMWidget은 Copy 버튼 한 줄만 추가한다.
             const btnRow = document.createElement("div");
-            btnRow.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:2px;height:12px;box-sizing:border-box;";
+            btnRow.style.cssText = "display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:2px;height:12px;box-sizing:border-box;width:100%;max-width:100%;";
+            this._tj_show_any_copy_row = btnRow;
 
             const btnStyle = "width:72px;height:20px;min-height:20px;max-height:20px;padding:0;background:#0055bb;color:#00efff;border:none;border-radius:3px;cursor:pointer;font-size:10px;font-weight:bold;line-height:20px;box-sizing:border-box;";
             const copyBtn = document.createElement("button");
@@ -191,7 +234,10 @@ app.registerExtension({
             btnRow.appendChild(copyBtn);
 
             const domWidget = this.addDOMWidget("tj_show_any_copy_tools", "btn", btnRow, { serialize: false, hideOnZoom: false });
-            domWidget.computeSize = function() { return [0, 24]; };
+            domWidget.computeSize = (width) => {
+                tjShowAnySyncCopyRow(this);
+                return [width || tjShowAnyInnerWidth(this), 24];
+            };
 
             requestAnimationFrame(() => {
                 const textWidget = this.widgets?.find(w => w.name === "text");
@@ -225,6 +271,7 @@ app.registerExtension({
                 tjShowAnyApplyTheme(this);
                 tjShowAnyAttachSetSync(this);
                 tjShowAnyAttachEmbeddedGet(this);
+                tjShowAnySyncCopyRow(this);
                 this._tjShowAnyUpdateGetOptions?.();
                 const w = this.widgets?.find(x => x.name === "get_name");
                 if (w?.value) this._tjShowAnyConnectGet?.(w.value);
@@ -244,6 +291,7 @@ app.registerExtension({
         const origOnDrawForeground = nodeType.prototype.onDrawForeground;
         nodeType.prototype.onDrawForeground = function(ctx) {
             this._tjShowAnyUpdateGetOptions?.();
+            tjShowAnySyncCopyRow(this);
             if (origOnDrawForeground) origOnDrawForeground.apply(this, arguments);
         };
     }

@@ -38,6 +38,19 @@ from .showany_tj import TJ_ShowAny
 from .smart_converter_tj import TJ_SmartConverter
 from .shortcut_launcher import TJShortcutLauncher
 
+# ====== 커버 노드 임포트 ======
+
+from .tj_scene_maker import TJ_SceneMaker
+from .tj_z_image_turbo import TJ_ZImageTurbo
+from .tj_ltx2_sampler import TJ_LTX2Sampler
+
+# ====== LLM / Prompt nodes ======
+from .tj_llm_nodes import TJ_PromptEnhancer, TJ_ImageToPrompt, TJ_PromptShowLocker
+from .tj_prompt_studio import TJ_PromptStudio
+
+# ====== Utility: Time Segment List ======
+from .time_segment_list_node import TimeSegmentListNode
+
 # ──────────── Node Mappings ────────────
 NODE_CLASS_MAPPINGS = {
     "TJ_MultiImageLoader": TJ_MultiImageLoader,
@@ -61,6 +74,18 @@ NODE_CLASS_MAPPINGS = {
     "TJ_ShowAny": TJ_ShowAny,
     "TJ_SmartConverter": TJ_SmartConverter,
     "TJShortcutLauncher": TJShortcutLauncher,
+    "TimeSegmentListNode": TimeSegmentListNode,
+
+    # LLM
+    "TJ_PromptEnhancer": TJ_PromptEnhancer,
+    "TJ_ImageToPrompt": TJ_ImageToPrompt,
+    "TJ_PromptShowLocker": TJ_PromptShowLocker,
+    "TJ_PromptStudio": TJ_PromptStudio,
+
+    # Cover
+    "TJ_SceneMaker": TJ_SceneMaker,
+    "TJ_ZImageTurbo": TJ_ZImageTurbo,
+    "TJ_LTX2Sampler": TJ_LTX2Sampler,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -75,7 +100,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SetNode": "Set Node (TJ)",
     "TJ_GetNode": "Get Node (TJ)",
     "TJ_MultiGetNode": "Multi Get Node (TJ)",
-    
+        
     # Utilities
     "TJ_SaveAndPreviewImage": "Save & Preview Image (TJ)",
     "TJ_PromptText": "Prompt Text (TJ)",
@@ -85,6 +110,18 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_ShowAny": "Show Any (TJ)",
     "TJ_SmartConverter": "Smart Converter (TJ)",
     "TJShortcutLauncher": "Shortcut Launcher (TJ)",
+    "TimeSegmentListNode": "Time Segment List (TJ)",
+
+    # LLM
+    "TJ_PromptEnhancer": "Prompt Enhancer (TJ)",
+    "TJ_ImageToPrompt": "Image to Prompt (TJ)",
+    "TJ_PromptShowLocker": "Prompt Show & Locker (TJ)",
+    "TJ_PromptStudio": "Prompt Studio (TJ)",
+
+    # Cover
+    "TJ_SceneMaker": "Scene Maker (TJ)",
+    "TJ_ZImageTurbo": "Z-Image Turbo (TJ)",
+    "TJ_LTX2Sampler": "LTX2. TJ Sampler",
 }
 
 WEB_DIRECTORY = "./web"
