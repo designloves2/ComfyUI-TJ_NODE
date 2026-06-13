@@ -7,132 +7,27 @@ function applyTJTheme(node) {
     node.title_text_color = "#FFFFFF";
 }
 
-
-
-const TJ_SEED_TARGET_NODE_TYPES = new Set(["TJ_ZImageTurbo", "TJ_ImageToPrompt", "TJ_PromptEnhancer", "TJ_PromptStudio"]);
-const TJ_SEED_MAX_SAFE = 0x1fffffffffffff;
-const TJ_SEED_HOOK_VERSION = "TJ_SEED_V2_27";
-function tjSeedWidget(node) { return node?.widgets?.find(w => w.name === "seed"); }
-function tjSeedControlWidget(node) { return node?.widgets?.find(w => w.name === "control_after_generate"); }
-function tjNormalizeSeedControl(value) {
-    const v = String(value || "fixed").toLowerCase();
-    if (v.includes("random")) return "randomize";
-    if (v.includes("decrement") || v.includes("decrease")) return "decrement";
-    if (v.includes("increment") || v.includes("increase")) return "increment";
-    return "fixed";
-}
-function tjSeedControlMode(node) {
-    const ctrlW = tjSeedControlWidget(node);
-    if (ctrlW) return tjNormalizeSeedControl(ctrlW.value);
-    const seedW = tjSeedWidget(node);
-    const opts = seedW?.options || {};
-    return tjNormalizeSeedControl(
-        opts.control_after_generate ??
-        opts.controlAfterGenerate ??
-        seedW?.control_after_generate ??
-        node?.properties?.control_after_generate ??
-        node?.properties?.seed_control_after_generate ??
-        "fixed"
-    );
-}
-function tjApplySeedControl(node, beforeValue = undefined) {
-    if (!node || !TJ_SEED_TARGET_NODE_TYPES.has(node.type) || node._tj_seed_applying) return;
-    const seedW = tjSeedWidget(node);
-    if (!seedW) return;
-    const mode = tjSeedControlMode(node);
-    if (mode === "fixed") return;
-
-    const current = Number(seedW.value ?? 0);
-    const before = Number(beforeValue ?? current);
-    // If ComfyUI's native control_after_generate already changed the seed, do not double-apply.
-    if (beforeValue !== undefined && Number.isFinite(current) && Number.isFinite(before) && current !== before) return;
-
-    let next = Number.isFinite(before) ? Math.floor(before) : 0;
-    if (mode === "increment") next = Math.min(TJ_SEED_MAX_SAFE, next + 1);
-    else if (mode === "decrement") next = Math.max(0, next - 1);
-    else if (mode === "randomize") next = Math.floor(Math.random() * TJ_SEED_MAX_SAFE);
-
-    node._tj_seed_applying = true;
-    try {
-        seedW.value = next;
-        try { seedW.callback?.(next, node, seedW); } catch (_) {}
-        node.widgets_values = node.widgets?.map(w => w.value);
-    } finally {
-        node._tj_seed_applying = false;
-    }
-    node.setDirtyCanvas?.(true, true);
-    app.canvas?.setDirty(true, true);
-}
-function tjInstallSeedQueueHook() {
-    if (!app || typeof app.queuePrompt !== "function") return false;
-    if (window.TJ_NODE_seed_queue_hook_version === TJ_SEED_HOOK_VERSION) return true;
-    const original = app.queuePrompt._tj_seed_original || app.queuePrompt.bind(app);
-    const wrapped = function(...args) {
-        const before = new Map();
-        try {
-            app.graph?._nodes?.forEach(node => {
-                if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) {
-                    const v = tjSeedWidget(node)?.value;
-                    before.set(node.id, v);
-                    node._tj_seed_before_queue = v;
-                }
-            });
-        } catch (_) {}
-        const result = original(...args);
-        const applyAll = () => {
-            try {
-                app.graph?._nodes?.forEach(node => {
-                    if (TJ_SEED_TARGET_NODE_TYPES.has(node?.type)) tjApplySeedControl(node, before.get(node.id));
-                });
-            } catch (err) {
-                console.warn("[TJ_NODE] seed control_after_generate queue hook skipped", err);
-            }
-        };
-        setTimeout(applyAll, 120);
-        setTimeout(applyAll, 600);
-        return result;
-    };
-    wrapped._tj_seed_original = original;
-    app.queuePrompt = wrapped;
-    window.TJ_NODE_seed_queue_hook_version = TJ_SEED_HOOK_VERSION;
-    return true;
-}
-function tjEnsureSeedQueueHook() {
-    if (tjInstallSeedQueueHook()) return;
-    setTimeout(() => tjInstallSeedQueueHook(), 500);
-    setTimeout(() => tjInstallSeedQueueHook(), 1500);
-}
-function installSeedAfterGenerate(node) {
-    if (!node || node._tj_seed_after_generate_installed) return;
-    node._tj_seed_after_generate_installed = true;
-    tjEnsureSeedQueueHook();
-    const origOnExecuted = node.onExecuted;
-    node.onExecuted = function(message) {
-        const res = origOnExecuted?.apply(this, arguments);
-        const before = this._tj_seed_before_queue;
-        setTimeout(() => tjApplySeedControl(this, before), 0);
-        setTimeout(() => tjApplySeedControl(this, before), 120);
-        return res;
-    };
-}
-
-
 function attachSetSync(node) {
     if (window.TJ_NODE_attachProviderNameSync) return window.TJ_NODE_attachProviderNameSync(node);
 }
 
-function getWidget(node, name) { return node.widgets?.find(w => w.name === name); }
-function getInputSlot(node, name) { return node?.inputs?.find(i => (i?.widget?.name || i?.name) === name) || null; }
+function getWidget(node, name) { return node?.widgets?.find(w => w?.name === name); }
+function getInputIndex(node, inputName) { return node?.inputs?.findIndex(i => (i?.widget?.name || i?.name) === inputName) ?? -1; }
+function getInputSlot(node, name) { const idx = getInputIndex(node, name); return idx >= 0 ? node.inputs[idx] : null; }
 function isInputConnected(node, name) { const input = getInputSlot(node, name); return !!(input && input.link != null); }
 function graphLink(graph, linkId) { if (!graph || linkId == null) return null; return graph.links?.[linkId] || graph.links?.get?.(linkId) || null; }
-function isWireless(graph, linkId) { const link = graphLink(graph, linkId); return !!(link && (link._tj_wireless || link._tj_provider_value)); }
+function isWirelessLink(graph, linkId) { const link = graphLink(graph, linkId); return !!(link && (link._tj_wireless || link._tj_provider_value)); }
 function removeLink(graph, linkId) { if (!graph || linkId == null) return; try { graph.removeLink(linkId); } catch (_) {} }
 function providerValues(graph) { if (window.TJ_NODE_getAllSetNames) return window.TJ_NODE_getAllSetNames(graph); return ["(none)"]; }
 function isSeparator(value) { return !!(value && window.TJ_NODE_PROVIDER_SEPARATOR && value === window.TJ_NODE_PROVIDER_SEPARATOR); }
 function providerLabel(graph, value) { if (window.TJ_NODE_getProviderLabelName) return window.TJ_NODE_getProviderLabelName(graph, value); return value && value !== "(none)" ? String(value).replace(/^TJ\s*\/\s*/, "") : ""; }
 function findSource(graph, value) { if (window.TJ_NODE_findSetterSourceInfo) return window.TJ_NODE_findSetterSourceInfo(graph, value); return null; }
-function setWidgetValueSilent(widget, value) { if (widget && widget.value !== value) widget.value = value; }
+function setWidgetValueSilent(widget, value) { if (!widget) return; widget._tj_prompt_studio_silent = true; widget.value = value; widget._tj_previous_value = value; widget._tj_prompt_studio_silent = false; }
 function innerWidth(node, fallback = 420) { return Math.max(120, Number(node?.size?.[0] || fallback) - 20); }
+
+const PROMPT_STUDIO_DEFAULT_HEIGHT = 420;
+const PROMPT_STUDIO_MIN_HEIGHT = 260;
+const PROMPT_STUDIO_MAX_AUTOFIT_HEIGHT = 460;
 
 function moveWidgetToTop(node, name, index = 0) {
     if (!node?.widgets) return;
@@ -151,19 +46,30 @@ function setWidgetVisible(widget, visible) {
     widget.hidden = !visible;
 }
 
-
-function removeLegacyHiddenGetNameProxy(node) {
-    if (!node?.widgets) return;
-    for (let i = node.widgets.length - 1; i >= 0; i--) {
-        const w = node.widgets[i];
-        if (w?.name === "get_name") node.widgets.splice(i, 1);
-    }
+function forceWidgetWidths(node) {
+    const width = Math.max(220, Number(node?.size?.[0] || 420));
+    try {
+        for (const w of node.widgets || []) {
+            if (w?.element?.style) {
+                w.element.style.width = `${innerWidth(node)}px`;
+                w.element.style.maxWidth = `${innerWidth(node)}px`;
+            }
+        }
+    } catch (_) {}
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+    return width;
 }
 
+const TJ_PROMPT_STUDIO_SLOTS = [
+    { widgetName: "get_name_prompt", inputName: "raw_prompt_input", defaultType: "STRING" },
+    { widgetName: "get_name_image", inputName: "image", defaultType: "IMAGE" },
+];
+
+
 function promptStudioWidgetForInputName(node, inputName) {
-    if (inputName === "raw_prompt_input") return getWidget(node, "get_name_prompt");
-    if (inputName === "image") return getWidget(node, "get_name_image");
-    return null;
+    const spec = slotSpecForInput(inputName);
+    return spec ? getWidget(node, spec.widgetName) : null;
 }
 
 function promptStudioProviderMatchesLink(graph, link, value) {
@@ -172,188 +78,6 @@ function promptStudioProviderMatchesLink(graph, link, value) {
     if (!sourceInfo?.node || sourceInfo.slot == null) return false;
     return link.origin_id === sourceInfo.node.id && link.origin_slot === sourceInfo.slot;
 }
-
-
-const TJ_PROMPT_STUDIO_SLOTS = [
-    { widgetName: "get_name_prompt", inputName: "raw_prompt_input", defaultType: "STRING" },
-    { widgetName: "get_name_image", inputName: "image", defaultType: "IMAGE" },
-];
-function promptStudioInputIndex(node, inputName) {
-    return node?.inputs?.findIndex(i => (i?.widget?.name || i?.name) === inputName) ?? -1;
-}
-function promptStudioNormalizeProvider(node, value) {
-    const sourceInfo = findSource(node?.graph, value);
-    return sourceInfo?.displayName || value;
-}
-function promptStudioLinkProviderValue(graph, link) {
-    if (!graph || !link) return null;
-    const origin = graph.getNodeById(link.origin_id);
-    if (!origin) return null;
-    const providers = window.TJ_NODE_collectAllProviders ? window.TJ_NODE_collectAllProviders(graph) : [];
-    const found = providers.find(p => p.node === origin && p.slot === link.origin_slot);
-    return found?.displayName || null;
-}
-function promptStudioRemoveLink(node, input) {
-    if (!node?.graph || !input || input.link == null) return;
-    node._tj_connecting_wireless = true;
-    node._tj_prompt_studio_repairing = true;
-    try { removeLink(node.graph, input.link); }
-    finally {
-        input.link = null;
-        node._tj_connecting_wireless = false;
-        node._tj_prompt_studio_repairing = false;
-    }
-}
-function promptStudioRepairSlots(node) {
-    if (!node || node.type !== "TJ_PromptStudio" || !node.graph || node._tj_prompt_studio_repairing) return;
-    node._tj_prompt_studio_repairing = true;
-    try {
-        for (const spec of TJ_PROMPT_STUDIO_SLOTS) {
-            const idx = promptStudioInputIndex(node, spec.inputName);
-            const input = idx >= 0 ? node.inputs?.[idx] : null;
-            const w = getWidget(node, spec.widgetName);
-            if (!input || !w) continue;
-
-            if (w.options) {
-                const values = providerValues(node.graph);
-                const next = Array.isArray(values) ? [...values] : ["(none)"];
-                if (w.value && w.value !== "(none)" && !next.includes(w.value)) next.push(w.value);
-                w.options.values = next;
-            }
-
-            const selected = w.value && !isSeparator(w.value) ? w.value : "(none)";
-            input.name = spec.inputName;
-
-            if (!selected || selected === "(none)") {
-                if (input.link != null) {
-                    const link = graphLink(node.graph, input.link);
-                    const linkProvider = promptStudioLinkProviderValue(node.graph, link);
-                    if (link?._tj_wireless || link?._tj_provider_value || linkProvider) promptStudioRemoveLink(node, input);
-                }
-                input.label = "";
-                input.type = spec.defaultType;
-                continue;
-            }
-
-            const sourceInfo = findSource(node.graph, selected);
-            const normalized = sourceInfo?.displayName || selected;
-            if (w.value !== normalized) w.value = normalized;
-            w._tj_previous_value = normalized;
-            const label = providerLabel(node.graph, normalized) || normalized;
-            input.label = `◀ ${label}`;
-
-            if (!(sourceInfo?.node && sourceInfo.slot != null && sourceInfo.node.outputs?.[sourceInfo.slot])) continue;
-
-            const link = graphLink(node.graph, input.link);
-            const ok = link && link.origin_id === sourceInfo.node.id && link.origin_slot === sourceInfo.slot;
-            if (!ok) {
-                if (input.link != null) promptStudioRemoveLink(node, input);
-                node._tj_connecting_wireless = true;
-                try {
-                    sourceInfo.node.connect(sourceInfo.slot, node, idx);
-                    window.TJ_NODE_markWirelessLink?.(node.graph, node, idx, normalized);
-                } finally {
-                    node._tj_connecting_wireless = false;
-                }
-            } else {
-                window.TJ_NODE_markWirelessLink?.(node.graph, node, idx, normalized);
-            }
-            input.type = sourceInfo.node.outputs?.[sourceInfo.slot]?.type || spec.defaultType;
-        }
-
-        // Cross-slot safety: if a provider was moved to the wrong Prompt Studio input by a global repair,
-        // remove it and let the correct slot rebuild on the next repair pass.
-        for (const spec of TJ_PROMPT_STUDIO_SLOTS) {
-            const idx = promptStudioInputIndex(node, spec.inputName);
-            const input = idx >= 0 ? node.inputs?.[idx] : null;
-            if (!input || input.link == null) continue;
-            const link = graphLink(node.graph, input.link);
-            const linkProvider = promptStudioLinkProviderValue(node.graph, link);
-            if (!linkProvider) continue;
-            for (const other of TJ_PROMPT_STUDIO_SLOTS) {
-                if (other.inputName === spec.inputName) continue;
-                const otherValue = getWidget(node, other.widgetName)?.value;
-                if (otherValue && otherValue !== "(none)" && promptStudioNormalizeProvider(node, otherValue) === linkProvider) {
-                    promptStudioRemoveLink(node, input);
-                }
-            }
-        }
-    } finally {
-        node._tj_prompt_studio_repairing = false;
-    }
-    node.setDirtyCanvas?.(true, true);
-    app.canvas?.setDirty(true, true);
-}
-function promptStudioScheduleRepair(node, delays = [0, 80, 260, 700]) {
-    for (const delay of delays) setTimeout(() => promptStudioRepairSlots(node), delay);
-}
-
-function installPromptStudioGlobalWireMenuSync() {
-    if (window.TJ_NODE_prompt_studio_global_wire_menu_sync_installed) return;
-    window.TJ_NODE_prompt_studio_global_wire_menu_sync_installed = true;
-
-    // Prompt Studio uses two independent embedded GET slots. The core renderer does
-    // not always classify those slot-specific links as ordinary embedded getters,
-    // so this node has a small local renderer below. Keep its global Show/Hide state
-    // synchronized with the existing TJ Node menu without touching set_getnode_tj.js.
-    if (window.TJ_NODE_prompt_studio_global_show_wire === undefined) {
-        window.TJ_NODE_prompt_studio_global_show_wire = false;
-    }
-
-    const syncFromMenuLabel = (label) => {
-        // Core menu labels are state labels, not action labels:
-        // - "Show ALL Wires" is displayed when global wires are currently OFF.
-        // - "Hide ALL Wires" is displayed when global wires are currently ON.
-        if (label.includes("Hide ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = true;
-        else if (label.includes("Show ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = false;
-    };
-
-    const wrapOptions = (options) => {
-        for (const item of options || []) {
-            if (!item || typeof item !== "object") continue;
-            const label = String(item.content || item.title || "");
-            if (label.includes("Show ALL Wires") || label.includes("Hide ALL Wires")) {
-                syncFromMenuLabel(label);
-                if (!item._tj_prompt_studio_global_wire_wrapped && typeof item.callback === "function") {
-                    const orig = item.callback;
-                    item.callback = function(...args) {
-                        const ret = orig.apply(this, args);
-                        // The label belongs to the pre-click state, so clicking it flips the state.
-                        if (label.includes("Show ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = true;
-                        else if (label.includes("Hide ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = false;
-                        app.canvas?.setDirty(true, true);
-                        return ret;
-                    };
-                    item._tj_prompt_studio_global_wire_wrapped = true;
-                }
-            }
-            const sub = item.submenu?.options || item.submenu || item.options;
-            if (Array.isArray(sub)) wrapOptions(sub);
-        }
-        return options;
-    };
-
-    const CanvasProto = LGraphCanvas?.prototype;
-    if (CanvasProto && !CanvasProto._tj_prompt_studio_canvas_menu_wire_sync) {
-        CanvasProto._tj_prompt_studio_canvas_menu_wire_sync = true;
-        const origCanvasMenu = CanvasProto.getCanvasMenuOptions;
-        CanvasProto.getCanvasMenuOptions = function(...args) {
-            const options = origCanvasMenu ? origCanvasMenu.apply(this, args) : [];
-            return wrapOptions(options);
-        };
-    }
-
-    const NodeProto = LiteGraph?.LGraphNode?.prototype;
-    if (NodeProto && !NodeProto._tj_prompt_studio_node_menu_wire_sync) {
-        NodeProto._tj_prompt_studio_node_menu_wire_sync = true;
-        const origNodeMenu = NodeProto.getMenuOptions;
-        NodeProto.getMenuOptions = function(...args) {
-            const options = origNodeMenu ? origNodeMenu.apply(this, args) : [];
-            return wrapOptions(options);
-        };
-    }
-}
-
 
 function promptStudioFindAllWiresLabel(items, depth = 0) {
     if (!Array.isArray(items) || depth > 8) return null;
@@ -374,14 +98,8 @@ function promptStudioIsGlobalWireVisible() {
         return !!window.TJ_NODE_prompt_studio_global_show_wire;
     }
     window.TJ_NODE_prompt_studio_global_wire_cache_time = now;
-
-    // set_getnode_tj.js keeps globalShowWire in a module closure, so Prompt Studio
-    // cannot read it directly. The reliable public signal is the current TJ menu label:
-    // - Hide ALL Wires => global wires are currently ON.
-    // - Show ALL Wires => global wires are currently OFF.
     try {
-        const canvas = app.canvas;
-        const options = canvas?.getCanvasMenuOptions ? canvas.getCanvasMenuOptions() : [];
+        const options = app.canvas?.getCanvasMenuOptions ? app.canvas.getCanvasMenuOptions() : [];
         const label = promptStudioFindAllWiresLabel(options);
         if (label?.includes("Hide ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = true;
         else if (label?.includes("Show ALL Wires")) window.TJ_NODE_prompt_studio_global_show_wire = false;
@@ -390,14 +108,14 @@ function promptStudioIsGlobalWireVisible() {
 }
 
 function installPromptStudioLocalWireRenderer() {
-    installPromptStudioGlobalWireMenuSync();
     if (window.TJ_NODE_prompt_studio_wire_renderer_installed) return;
     window.TJ_NODE_prompt_studio_wire_renderer_installed = true;
+    if (window.TJ_NODE_prompt_studio_global_show_wire === undefined) window.TJ_NODE_prompt_studio_global_show_wire = false;
     const origRenderLink = LGraphCanvas.prototype.renderLink;
     LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow, color, start_dir, end_dir, num_sublines) {
         if (link && this.graph) {
             const target = this.graph.getNodeById(link.target_id);
-            if (target?.type === "TJ_PromptStudio" && link._tj_wireless) {
+            if (target?.type === "TJ_PromptStudio" && (link._tj_wireless || link._tj_provider_value)) {
                 const input = target.inputs?.[link.target_slot];
                 const inputName = input?.widget?.name || input?.name || "";
                 const w = promptStudioWidgetForInputName(target, inputName);
@@ -425,126 +143,148 @@ function installPromptStudioLocalWireRenderer() {
     };
 }
 
-function attachEmbeddedGet(node, opts = {}) {
-    const widgetName = opts.widgetName || "get_name_prompt";
-    const inputName = opts.inputName || "raw_prompt_input";
-    const defaultType = opts.defaultType || "STRING";
-    const getW = getWidget(node, widgetName);
-    const input = getInputSlot(node, inputName);
-    if (!node || !getW || !input || getW[`_tj_prompt_studio_get_attached_${inputName}`]) return;
-
-    getW[`_tj_prompt_studio_get_attached_${inputName}`] = true;
-
-    const refreshProviderValues = () => {
-        const values = providerValues(node.graph);
-        const next = Array.isArray(values) ? [...values] : ["(none)"];
-        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) next.push(getW.value);
-        getW.options = { ...(getW.options || {}), values: next };
-        return next;
-    };
-
-    const getInputIndex = (target) => target.inputs?.findIndex(i => (i?.widget?.name || i?.name) === inputName) ?? -1;
-
-    const updateOne = () => {
-        const w = getWidget(node, widgetName);
-        const idx = getInputIndex(node);
-        if (!w || idx < 0 || !node.inputs?.[idx]) return;
-        const values = refreshProviderValues();
-        if (w.value && w.value !== "(none)" && !values.includes(w.value)) {
-            w.options = { ...(w.options || {}), values: [...values, w.value] };
-        }
-        const lab = providerLabel(node.graph, w.value);
-        node.inputs[idx].label = lab ? `◀ ${lab}` : "";
-    };
-
-    const connectOne = (value) => {
-        const idx = getInputIndex(node);
-        if (!node.graph || idx < 0 || !node.inputs?.[idx]) return;
-        if (isSeparator(value)) value = "(none)";
-        const input = node.inputs[idx];
-        const wantsWireless = !!(value && value !== "(none)" && !isSeparator(value));
-        const currentLinkId = input.link;
-        const currentIsWireless = isWireless(node.graph, currentLinkId);
-
-        if (!wantsWireless) {
-            // User explicitly selected none: remove the previous GET/fake-wire link.
-            // This also cleans up any older unmarked direct link left by previous builds.
-            if (currentLinkId != null) {
-                node._tj_connecting_wireless = true;
-                try { removeLink(node.graph, currentLinkId); }
-                finally { node._tj_connecting_wireless = false; }
-                input.link = null;
-            }
-            input.name = inputName;
-            input.label = "";
-            input.type = defaultType;
-                app.canvas?.setDirty(true, true);
-            return;
-        }
-
-        const sourceInfo = findSource(node.graph, value);
-        const normalizedValue = sourceInfo?.displayName || value;
-        const w = getWidget(node, widgetName);
-        if (w && w.value !== normalizedValue) w.value = normalizedValue;
-        input.name = inputName;
-        input.label = `◀ ${providerLabel(node.graph, normalizedValue) || normalizedValue}`;
-
-        if (!(sourceInfo?.node && sourceInfo.slot != null && sourceInfo.node.outputs?.[sourceInfo.slot])) {
-            window.TJ_NODE_scheduleWirelessRepair?.(node.graph, 80);
-            window.TJ_NODE_scheduleWirelessRepair?.(node.graph, 300);
-                app.canvas?.setDirty(true, true);
-            return;
-        }
-
-        if (currentLinkId != null && (wantsWireless || currentIsWireless)) {
-            node._tj_connecting_wireless = true;
-            removeLink(node.graph, currentLinkId);
-            node._tj_connecting_wireless = false;
-        }
-        node._tj_connecting_wireless = true;
-        sourceInfo.node.connect(sourceInfo.slot, node, idx);
-        window.TJ_NODE_markWirelessLink?.(node.graph, node, idx, normalizedValue);
-        node._tj_connecting_wireless = false;
-        input.type = sourceInfo.node.outputs?.[sourceInfo.slot]?.type || defaultType;
-        app.canvas?.setDirty(true, true);
-    };
-
-    const origCb = getW.callback;
-    getW.callback = function(v) {
-        origCb?.call(this, v);
-        if (isSeparator(v)) { getW.value = getW._tj_previous_value || getW.value || "(none)"; return; }
-        getW._tj_previous_value = v;
-        connectOne(v);
-        promptStudioScheduleRepair(node, [0, 120, 400]);
-    };
-
-    const origConn = node.onConnectionsChange;
-    node.onConnectionsChange = function(type, index, connected) {
-        origConn?.apply(this, arguments);
-        const changed = this.inputs?.[index];
-        const changedName = changed?.widget?.name || changed?.name || "";
-        if (type === LiteGraph.INPUT && changedName === inputName) {
-            if (!connected && !this._tj_connecting_wireless) {
-                const selected = getWidget(this, widgetName)?.value;
-                if (selected && selected !== "(none)") {
-                    changed.label = `◀ ${providerLabel(this.graph, selected) || selected}`;
-                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
-                    window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
-                }
-            }
-            app.canvas?.setDirty(true, true);
-        }
-    };
-
-    if (!node._tjPromptStudioUpdateAllGetOptions) node._tjPromptStudioUpdateAllGetOptions = () => {};
-    const prevUpdateAll = node._tjPromptStudioUpdateAllGetOptions;
-    node._tjPromptStudioUpdateAllGetOptions = function() { prevUpdateAll(); updateOne(); };
-
-    requestAnimationFrame(() => { refreshProviderValues(); updateOne(); if (getW.value) connectOne(getW.value); promptStudioRepairSlots(node); });
-    setTimeout(() => { refreshProviderValues(); updateOne(); if (getW.value) connectOne(getW.value); promptStudioRepairSlots(node); }, 160);
-    setTimeout(() => promptStudioRepairSlots(node), 600);
+function slotSpecForInput(inputName) {
+    return TJ_PROMPT_STUDIO_SLOTS.find(s => s.inputName === inputName) || null;
 }
 
+function clearInputLink(node, inputName, options = {}) {
+    const idx = getInputIndex(node, inputName);
+    const input = idx >= 0 ? node.inputs[idx] : null;
+    if (!node?.graph || !input) return;
+    if (input.link != null) {
+        node._tj_connecting_wireless = true;
+        try { removeLink(node.graph, input.link); }
+        finally { node._tj_connecting_wireless = false; }
+        input.link = null;
+    }
+    input.name = inputName;
+    input.label = "";
+    input.type = options.defaultType || slotSpecForInput(inputName)?.defaultType || input.type;
+}
+
+function clearImageForPromptEnhancer(node) {
+    const imageW = getWidget(node, "get_name_image");
+    setWidgetValueSilent(imageW, "(none)");
+    clearInputLink(node, "image", { defaultType: "IMAGE" });
+}
+
+function refreshProviderValuesForWidget(node, widget) {
+    if (!widget) return ["(none)"];
+    const values = providerValues(node.graph);
+    const next = Array.isArray(values) ? [...values] : ["(none)"];
+    if (widget.value && widget.value !== "(none)" && !next.includes(widget.value)) next.push(widget.value);
+    widget.options = { ...(widget.options || {}), values: next };
+    return next;
+}
+
+function updateOneGetSlot(node, spec) {
+    const w = getWidget(node, spec.widgetName);
+    const idx = getInputIndex(node, spec.inputName);
+    if (!w || idx < 0 || !node.inputs?.[idx]) return;
+    const values = refreshProviderValuesForWidget(node, w);
+    if (w.value && w.value !== "(none)" && !values.includes(w.value)) {
+        w.options = { ...(w.options || {}), values: [...values, w.value] };
+    }
+    const input = node.inputs[idx];
+    const label = providerLabel(node.graph, w.value);
+    if (w.value && w.value !== "(none)") input.label = label ? `◀ ${label}` : `◀ ${w.value}`;
+    else if (!input.link || isWirelessLink(node.graph, input.link)) input.label = "";
+}
+
+function connectGetSlot(node, spec, value) {
+    const idx = getInputIndex(node, spec.inputName);
+    const input = idx >= 0 ? node.inputs[idx] : null;
+    const w = getWidget(node, spec.widgetName);
+    if (!node?.graph || !input || !w) return;
+    if (isSeparator(value)) value = "(none)";
+
+    const wantsWireless = !!(value && value !== "(none)" && !isSeparator(value));
+    const currentLinkId = input.link;
+    const currentIsWireless = isWirelessLink(node.graph, currentLinkId);
+
+    if (!wantsWireless) {
+        if (currentLinkId != null && currentIsWireless) {
+            node._tj_connecting_wireless = true;
+            try { removeLink(node.graph, currentLinkId); }
+            finally { node._tj_connecting_wireless = false; }
+            input.link = null;
+        }
+        input.name = spec.inputName;
+        if (!input.link) {
+            input.label = "";
+            input.type = spec.defaultType;
+        }
+        app.canvas?.setDirty(true, true);
+        return;
+    }
+
+    const sourceInfo = findSource(node.graph, value);
+    const normalizedValue = sourceInfo?.displayName || value;
+    if (w.value !== normalizedValue) w.value = normalizedValue;
+    w._tj_previous_value = normalizedValue;
+    input.name = spec.inputName;
+    input.label = `◀ ${providerLabel(node.graph, normalizedValue) || normalizedValue}`;
+
+    if (!(sourceInfo?.node && sourceInfo.slot != null && sourceInfo.node.outputs?.[sourceInfo.slot])) {
+        window.TJ_NODE_scheduleWirelessRepair?.(node.graph, 80);
+        window.TJ_NODE_scheduleWirelessRepair?.(node.graph, 300);
+        app.canvas?.setDirty(true, true);
+        return;
+    }
+
+    // User selected a get_name provider: last user action wins. Remove both direct and fake-wire links.
+    if (currentLinkId != null) {
+        node._tj_connecting_wireless = true;
+        try { removeLink(node.graph, currentLinkId); }
+        finally { node._tj_connecting_wireless = false; }
+        input.link = null;
+    }
+
+    node._tj_connecting_wireless = true;
+    try {
+        sourceInfo.node.connect(sourceInfo.slot, node, idx);
+        window.TJ_NODE_markWirelessLink?.(node.graph, node, idx, normalizedValue);
+        const link = graphLink(node.graph, node.inputs?.[idx]?.link);
+        if (link) {
+            link._tj_wireless = true;
+            link._tj_provider_value = normalizedValue;
+        }
+    } finally {
+        node._tj_connecting_wireless = false;
+    }
+    input.type = sourceInfo.node.outputs?.[sourceInfo.slot]?.type || spec.defaultType;
+    app.canvas?.setDirty(true, true);
+}
+
+function attachEmbeddedGet(node, spec) {
+    if (!node || !spec) return;
+    const w = getWidget(node, spec.widgetName);
+    if (!w || w[`_tj_prompt_studio_attached_${spec.inputName}`]) return;
+    w[`_tj_prompt_studio_attached_${spec.inputName}`] = true;
+
+    const origCb = w.callback;
+    w.callback = function(v) {
+        origCb?.call(this, v);
+        if (this._tj_prompt_studio_silent) return;
+        if (isSeparator(v)) {
+            this.value = this._tj_previous_value || this.value || "(none)";
+            return;
+        }
+        this._tj_previous_value = v;
+        connectGetSlot(node, spec, v);
+        updateStudioVisibility(node);
+    };
+
+    if (!node._tjPromptStudioUpdateAllGetOptions) node._tjPromptStudioUpdateAllGetOptions = function() {};
+    const prev = node._tjPromptStudioUpdateAllGetOptions;
+    node._tjPromptStudioUpdateAllGetOptions = function() {
+        prev?.call(this);
+        updateOneGetSlot(this, spec);
+    };
+
+    requestAnimationFrame(() => { refreshProviderValuesForWidget(node, w); updateOneGetSlot(node, spec); if (w.value) connectGetSlot(node, spec, w.value); });
+    setTimeout(() => { refreshProviderValuesForWidget(node, w); updateOneGetSlot(node, spec); if (w.value) connectGetSlot(node, spec, w.value); }, 160);
+}
 
 function getEffectiveMode(node) {
     const mode = String(getWidget(node, "mode")?.value || "Auto");
@@ -559,19 +299,20 @@ function getEffectiveBackend(node) {
     return String(backendW?.value || "GGUF / llama.cpp");
 }
 
-
-function scheduleFitNodeHeightKeepWidth(node) {
+function scheduleFitNodeHeightKeepWidth(node, options = {}) {
     if (!node || !node.computeSize) return;
     requestAnimationFrame(() => {
         try {
-            const width = Math.max(220, Number(node.size?.[0] || 360));
+            const width = Math.max(220, Number(node.size?.[0] || 420));
             const computed = node.computeSize();
-            const height = Math.max(80, Number(computed?.[1] || node.size?.[1] || 120));
+            let height = Math.max(PROMPT_STUDIO_MIN_HEIGHT, Number(computed?.[1] || node.size?.[1] || PROMPT_STUDIO_DEFAULT_HEIGHT));
+            if (options.capDefault) height = Math.min(height, PROMPT_STUDIO_MAX_AUTOFIT_HEIGHT);
             if (Math.abs((node.size?.[1] || 0) - height) > 2) {
+                node._tj_prompt_studio_internal_resize = true;
                 node.setSize?.([width, height]);
-                node.setDirtyCanvas?.(true, true);
-                app.canvas?.setDirty(true, true);
+                node._tj_prompt_studio_internal_resize = false;
             }
+            forceWidgetWidths(node);
         } catch (err) {
             console.warn("[TJ_NODE] Prompt Studio resize skipped", err);
         }
@@ -590,14 +331,28 @@ function studioLayoutSignature(node) {
     ].join("|");
 }
 
+function restoreEnhancerHeight(node) {
+    const savedH = Number(node.properties?.tj_prompt_studio_enhancer_height || 0);
+    if (savedH > 0 && node.size?.[1] && Math.abs(node.size[1] - savedH) > 2) {
+        requestAnimationFrame(() => {
+            const width = Math.max(220, Number(node.size?.[0] || 420));
+            node._tj_prompt_studio_internal_resize = true;
+            node.setSize?.([width, savedH]);
+            node._tj_prompt_studio_internal_resize = false;
+            forceWidgetWidths(node);
+        });
+    } else {
+        scheduleFitNodeHeightKeepWidth(node, { capDefault: true });
+    }
+}
+
 function updateStudioVisibility(node) {
+    if (!node) return;
     const mode = getEffectiveMode(node);
     const previousMode = node._tj_prompt_studio_effective_mode || null;
     if (!node.properties) node.properties = {};
 
-    // Store only the vertical size for Prompt Enhancer mode.
-    // Width is shared/synced between modes and must never be reset here.
-    if (previousMode === "Prompt Enhancer" && previousMode !== mode && node.size?.[1]) {
+    if (previousMode === "Prompt Enhancer" && previousMode !== mode && node.size?.[1] && !node._tj_prompt_studio_internal_resize) {
         node.properties.tj_prompt_studio_enhancer_height = Number(node.size[1]);
     }
     node._tj_prompt_studio_effective_mode = mode;
@@ -607,6 +362,8 @@ function updateStudioVisibility(node) {
     const backend = getEffectiveBackend(node);
     const isGGUF = backend === "GGUF / llama.cpp";
     const advanced = !!node.properties?.tj_prompt_studio_advanced;
+
+    if (isEnhanceMode) clearImageForPromptEnhancer(node);
 
     setWidgetVisible(getWidget(node, "raw_prompt"), isEnhanceMode);
     setWidgetVisible(getWidget(node, "purpose"), isEnhanceMode);
@@ -634,25 +391,10 @@ function updateStudioVisibility(node) {
     const sig = studioLayoutSignature(node);
     if (node._tj_prompt_studio_last_layout_signature !== sig) {
         node._tj_prompt_studio_last_layout_signature = sig;
-
-        if (isImageMode) {
-            // Image to Prompt has no large user text field, so keep the previous auto-fit behavior.
-            scheduleFitNodeHeightKeepWidth(node);
-        } else if (isEnhanceMode) {
-            // Prompt Enhancer owns a large text field. Restore the user's saved height instead of auto-fitting.
-            const savedH = Number(node.properties?.tj_prompt_studio_enhancer_height || 0);
-            if (savedH > 0 && node.size?.[1] && Math.abs(node.size[1] - savedH) > 2) {
-                requestAnimationFrame(() => {
-                    const width = Math.max(220, Number(node.size?.[0] || 360));
-                    node.setSize?.([width, savedH]);
-                    node.setDirtyCanvas?.(true, true);
-                    app.canvas?.setDirty(true, true);
-                });
-            }
-        }
+        if (isEnhanceMode) restoreEnhancerHeight(node);
+        else scheduleFitNodeHeightKeepWidth(node, { capDefault: true });
     }
-    node.setDirtyCanvas?.(true, true);
-    app.canvas?.setDirty(true, true);
+    forceWidgetWidths(node);
 }
 
 function installAdvancedToggle(node) {
@@ -681,6 +423,7 @@ function installAdvancedToggle(node) {
         e.stopPropagation();
         node.properties.tj_prompt_studio_advanced = !node.properties.tj_prompt_studio_advanced;
         updateStudioVisibility(node);
+        scheduleFitNodeHeightKeepWidth(node, { capDefault: false });
     };
 }
 
@@ -690,8 +433,26 @@ function attachCallbacks(node) {
         if (!w || w._tj_prompt_studio_callback_attached) continue;
         w._tj_prompt_studio_callback_attached = true;
         const orig = w.callback;
-        w.callback = function(v) { orig?.call(this, v); updateStudioVisibility(node); };
+        w.callback = function(v) {
+            orig?.call(this, v);
+            if (name === "mode" && String(v) === "Prompt Enhancer") clearImageForPromptEnhancer(node);
+            updateStudioVisibility(node);
+        };
     }
+}
+
+function applyInitialSize(node) {
+    if (!node || node._tj_prompt_studio_initial_size_applied) return;
+    node._tj_prompt_studio_initial_size_applied = true;
+    if (node.properties?.tj_prompt_studio_user_sized) return;
+    requestAnimationFrame(() => {
+        const width = Math.max(360, Number(node.size?.[0] || 420));
+        const h = Math.min(PROMPT_STUDIO_MAX_AUTOFIT_HEIGHT, Math.max(PROMPT_STUDIO_MIN_HEIGHT, Number(node.computeSize?.()?.[1] || PROMPT_STUDIO_DEFAULT_HEIGHT)));
+        node._tj_prompt_studio_internal_resize = true;
+        node.setSize?.([width, h]);
+        node._tj_prompt_studio_internal_resize = false;
+        forceWidgetWidths(node);
+    });
 }
 
 function installStudio(node) {
@@ -702,30 +463,26 @@ function installStudio(node) {
         const origResize = node.onResize;
         node.onResize = function(size) {
             const res = origResize?.apply(this, arguments);
-            if (getEffectiveMode(this) === "Prompt Enhancer" && size?.[1]) {
-                if (!this.properties) this.properties = {};
-                this.properties.tj_prompt_studio_enhancer_height = Number(size[1]);
+            if (!this._tj_prompt_studio_internal_resize && size?.[1]) {
+                this.properties.tj_prompt_studio_user_sized = true;
+                if (getEffectiveMode(this) === "Prompt Enhancer") this.properties.tj_prompt_studio_enhancer_height = Number(size[1]);
             }
+            forceWidgetWidths(this);
             return res;
         };
     }
-    if (getEffectiveMode(node) === "Prompt Enhancer" && node.size?.[1] && !node.properties.tj_prompt_studio_enhancer_height) {
-        node.properties.tj_prompt_studio_enhancer_height = Number(node.size[1]);
-    }
-    removeLegacyHiddenGetNameProxy(node);
+
     moveWidgetToTop(node, "get_name_prompt", 0);
     moveWidgetToTop(node, "get_name_image", 1);
     moveWidgetToTop(node, "set_name", 2);
     moveWidgetToTop(node, "mode", 3);
     attachSetSync(node);
-    attachEmbeddedGet(node, { widgetName: "get_name_prompt", inputName: "raw_prompt_input", defaultType: "STRING" });
-    attachEmbeddedGet(node, { widgetName: "get_name_image", inputName: "image", defaultType: "IMAGE" });
-    promptStudioScheduleRepair(node, [0, 120, 400, 900]);
-    installSeedAfterGenerate(node);
+    attachEmbeddedGet(node, TJ_PROMPT_STUDIO_SLOTS[0]);
+    attachEmbeddedGet(node, TJ_PROMPT_STUDIO_SLOTS[1]);
     attachCallbacks(node);
     installAdvancedToggle(node);
-    tjEnsureSeedQueueHook();
     updateStudioVisibility(node);
+    applyInitialSize(node);
 }
 
 app.registerExtension({
@@ -743,15 +500,28 @@ app.registerExtension({
                 origConn?.apply(this, arguments);
                 const input = this.inputs?.[index];
                 const name = input?.widget?.name || input?.name || "";
-                if (type === LiteGraph.INPUT && (name === "clip" || name === "image")) {
-                    if (name === "clip" && connected) {
-                        const backendW = getWidget(this, "model_backend");
-                        if (backendW) backendW.value = "ComfyUI TextGenerate";
-                    }
+                if (type === LiteGraph.INPUT && name === "clip" && connected) {
+                    const backendW = getWidget(this, "model_backend");
+                    if (backendW) backendW.value = "ComfyUI TextGenerate";
                     updateStudioVisibility(this);
                 }
                 if (type === LiteGraph.INPUT && (name === "raw_prompt_input" || name === "image")) {
-                    promptStudioScheduleRepair(this, [0, 120, 400]);
+                    const spec = slotSpecForInput(name);
+                    const w = spec ? getWidget(this, spec.widgetName) : null;
+                    const link = graphLink(this.graph, input?.link);
+                    const isDirect = connected && input?.link != null && !isWirelessLink(this.graph, input.link) && !this._tj_connecting_wireless;
+                    if (isDirect && w) {
+                        // Direct wire is the newest user action: clear get_name silently and keep the direct link.
+                        setWidgetValueSilent(w, "(none)");
+                        input.label = "";
+                        input.name = name;
+                    }
+                    if (!connected && w && !this._tj_connecting_wireless) {
+                        setWidgetValueSilent(w, "(none)");
+                        input.label = "";
+                    }
+                    if (name === "image" && getEffectiveMode(this) === "Prompt Enhancer") clearImageForPromptEnhancer(this);
+                    updateStudioVisibility(this);
                 }
             };
         };
@@ -762,7 +532,10 @@ app.registerExtension({
             requestAnimationFrame(() => {
                 installStudio(this);
                 this._tjPromptStudioUpdateAllGetOptions?.();
-                promptStudioScheduleRepair(this, [0, 200, 700, 1200]);
+                for (const spec of TJ_PROMPT_STUDIO_SLOTS) {
+                    const w = getWidget(this, spec.widgetName);
+                    if (w?.value) connectGetSlot(this, spec, w.value);
+                }
             });
         };
 
@@ -770,11 +543,6 @@ app.registerExtension({
         nodeType.prototype.onDrawForeground = function(ctx) {
             this._tjPromptStudioUpdateAllGetOptions?.();
             updateStudioVisibility(this);
-            const now = performance?.now ? performance.now() : Date.now();
-            if (!this._tj_prompt_studio_last_repair_draw || now - this._tj_prompt_studio_last_repair_draw > 1000) {
-                this._tj_prompt_studio_last_repair_draw = now;
-                promptStudioRepairSlots(this);
-            }
             origOnDrawForeground?.apply(this, arguments);
         };
     }
