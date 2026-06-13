@@ -800,16 +800,47 @@ function installSavePreviewDirectInputGuard(node) {
     if (!node || node._tj_savepreview_direct_guard_installed) return;
     node._tj_savepreview_direct_guard_installed = true;
 
-    const applyDirectState = () => {
+    const applyDirectState = (opts = {}) => {
         const inp = node.inputs?.[0];
         const graph = node.graph || app.graph;
         if (!inp || !graph || inp.link == null) return;
         const link = graph.links?.[inp.link] || graph.links?.get?.(inp.link) || null;
         if (!link || link._tj_wireless) return;
 
-        // Direct wire always wins over embedded wireless get mode.
-        // This is local to Save & Preview and does not touch the global wireless core.
         const getW = node.widgets?.find(w => w.name === "get_name");
+        const selected = getW?.value;
+        const hasWirelessSelection = !!(selected && selected !== "(none)" && !tjSmartIsSeparator(selected));
+
+        // Refresh/load can briefly restore the real link before the wireless marker is restored.
+        // If get_name still points to a valid provider and the current link is from that provider,
+        // re-mark it as wireless instead of treating it as a user direct wire.
+        if (hasWirelessSelection) {
+            const provider = window.TJ_NODE_findProviderByValue ? window.TJ_NODE_findProviderByValue(graph, selected) : null;
+            if (!provider) {
+                window.TJ_NODE_scheduleWirelessRepair?.(graph, 80);
+                window.TJ_NODE_scheduleWirelessRepair?.(graph, 300);
+                return;
+            }
+            if (link.origin_id === provider.node?.id && link.origin_slot === provider.slot) {
+                const normalized = provider.displayName || selected;
+                window.TJ_NODE_markWirelessLink?.(graph, node, 0, normalized);
+                const label = provider.labelName || tjSmartLabelName(graph, normalized) || selected;
+                inp.name = "images";
+                inp.label = label ? `◀ ${label}` : "";
+                inp.type = tjGetOutputSlot(provider.node, provider.slot)?.type || "IMAGE";
+                if (node.outputs?.[0]) node.outputs[0].type = inp.type || "IMAGE";
+                node.setDirtyCanvas?.(true, true);
+                app.canvas?.setDirty(true, true);
+                return;
+            }
+            if (!opts.fromConnectionEvent) {
+                window.TJ_NODE_scheduleWirelessRepair?.(graph, 80);
+                return;
+            }
+        }
+
+        // Direct wire always wins only for an actual direct connection.
+        // This is local to Save & Preview and does not touch the global wireless core.
         if (getW && getW.value !== "(none)") getW.value = "(none)";
         inp.name = "images";
         inp.type = "IMAGE";
@@ -823,13 +854,13 @@ function installSavePreviewDirectInputGuard(node) {
     node.onConnectionsChange = function(type, index, connected, link_info, input_info) {
         const r = origConn ? origConn.apply(this, arguments) : undefined;
         if (type === LiteGraph.INPUT && index === 0 && connected) {
-            setTimeout(applyDirectState, 0);
-            setTimeout(applyDirectState, 80);
+            setTimeout(() => applyDirectState({ fromConnectionEvent: true }), 0);
+            setTimeout(() => applyDirectState({ fromConnectionEvent: true }), 80);
         }
         return r;
     };
 
-    setTimeout(applyDirectState, 0);
+    setTimeout(() => applyDirectState({ fromConnectionEvent: false }), 0);
 }
 
 // ─── 1. Save & Preview Image (TJ) ───

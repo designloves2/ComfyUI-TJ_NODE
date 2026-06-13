@@ -10,7 +10,8 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_BatchToMultiOutput",
     "TJ_MultiImageLoader",
     "TJ_ZImageTurbo",
-    "TJ_SceneMaker"
+    "TJ_SceneMaker",
+    "TJ_MultiModelSelecter"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";
@@ -178,6 +179,128 @@ LGraphCanvas.prototype.renderLink = function(ctx, a, b, link, skip_border, flow,
 	return origRenderLink.apply(this, arguments);
 };
 
+
+
+
+function drawFakeWireSlotTooltipBox(node, ctx, text, pos, isOutput) {
+    if (!node || !ctx || !text || !pos) return;
+
+    const localX = pos[0] - node.pos[0] + (isOutput ? 12 : -12);
+    const localY = pos[1] - node.pos[1] - 10;
+
+    ctx.save();
+    ctx.font = "12px sans-serif";
+    const padX = 8;
+    const textW = Math.ceil(ctx.measureText(text).width);
+    const boxW = textW + padX * 2;
+    const boxH = 22;
+    const nodeW = Number(node.size?.[0] || 200);
+    let x = isOutput ? localX : (localX - boxW);
+    x = Math.max(4, Math.min(x, nodeW - boxW - 4));
+    const y = Math.max(4, localY - boxH);
+
+    ctx.fillStyle = "#1a0330";
+    ctx.strokeStyle = "#7612DA";
+    ctx.lineWidth = 1;
+    if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, boxW, boxH, 4);
+        ctx.fill();
+        ctx.stroke();
+    } else {
+        ctx.fillRect(x, y, boxW, boxH);
+        ctx.strokeRect(x, y, boxW, boxH);
+    }
+
+    ctx.fillStyle = "#d4d4d4";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x + padX, y + boxH / 2);
+    ctx.restore();
+}
+
+function getFakeWireTooltipText(node, isOutput, slot) {
+    if (!node || slot == null || slot < 0) return "";
+
+    // Auto Set provider outputs: node.properties.auto_sets[slot]
+    if (isOutput && isAutoSetProviderNode(node)) {
+        const autoSetW = node.widgets?.find(w => w.name === "auto_set");
+        if (!autoSetW || autoSetW.value) {
+            const autoName = String(node.properties?.auto_sets?.[slot] || "").trim();
+            if (autoName) return autoName;
+        }
+    }
+
+    // Normal TJ Set / embedded Set providers: slot 0 is the named provider endpoint.
+    const namedProvider = getProviderWidgetName(node);
+    if (namedProvider && slot === 0 && (isOutput || !isOutput)) return namedProvider;
+
+    // Eclipse Set provider endpoint.
+    if (ECLIPSE_SET_TYPES.has(node.type) && slot === 0) {
+        const eclipseName = String(node.widgets?.[0]?.value || "").trim();
+        if (eclipseName) return eclipseName;
+    }
+
+    // GetNode input/output: show the selected provider label.
+    if (node.type === "TJ_GetNode" && slot === 0) {
+        const w = getConsumerWidget(node);
+        const label = getProviderLabelName(node.graph, w?.value);
+        if (label) return label;
+    }
+
+    // MultiGet input/output: show the selected provider label per slot.
+    if (node.type === "TJ_MultiGetNode") {
+        const w = node._selectors?.()?.[slot];
+        const label = getProviderLabelName(node.graph, w?.value);
+        if (label) return label;
+    }
+
+    // Embedded Get receiver input: show selected provider label on the wireless input slot.
+    if (!isOutput && slot === 0 && isEmbeddedGetReceiverNode(node)) {
+        const w = getConsumerWidget(node);
+        const label = getProviderLabelName(node.graph, w?.value);
+        if (label) return label;
+    }
+
+    // Marked wireless links fallback: any slot with a TJ wireless link can display its provider value.
+    const linkId = isOutput
+        ? (node.outputs?.[slot]?.links?.[0])
+        : (node.inputs?.[slot]?.link);
+    const link = getGraphLink(node.graph, linkId);
+    if (link?._tj_provider_value) {
+        return getProviderLabelName(node.graph, link._tj_provider_value) || String(link._tj_provider_value || "").replace(/^TJ \/ /, "").replace(/^Eclipse \/ /, "");
+    }
+
+    return "";
+}
+
+function drawFakeWireSlotTooltip(node, ctx, canvas) {
+    if (!node || !ctx || !canvas) return;
+    if (node.flags?.collapsed || node.collapsed) return;
+
+    const mouse = canvas.graph_mouse || app.canvas?.graph_mouse;
+    if (!mouse) return;
+
+    const checks = [
+        { slots: node.inputs || [], isOutput: false },
+        { slots: node.outputs || [], isOutput: true }
+    ];
+
+    for (const group of checks) {
+        for (let i = 0; i < group.slots.length; i++) {
+            const text = getFakeWireTooltipText(node, group.isOutput, i);
+            if (!text) continue;
+            const p = node.getConnectionPos(group.isOutput ? false : true, i);
+            if (!p) continue;
+            const dx = mouse[0] - p[0];
+            const dy = mouse[1] - p[1];
+            if (Math.abs(dx) <= 16 && Math.abs(dy) <= 12) {
+                drawFakeWireSlotTooltipBox(node, ctx, text, p, group.isOutput);
+                return;
+            }
+        }
+    }
+}
+
 const origDrawNode = LGraphCanvas.prototype.drawNode;
 LGraphCanvas.prototype.drawNode = function(node, ctx) {
     if (node.type === "TJ_GetNode") {
@@ -189,7 +312,9 @@ LGraphCanvas.prototype.drawNode = function(node, ctx) {
     } else {
         if (providerNameWidgets(node).length) updateProviderLabels(node);
     }
-	return origDrawNode.apply(this, arguments);
+    const result = origDrawNode.apply(this, arguments);
+    drawFakeWireSlotTooltip(node, ctx, this);
+	return result;
 };
 
 

@@ -366,21 +366,20 @@ function tjApplyOutputArrowState(node, enabled) {
     if (!node?.outputs) return;
     let changed = false;
 
+    // MultiRouter-compatible rule:
+    // do not rewrite output.name/localized_name on refresh.
+    // Only the visible label changes. The slot entity and saved links stay stable.
     for (const out of node.outputs) {
         if (!out) continue;
-
-        // ComfyUI/LiteGraph builds may draw output text from name, label, or localized_name.
-        // Keep all three in sync so Auto Set state is visually reliable.
         const raw = out._tj_output_base_name || out._tj_base_name || out.name || out.label || out.localized_name || "";
-        const base = tjOutputBaseName(raw);
-        const display = enabled ? `${base} ▶` : base;
+        const base = tjOutputBaseName(raw).trim();
+        if (!base) continue;
 
         out._tj_output_base_name = base;
         out._tj_base_name = base;
 
-        if (out.name !== display) { out.name = display; changed = true; }
+        const display = enabled ? `${base} ▶` : base;
         if (out.label !== display) { out.label = display; changed = true; }
-        if (out.localized_name !== display) { out.localized_name = display; changed = true; }
     }
 
     if (changed) {
@@ -394,26 +393,34 @@ function tjAutosetEnabled(node) {
     return !!autoW?.value;
 }
 
-function updateAutoSets(node, prefix = "") {
+function updateAutoSets(node) {
     if (!node) return;
     if (!node.properties) node.properties = {};
     const autoW = node.widgets?.find(w => w.name === "auto_set");
-    const setW = node.widgets?.find(w => w.name === "setnode_name" || w.name === "set_name");
     const enabled = !!autoW?.value;
-    tjApplyOutputArrowState(node, enabled);
+
     if (!enabled) {
         node.properties.auto_sets = {};
+        tjApplyOutputArrowState(node, false);
     } else {
-        const base = String(setW?.value || prefix || node.title || node.type || "TJ").trim();
         const autoSets = {};
         (node.outputs || []).forEach((out, idx) => {
             if (!out) return;
-            const nm = tjOutputBaseName(out.name || `OUT_${idx + 1}`).trim();
-            if (nm && nm !== "status") autoSets[idx] = base ? `${base}/${nm}` : nm;
+            // MultiRouter-compatible provider naming:
+            // provider name is the slot base label itself, not a prefixed path and not
+            // derived from the current arrow-decorated label.
+            const base = tjOutputBaseName(out._tj_output_base_name || out._tj_base_name || out.name || out.label || out.localized_name || `output_${idx + 1}`).trim();
+            if (base && base !== "status") autoSets[idx] = base;
         });
         node.properties.auto_sets = autoSets;
+        tjApplyOutputArrowState(node, true);
     }
-    if (window.TJ_NODE_scheduleWirelessRepair && node.graph) window.TJ_NODE_scheduleWirelessRepair(node.graph, 80);
+
+    if (window.TJ_NODE_syncAllGetNodes && node.graph) {
+        setTimeout(() => window.TJ_NODE_syncAllGetNodes(node.graph), 50);
+    } else if (window.TJ_NODE_scheduleWirelessRepair && node.graph) {
+        window.TJ_NODE_scheduleWirelessRepair(node.graph, 80);
+    }
     node.setDirtyCanvas?.(true, true);
     app.canvas?.setDirty(true, true);
 }
