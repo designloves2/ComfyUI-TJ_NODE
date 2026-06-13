@@ -26,9 +26,9 @@ except Exception:
         "ace", "omnigen2", "qwen_image", "hunyuan_image", "flux2", "ovis",
         "longcat_image", "cogvideox", "lens", "pixeldict", "ideogram4"
     ]
-    DEFAULT_TEXT_ENCODER_MODEL = "gemma4_e4b_it_fp8_scaled.safetensors"
-    DEFAULT_GGUF_MODEL = "qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf"
-    DEFAULT_MMPROJ_MODEL = "mmproj-qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+    DEFAULT_TEXT_ENCODER_MODEL = "LLM\Gamma\gemma4_e2b_it_nvfp4.safetensors"
+    DEFAULT_GGUF_MODEL = "LLM\Qwen3VL\Huihui-Qwen3-VL-8B-Instruct-abliterated-Q8_0.gguf"
+    DEFAULT_MMPROJ_MODEL = "LLM\Qwen3VL\mmproj-Huihui-Qwen3-VL-8B-Instruct-abliterated-Q8_0-BF16.gguf"
 
 TJ_LLM_CATEGORY = " ✨ TJ_Node/LLM"
 
@@ -117,7 +117,7 @@ class TJ_PromptStudio:
         clip_loader_type="Auto",
         purpose="Image",
         vision_task="Caption (plain description)",
-        model_format="Universal Natural Language",
+        model_format="Z-Image / Lumina-2 (LLM text encoder)",
         aesthetic="None (no aesthetic injection)",
         extra_instructions="",
         system_prompt_override="",

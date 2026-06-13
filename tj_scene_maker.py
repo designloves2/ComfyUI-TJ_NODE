@@ -354,10 +354,10 @@ class TJ_SceneMaker:
         clip_names = _clip_names()
         return {
             "required": {
-                "clip_name": (clip_names, {"default": _first_existing(clip_names, ["t5xxl_fp16.safetensors", "clip_l.safetensors"])}),
+                "clip_name": (clip_names, {"default": "LLM\Gamma\gemma4_e2b_it_nvfp4.safetensors"}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
-                "mode": (["Product Commercial", "Music Video", "Short Drama"], {"default": "Product Commercial"}),
+                "mode": (["Product Commercial", "Music Video", "Short Drama"], {"default": "Music Video"}),
                 "translate": (["KO", "EN", "JP", "CN"], {"default": "KO"}),
                 "idea": (
                     "STRING",
@@ -385,7 +385,7 @@ class TJ_SceneMaker:
                 ),
                 "shot_count": (
                     "INT",
-                    {"default": 6, "min": 1, "max": 24, "tooltip": "The number of shots to generate."},
+                    {"default": 4, "min": 1, "max": 24, "tooltip": "The number of shots to generate."},
                 ),
                 "seed": (
                     "INT",

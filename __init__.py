@@ -37,6 +37,7 @@ from .utility_node_tj import (
 from .showany_tj import TJ_ShowAny
 from .smart_converter_tj import TJ_SmartConverter
 from .shortcut_launcher import TJShortcutLauncher
+from .multi_model_selecter_tj import TJ_MultiModelSelecter
 
 # ====== 커버 노드 임포트 ======
 
@@ -74,6 +75,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_ShowAny": TJ_ShowAny,
     "TJ_SmartConverter": TJ_SmartConverter,
     "TJShortcutLauncher": TJShortcutLauncher,
+    "TJ_MultiModelSelecter": TJ_MultiModelSelecter,
     "TimeSegmentListNode": TimeSegmentListNode,
 
     # LLM
@@ -110,6 +112,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_ShowAny": "Show Any (TJ)",
     "TJ_SmartConverter": "Smart Converter (TJ)",
     "TJShortcutLauncher": "Shortcut Launcher (TJ)",
+    "TJ_MultiModelSelecter": "Multi Model Selecter (TJ)",
     "TimeSegmentListNode": "Time Segment List (TJ)",
 
     # LLM

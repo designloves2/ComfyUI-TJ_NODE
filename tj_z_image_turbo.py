@@ -61,7 +61,7 @@ def _model_names():
 
 
 def _clip_names():
-    preferred = "zimage/qwen_3_4b.safetensors"
+    preferred = "Qwen3/qwen_3_4b.safetensors"
     names = _folder_list("text_encoders", [])
     if not names:
         names = _folder_list("clip", [])
@@ -158,15 +158,15 @@ class TJ_ZImageTurbo:
         base = {
             "required": {
                 "model_name": (model_names, {"default": "ZIT/z_image_turbo_bf16.safetensors"}),
-                "clip_name": (clip_names, {"default": "zimage/qwen_3_4b.safetensors"}),
+                "clip_name": (clip_names, {"default": "Qwen3/qwen_3_4b.safetensors"}),
                 "vae_name": (vae_names, {"default": "ae.safetensors"}),
                 "positive": ("STRING", {"default": "", "multiline": True}),
-                "negative": ("STRING", {"default": "", "multiline": True}),
+                "negative": ("STRING", {"default": "拒绝, 限制, 不应答, lowres, error, cropped, worst quality, low quality, jpeg artifacts, heterochromia, out of frame, disfigured, blurry, fat, (ugly:1.3), deformed, mutilated, fingers cut, face cut, head cut, bad anatomy, bad proportions, two heads, two faces, deformed hands, (twisted fingers:1.22), extra fingers, poorly drawn, grainy, poorly drawn face, mutation, poor facial details, cropped head, poorly drawn eyes, unclear eyes, cross-eyes, malformed limbs, poorly drawn hands, fused hands, mutated hands, malformed hands, (mutated fingers:1.4), (fused fingers:1.313), interlocked fingers, extra or missing fingers, (one hand with more than 5 fingers), (one hand with less than 5 fingers), one hand with more than 5 digits, one hand with less than 5 digits, extra digits, fewer digits, bad hair, poorly drawn hair, fused hair, poorly drawn feet, malformed feet, extra or missing feet, fused feet, missing or extra limbs, disfigured, mutilated hands, extra hands, extra arms, extra legs, missing arms, missing hands, missing legs, fingers of different thickness, pointed fingers, thick fingers, (long thumbs:1.35), sharp fingernails, (greyscale:1.3), grain, (monochrome:1.3), Text, Watermark", "multiline": True}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "ratio_preset": (list(RATIO_PRESETS.keys()), {"default": "2:3"}),
                 "megapixels": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 4.0, "step": 0.05}),
-                "divisible_by": ("INT", {"default": 32, "min": 8, "max": 128, "step": 8}),
+                "divisible_by": ("INT", {"default": 16, "min": 8, "max": 128, "step": 8}),
                 "seed": (
                     "INT",
                     {
@@ -182,7 +182,7 @@ class TJ_ZImageTurbo:
                 "height": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 8, "tooltip": "0 = use ratio_preset + megapixels. Set width and height > 0 for custom size."}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64}),
                 "cfg": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 30.0, "step": 0.1}),
-                "sampler_name": (sampler_names, {"default": "res_multistep" if "res_multistep" in sampler_names else _default_sampler_name(sampler_names)}),
+                "sampler_name": (sampler_names, {"default": "euler" if "euler" in sampler_names else _default_sampler_name(sampler_names)}),
                 "scheduler": (scheduler_names, {"default": "simple" if "simple" in scheduler_names else scheduler_names[0]}),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "aura_shift": ("FLOAT", {"default": 3.0, "min": 0.0, "max": 20.0, "step": 0.1}),

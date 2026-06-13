@@ -186,6 +186,7 @@ PURPOSE_FRAMING = {
     "Image": (
         "Rewrite the user's input as a detailed prompt for a static image. "
         "Cover subject, environment, lighting, composition, and mood."
+        "If the subject is a person, describe their facial features, hairstyle, pose, clothing, and emotions in detail."
     ),
     "Video": (
         "Rewrite the user's input as a detailed prompt for a video shot. "
@@ -198,8 +199,8 @@ PURPOSE_FRAMING = {
 }
 
 MODEL_FORMAT_OPTIONS = [
-    "Flux / Chroma (natural language)",
     "Z-Image / Lumina-2 (LLM text encoder)",
+    "Flux / Chroma (natural language)",
     "HiDream (hybrid prose + descriptors)",
     "SDXL (tags + weights)",
     "SD 1.5 (tags + weights)",
@@ -210,15 +211,15 @@ MODEL_FORMAT_OPTIONS = [
 ]
 
 MODEL_FORMAT_INSTRUCTIONS = {
-    "Flux / Chroma (natural language)": (
-        "Format the output as flowing natural language in long descriptive sentences "
-        "suitable for Flux or Chroma. No tag syntax. No parenthesis weights. "
-        "No 'masterpiece' or quality boosters. Describe the scene as prose."
-    ),
     "Z-Image / Lumina-2 (LLM text encoder)": (
         "Format the output as long, richly descriptive natural-language prose suitable "
         "for LLM-based text encoders (Z-Image, Lumina-2). Use complex sentences and "
         "vivid concrete detail. No tag syntax, no weights."
+    ),
+    "Flux / Chroma (natural language)": (
+        "Format the output as flowing natural language in long descriptive sentences "
+        "suitable for Flux or Chroma. No tag syntax. No parenthesis weights. "
+        "No 'masterpiece' or quality boosters. Describe the scene as prose."
     ),
     "HiDream (hybrid prose + descriptors)": (
         "Format the output as flowing natural language with concrete photographic and "
@@ -406,9 +407,9 @@ def build_layered_system_prompt(purpose, model_format, aesthetic,
 TJ_LLM_CATEGORY = " ✨ TJ_Node/LLM"
 MODEL_BACKEND_OPTIONS = ["GGUF / llama.cpp", "ComfyUI TextGenerate"]
 MMPROJ_NONE = "none"
-DEFAULT_TEXT_ENCODER_MODEL = "gemma4_e4b_it_fp8_scaled.safetensors"
-DEFAULT_GGUF_MODEL = "qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf"
-DEFAULT_MMPROJ_MODEL = "mmproj-qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+DEFAULT_TEXT_ENCODER_MODEL = "LLM\Gamma\gemma4_e2b_it_nvfp4.safetensors"
+DEFAULT_GGUF_MODEL = "LLM\Qwen3VL\Huihui-Qwen3-VL-8B-Instruct-abliterated-Q8_0.gguf"
+DEFAULT_MMPROJ_MODEL = "LLM\Qwen3VL\mmproj-Huihui-Qwen3-VL-8B-Instruct-abliterated-Q8_0-BF16.gguf"
 CLIP_LOADER_TYPE_OPTIONS = [
     "Auto",
     "stable_diffusion",
@@ -695,7 +696,7 @@ class TJ_PromptEnhancer:
 
     def enhance(self, get_name="(none)", set_name="Prompt_Enhancer", raw_prompt="", model_backend="GGUF / llama.cpp",
                 gguf_model="", mmproj_file=MMPROJ_NONE, text_encoder_name="", clip_loader_type="Auto", purpose="Image",
-                model_format="Universal Natural Language", aesthetic="None (no aesthetic injection)",
+                model_format="Z-Image / Lumina-2 (LLM text encoder)", aesthetic="None (no aesthetic injection)",
                 extra_instructions="", system_prompt_override="", append_no_think=True,
                 n_gpu_layers=-1, n_ctx=4096, max_tokens=1000, temperature=0.7, top_p=0.9,
                 repeat_penalty=1.15, seed=0, lock_in=False, raw_prompt_input=None, clip=None):
@@ -804,7 +805,7 @@ class TJ_ImageToPrompt:
                 "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999, "step": 1}),
                 "n_ctx": ("INT", {"default": 4096, "min": 512, "max": 32768, "step": 512}),
                 "max_tokens": ("INT", {"default": 1000, "min": 50, "max": 4096, "step": 50}),
-                "temperature": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE (analyzing)"}),
             },
