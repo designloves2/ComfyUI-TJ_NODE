@@ -105,9 +105,30 @@ def _strip_preambles(text):
     return text
 
 
+def _extract_after_final_marker(text):
+    markers = (
+        "final prompt:", "enhanced prompt:", "output prompt:", "final output:",
+        "result prompt:", "prompt result:",
+    )
+    lower = text.lower()
+    best = -1
+    marker_len = 0
+    for marker in markers:
+        idx = lower.rfind(marker)
+        if idx > best:
+            best = idx
+            marker_len = len(marker)
+    if best >= 0:
+        candidate = text[best + marker_len:].strip()
+        if len(candidate) >= 20:
+            return candidate
+    return text
+
+
 def _clean_output(text, original_input=""):
     text = text.strip()
     text = _strip_thinking_tags(text)
+    text = _extract_after_final_marker(text)
     text = _extract_final_paragraph(text)
     text = _strip_preambles(text)
     if original_input:
@@ -370,7 +391,7 @@ def build_layered_system_prompt(purpose, model_format, aesthetic,
     parts.append(MODEL_FORMAT_INSTRUCTIONS[model_format])
     if extra_instructions.strip():
         parts.append(extra_instructions.strip())
-    parts.append("Output only the prompt, nothing else.")
+    parts.append("Output only the final prompt, nothing else. Do not explain. Do not include thinking, analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'.")
     text = " ".join(parts)
     if append_no_think:
         text = text.rstrip() + " /no_think"
@@ -385,6 +406,35 @@ def build_layered_system_prompt(purpose, model_format, aesthetic,
 TJ_LLM_CATEGORY = " ✨ TJ_Node/LLM"
 MODEL_BACKEND_OPTIONS = ["GGUF / llama.cpp", "ComfyUI TextGenerate"]
 MMPROJ_NONE = "none"
+DEFAULT_TEXT_ENCODER_MODEL = "gemma4_e4b_it_fp8_scaled.safetensors"
+DEFAULT_GGUF_MODEL = "qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf"
+DEFAULT_MMPROJ_MODEL = "mmproj-qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
+CLIP_LOADER_TYPE_OPTIONS = [
+    "Auto",
+    "stable_diffusion",
+    "stable_cascade",
+    "sd3",
+    "stable_audio",
+    "mochi",
+    "ltxv",
+    "pixart",
+    "cosmos",
+    "lumina2",
+    "wan",
+    "hidream",
+    "chroma",
+    "ace",
+    "omnigen2",
+    "qwen_image",
+    "hunyuan_image",
+    "flux2",
+    "ovis",
+    "longcat_image",
+    "cogvideox",
+    "lens",
+    "pixeldict",
+    "ideogram4",
+]
 
 
 def _folder_list_recursive(kind, suffix=None, fallback=None):
@@ -399,17 +449,29 @@ def _folder_list_recursive(kind, suffix=None, fallback=None):
         return fallback
 
 
+def _unique_prepend(names, preferred):
+    items = [str(n) for n in (names or [])]
+    if preferred and preferred not in items:
+        items.insert(0, preferred)
+    elif preferred in items:
+        items.remove(preferred)
+        items.insert(0, preferred)
+    return items
+
+
 def _text_encoder_ggufs(exclude_mmproj=False):
     names = _folder_list_recursive("text_encoders", ".gguf", [])
     if exclude_mmproj:
         names = [n for n in names if "mmproj" not in os.path.basename(str(n)).lower()]
+        names = _unique_prepend(names, DEFAULT_GGUF_MODEL)
     return names or ["NO_GGUF_FILES_IN_MODELS_TEXT_ENCODERS"]
 
 
 def _text_encoder_mmproj_options():
     names = _folder_list_recursive("text_encoders", ".gguf", [])
     mm = [n for n in names if "mmproj" in os.path.basename(str(n)).lower()]
-    return [MMPROJ_NONE] + sorted(mm)
+    mm = _unique_prepend(sorted(mm), DEFAULT_MMPROJ_MODEL)
+    return [MMPROJ_NONE] + mm
 
 
 def _text_encoder_model_options():
@@ -417,6 +479,7 @@ def _text_encoder_model_options():
     # Native ComfyUI/TextGenerate mode should show normal text-encoder files,
     # while GGUF files stay in the GGUF selector.
     names = [n for n in names if not str(n).lower().endswith(".gguf") and "mmproj" not in os.path.basename(str(n)).lower()]
+    names = _unique_prepend(names, DEFAULT_TEXT_ENCODER_MODEL)
     return names or ["NO_TEXT_ENCODER_FILES_FOUND"]
 
 
@@ -456,11 +519,85 @@ def _call_comfy_node(class_name, **kwargs):
     return fn(**kwargs)
 
 
-def _load_clip_from_text_encoder(clip_name, clip_loader_type="stable_diffusion"):
+def _infer_clip_loader_candidates(clip_name, clip_loader_type="Auto"):
+    """Return ordered CLIPLoader type candidates without forcing users to know model family."""
+    requested = str(clip_loader_type or "Auto")
+    name = os.path.basename(str(clip_name or "")).lower()
+    candidates = []
+
+    if requested.lower() != "auto":
+        candidates.append(requested)
+    else:
+        if any(k in name for k in ("ideogram",)):
+            candidates.extend(["ideogram4", "qwen_image", "lumina2", "stable_diffusion"])
+        elif any(k in name for k in ("qwen", "qwen3vl", "qwen_vl")):
+            candidates.extend(["qwen_image", "ideogram4", "lumina2", "stable_diffusion"])
+        elif any(k in name for k in ("gemma", "gamma")):
+            candidates.extend(["stable_diffusion", "lumina2", "flux2", "ideogram4"])
+        elif "wan" in name:
+            candidates.extend(["wan", "stable_diffusion"])
+        elif "flux2" in name:
+            candidates.extend(["flux2", "flux", "stable_diffusion"])
+        elif "flux" in name:
+            candidates.extend(["flux", "flux2", "stable_diffusion"])
+        elif "sd3" in name:
+            candidates.extend(["sd3", "stable_diffusion"])
+        elif "ltx" in name:
+            candidates.extend(["ltxv", "stable_diffusion"])
+        elif "hunyuan" in name:
+            candidates.extend(["hunyuan_image", "hunyuan_video", "stable_diffusion"])
+        elif "hidream" in name:
+            candidates.extend(["hidream", "stable_diffusion"])
+        elif "chroma" in name:
+            candidates.extend(["chroma", "stable_diffusion"])
+        else:
+            candidates.extend(["stable_diffusion", "lumina2", "flux", "sd3", "wan"])
+
+    for fallback in CLIP_LOADER_TYPE_OPTIONS:
+        if fallback != "Auto" and fallback not in candidates:
+            candidates.append(fallback)
+    return candidates
+
+
+def _load_clip_from_text_encoder(clip_name, clip_loader_type="Auto"):
+    errors = []
+    for candidate in _infer_clip_loader_candidates(clip_name, clip_loader_type):
+        try:
+            return _call_comfy_node("CLIPLoader", clip_name=clip_name, type=candidate)[0]
+        except Exception as e:
+            errors.append(f"{candidate}: {e}")
     try:
-        return _call_comfy_node("CLIPLoader", clip_name=clip_name, type=clip_loader_type)[0]
-    except Exception:
         return _call_comfy_node("CLIPLoader", clip_name=clip_name)[0]
+    except Exception as e:
+        errors.append(f"no type: {e}")
+        raise RuntimeError(
+            "CLIPLoader failed for selected text encoder. "
+            f"clip_name={clip_name}, clip_loader_type={clip_loader_type}. "
+            "Tried: " + " | ".join(errors)
+        )
+
+
+def _textgenerate_image_kwarg_name():
+    """Return the image kwarg supported by the installed TextGenerate node, if any."""
+    try:
+        import inspect
+        import nodes
+        cls = nodes.NODE_CLASS_MAPPINGS.get("TextGenerate")
+        if not cls:
+            return "image"
+        obj = cls()
+        fn_name = getattr(cls, "FUNCTION", None)
+        fn = getattr(obj, fn_name)
+        sig = inspect.signature(fn)
+        params = sig.parameters
+        if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+            return "image"
+        for name in ("image", "images", "input_image", "vision_image", "image_input", "pixels"):
+            if name in params:
+                return name
+    except Exception:
+        pass
+    return None
 
 
 def _generate_with_textgenerate(clip, prompt, max_length, seed, image=None):
@@ -481,7 +618,13 @@ def _generate_with_textgenerate(clip, prompt, max_length, seed, image=None):
         "use_default_template": True,
     }
     if image is not None:
-        kwargs["image"] = image
+        image_kw = _textgenerate_image_kwarg_name()
+        if not image_kw:
+            raise RuntimeError(
+                "The installed TextGenerate node does not expose an image input parameter. "
+                "Use a VLM-capable TextGenerate implementation/model or switch to GGUF Vision mode."
+            )
+        kwargs[image_kw] = image
     return _call_comfy_node("TextGenerate", **kwargs)[0]
 
 
@@ -504,10 +647,10 @@ class TJ_PromptEnhancer:
                 "set_name": ("STRING", {"default": "Prompt_Enhancer"}),
                 "raw_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "model_backend": (MODEL_BACKEND_OPTIONS, {"default": "GGUF / llama.cpp"}),
-                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True),),
-                "mmproj_file": (_text_encoder_mmproj_options(),),
-                "text_encoder_name": (_text_encoder_model_options(),),
-                "clip_loader_type": (["stable_diffusion", "lumina2", "wan", "flux"], {"default": "stable_diffusion"}),
+                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
+                "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
+                "text_encoder_name": (_text_encoder_model_options(), {"default": DEFAULT_TEXT_ENCODER_MODEL}),
+                "clip_loader_type": (CLIP_LOADER_TYPE_OPTIONS, {"default": "Auto"}),
                 "purpose": (PURPOSE_OPTIONS,),
                 "model_format": (MODEL_FORMAT_OPTIONS,),
                 "aesthetic": (AESTHETIC_OPTIONS,),
@@ -516,11 +659,11 @@ class TJ_PromptEnhancer:
                 "append_no_think": ("BOOLEAN", {"default": True, "label_on": "Append /no_think", "label_off": "Don't append"}),
                 "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999, "step": 1}),
                 "n_ctx": ("INT", {"default": 4096, "min": 512, "max": 32768, "step": 512}),
-                "max_tokens": ("INT", {"default": 500, "min": 50, "max": 4096, "step": 50}),
+                "max_tokens": ("INT", {"default": 1000, "min": 50, "max": 4096, "step": 50}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "top_p": ("FLOAT", {"default": 0.9, "min": 0.0, "max": 1.0, "step": 0.05}),
                 "repeat_penalty": ("FLOAT", {"default": 1.15, "min": 1.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE (generating)"}),
             },
             "optional": {
@@ -551,10 +694,10 @@ class TJ_PromptEnhancer:
         return build_layered_system_prompt(purpose, model_format, aesthetic, extra_instructions, append_no_think)
 
     def enhance(self, get_name="(none)", set_name="Prompt_Enhancer", raw_prompt="", model_backend="GGUF / llama.cpp",
-                gguf_model="", mmproj_file=MMPROJ_NONE, text_encoder_name="", clip_loader_type="stable_diffusion", purpose="Image",
+                gguf_model="", mmproj_file=MMPROJ_NONE, text_encoder_name="", clip_loader_type="Auto", purpose="Image",
                 model_format="Universal Natural Language", aesthetic="None (no aesthetic injection)",
                 extra_instructions="", system_prompt_override="", append_no_think=True,
-                n_gpu_layers=-1, n_ctx=4096, max_tokens=500, temperature=0.7, top_p=0.9,
+                n_gpu_layers=-1, n_ctx=4096, max_tokens=1000, temperature=0.7, top_p=0.9,
                 repeat_penalty=1.15, seed=0, lock_in=False, raw_prompt_input=None, clip=None):
         prompt_in = str(raw_prompt_input if raw_prompt_input not in (None, "") else raw_prompt)
         if clip is not None:
@@ -649,20 +792,20 @@ class TJ_ImageToPrompt:
                 "set_name": ("STRING", {"default": "Image_Prompt"}),
                 "image": ("IMAGE",),
                 "model_backend": (MODEL_BACKEND_OPTIONS, {"default": "GGUF / llama.cpp"}),
-                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True),),
-                "mmproj_file": (_text_encoder_mmproj_options(),),
+                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
+                "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
                 "chat_handler": (handler_options,),
-                "text_encoder_name": (_text_encoder_model_options(),),
-                "clip_loader_type": (["stable_diffusion", "lumina2", "wan", "flux"], {"default": "stable_diffusion"}),
+                "text_encoder_name": (_text_encoder_model_options(), {"default": DEFAULT_TEXT_ENCODER_MODEL}),
+                "clip_loader_type": (CLIP_LOADER_TYPE_OPTIONS, {"default": "Auto"}),
                 "vision_task": (cls.VISION_TASK_OPTIONS,),
                 "model_format": (MODEL_FORMAT_OPTIONS,),
                 "aesthetic": (AESTHETIC_OPTIONS,),
                 "custom_instruction": ("STRING", {"multiline": True, "default": ""}),
                 "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999, "step": 1}),
                 "n_ctx": ("INT", {"default": 4096, "min": 512, "max": 32768, "step": 512}),
-                "max_tokens": ("INT", {"default": 400, "min": 50, "max": 2048, "step": 50}),
+                "max_tokens": ("INT", {"default": 1000, "min": 50, "max": 4096, "step": 50}),
                 "temperature": ("FLOAT", {"default": 0.4, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
+                "seed": ("INT", {"default": 0, "min": 0, "max": 0xffffffffffffffff}),
                 "lock_in": ("BOOLEAN", {"default": False, "label_on": "🔒 LOCKED (cached)", "label_off": "🔄 LIVE (analyzing)"}),
             },
             "optional": {"clip": ("CLIP",)},
@@ -725,24 +868,29 @@ class TJ_ImageToPrompt:
         return f"data:image/png;base64,{b64}"
 
     def _build_instruction(self, vision_task, model_format, aesthetic, custom_instruction):
+        custom = str(custom_instruction or "").strip()
         if vision_task == "Custom Instruction":
-            return str(custom_instruction or "").strip() or "Describe this image."
+            return custom or "Describe this image."
         if vision_task == "Caption + Format (apply model_format below)":
             base = "Describe this image faithfully, then format the description according to the rules below. "
             base += MODEL_FORMAT_INSTRUCTIONS[model_format]
             if aesthetic in AESTHETIC_DESCRIPTORS:
                 base += " " + AESTHETIC_DESCRIPTORS[aesthetic]
-            return base + " Output only the formatted prompt."
-        base = self.VISION_TASK_INSTRUCTIONS[vision_task]
-        if aesthetic in AESTHETIC_DESCRIPTORS:
-            base += " " + AESTHETIC_DESCRIPTORS[aesthetic]
+            base += " Output only the formatted prompt."
+        else:
+            base = self.VISION_TASK_INSTRUCTIONS[vision_task]
+            if aesthetic in AESTHETIC_DESCRIPTORS:
+                base += " " + AESTHETIC_DESCRIPTORS[aesthetic]
+        if custom:
+            base += "\n\nAdditional user instruction:\n" + custom
         return base
+
 
     def describe(self, get_name="(none)", set_name="Image_Prompt", image=None, model_backend="GGUF / llama.cpp",
                  gguf_model="", mmproj_file=MMPROJ_NONE, chat_handler="Auto-detect",
-                 text_encoder_name="", clip_loader_type="stable_diffusion", vision_task="Caption (plain description)",
+                 text_encoder_name="", clip_loader_type="Auto", vision_task="Caption (plain description)",
                  model_format="Universal Natural Language", aesthetic="None (no aesthetic injection)",
-                 custom_instruction="", n_gpu_layers=-1, n_ctx=4096, max_tokens=400,
+                 custom_instruction="", n_gpu_layers=-1, n_ctx=4096, max_tokens=1000,
                  temperature=0.4, seed=0, lock_in=False, clip=None):
         if clip is not None:
             model_backend = "ComfyUI TextGenerate"
