@@ -40,6 +40,7 @@ from .nodes.utility import (
 from .nodes.video import (
     TJ_SaveAndPreviewVideo,
     TJ_LTX2Sampler,
+    WanSCAILExtendSampler,
 )
 
 # ── LLM ───────────────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ NODE_CLASS_MAPPINGS = {
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
     "TJ_LTX2Sampler":           TJ_LTX2Sampler,
+    "WanSCAILExtendSampler":     WanSCAILExtendSampler,
 
     # LLM
     "TJ_PromptEnhancer":    TJ_PromptEnhancer,
@@ -140,6 +142,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
     "TJ_LTX2Sampler":           "LTX2. TJ Sampler",
+    "WanSCAILExtendSampler":     "Wan SCAIL Extend Sampler (TJ)",
 
     # LLM
     "TJ_PromptEnhancer":    "Prompt Enhancer (TJ)",
