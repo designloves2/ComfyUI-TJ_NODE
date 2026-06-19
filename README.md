@@ -1,4 +1,5 @@
-# ✨ TJ_NODE v1.0 
+# ComfyUI-TJ_NODE
+# ✨ TJ_NODE v2.1.2 
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -112,6 +113,318 @@ Wireless routing is used between sections.
 
 ---
 
+# 🚀 What's New in v2.0.1
+
+TJ_NODE v2.x는 기존 Wireless Workflow Architecture를 유지하면서
+LLM Workflow / Prompt Workflow / Cover Expansion Architecture 영역까지 확장되었습니다.
+
+TJ_NODE v2.x expands the original wireless workflow architecture into:
+LLM workflow systems, prompt workflow pipelines, and cover expansion architecture.
+
+---
+
+#스크린샷 : V2 WORKFLOW OVERVIEW
+
+---
+
+## ✨ Credits / Acknowledgements
+
+Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
+
+- TooBusy Nodes - 너무바쁜베짱이
+  https://github.com/designloves2/toobusy<br>
+  https://www.youtube.com/@%EB%84%88%EB%AC%B4%EB%B0%94%EC%81%9C%EB%B2%A0%EC%A7%B1%EC%9D%B4<br>
+
+- comfyui-deno-custom-nodes
+  https://github.com/Deno2026/comfyui-deno-custom-nodes<br>
+  https://www.youtube.com/@Denoise-AI<br>
+  
+- RebelsPromptEnhancer node
+  https://github.com/designloves2/RebelsPromptEnhancer<br>
+  https://www.youtube.com/@realrebelai<br>
+
+  
+Several nodes were heavily reworked and integrated into the TJ wireless workflow architecture.
+
+---
+## ✨ Prompt Studio (TJ)
+
+Prompt Studio (TJ)는 TJ_NODE v2.x의 통합 LLM Prompt Workflow Node입니다.
+Unified LLM prompt workflow node for TJ_NODE v2.x.
+
+---
+
+지원 모드:
+Supported Modes:
+
+* Auto
+* Prompt Enhancer
+* Image to Prompt
+
+---
+
+핵심 기능:
+Core Features:
+
+* Automatic Image Detection
+* Unified Prompt Workflow UI
+* GGUF / llama.cpp backend support
+* ComfyUI TextGenerate backend support
+* Embedded Workflow Architecture
+* Prompt Enhancement Workflow
+* Image-based Prompt Generation
+
+---
+
+추가 기능:
+Additional Features:
+
+* Prompt Enhancer 모드 세로 크기 기억
+* Image to Prompt 모드 자동 높이 리셋 유지
+* 가로 크기 공통 유지 구조
+
+---
+
+#스크린샷 : PROMPT STUDIO
+#스크린샷 : IMAGE TO PROMPT
+
+---
+
+## ✨ Prompt Show & Locker (TJ)
+
+STRING 기반 Prompt Inspect / Lock Workflow Node입니다.
+STRING-based prompt inspection and lock workflow node.
+
+---
+
+핵심 기능:
+Core Features:
+
+* Prompt Visualization
+* Copy Button Animation
+* PAUSED Status UI
+* Stable Resize Lifecycle
+* TJ Theme Integration
+* Embedded Workflow Support
+
+---
+
+Copy 버튼 UX:
+
+```text id="tjpsl1"
+Copy
+ ↓
+Copied
+ ↓
+Auto Restore
+```
+
+---
+
+#스크린샷 : PROMPT SHOW LOCKER
+
+---
+
+## ✨ Scene Maker (TJ)
+
+Visual Beat 기반 Prompt Workflow Architecture Node입니다.
+Visual Beat-based prompt workflow architecture node.
+
+---
+
+지원 기능:
+Supported Features:
+
+* Embedded Get/Set
+* Auto Set
+* Translate Workflow
+* Clip Override
+* Visual Beat Reuse
+* Guide / Summary Refresh
+
+---
+
+지원 언어:
+Supported Languages:
+
+* KO
+* EN
+* JP
+* CN
+
+---
+
+#스크린샷 : SCENE MAKER
+
+---
+
+## ✨ Z-Image Turbo (TJ)
+
+Prompt-driven Turbo Workflow Architecture Node입니다.
+Prompt-driven turbo workflow architecture node.
+
+---
+
+핵심 기능:
+Core Features:
+
+* Embedded Get/Set
+* Auto Set
+* Global Prompt Input
+* Positive / Negative Hide
+* Compact Preview Architecture
+* Reload-safe Preview Lifecycle
+* Textarea Resize Support
+
+---
+
+#스크린샷 : Z IMAGE TURBO
+
+---
+
+## ✨ LLM Workflow Layer
+
+TJ_NODE v2.x는 신규 LLM Workflow Layer를 제공합니다.
+TJ_NODE v2.x introduces a dedicated LLM workflow layer.
+
+---
+
+신규 CATEGORY:
+New CATEGORY:
+
+```python id="tjllm1"
+CATEGORY = " ✨ TJ_Node/LLM"
+```
+
+---
+
+지원 노드:
+Supported Nodes:
+
+* Prompt Studio (TJ)
+* Prompt Enhancer (TJ)
+* Image to Prompt (TJ)
+* Prompt Show & Locker (TJ)
+
+---
+
+#스크린샷 : LLM WORKFLOW
+
+---
+
+## ✨ Cover Expansion System
+
+TJ Cover System은 외부 노드를 TJ Workflow 구조로 확장합니다.
+TJ Cover System expands external nodes into TJ workflow architecture.
+
+---
+
+핵심 기능:
+Core Features:
+
+* Embedded Get/Set
+* TJ Theme Injection
+* Widget Reorder
+* Output Label Sync
+* Auto Set Extension
+* External Node Expansion
+
+---
+
+원본 노드를 직접 수정하지 않는 구조입니다.
+The original nodes remain untouched.
+
+---
+
+#스크린샷 : COVER SYSTEM
+
+---
+
+## ✨ Smart Converter (TJ) Expansion
+
+Smart Converter (TJ)는 v2.x에서 더욱 확장되었습니다.
+Smart Converter (TJ) has been expanded in v2.x.
+
+---
+
+추가 지원 타입:
+Additional Supported Types:
+
+* BOOLEAN
+* LIST
+* DICT
+* JSON
+
+---
+
+추가 기능:
+Additional Features:
+
+* Strict Mode
+* Safe Fallback Workflow
+* Status Output
+* Dynamic Conversion Lifecycle
+
+---
+
+#스크린샷 : SMART CONVERTER V2
+
+---
+
+## ✨ VHS Hotkey Remote Expansion
+
+TJ VHS Hotkey Remote 기능이 확장되었습니다.
+TJ VHS Hotkey Remote has been expanded.
+
+---
+
+추가 기능:
+Additional Features:
+
+* Sync Preview
+* Improved Pause / Play Workflow
+* Stable Keyboard Control Lifecycle
+* VHS Preview Utility Expansion
+
+---
+
+#스크린샷 : VHS REMOTE V2
+
+---
+
+## ✨ Reload-safe Lifecycle Expansion
+
+TJ_NODE v2.x는 reconnect lifecycle 구조를 더욱 강화했습니다.
+TJ_NODE v2.x further improves reconnect lifecycle architecture.
+
+---
+
+안정화 대상:
+Stabilized Systems:
+
+* Show Any (TJ)
+* Prompt Studio (TJ)
+* Scene Maker (TJ)
+* Z-Image Turbo (TJ)
+* Eclipse Bridge Workflow
+
+---
+
+핵심 기능:
+Core Features:
+
+* Wireless Reconnect
+* Fake-Wire Rebuild
+* Provider Survival
+* Ghost Cleanup
+* Dynamic Provider Refresh
+* Cover Lifecycle Sync
+
+---
+
+#스크린샷 : LIFECYCLE V2
+
+---
 # 🚀 v1.0 Major Features
 
 | Feature                   | Description                    |
