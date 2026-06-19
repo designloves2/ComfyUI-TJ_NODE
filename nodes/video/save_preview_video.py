@@ -26,9 +26,9 @@ class TJ_SaveAndPreviewVideo:
                 "save_type": (["video only", "video + audio", "video + original audio", "audio only"], {"default": "video only"}),
                 "audio_monitor": (["A", "B", "A+B"], {"default": "A+B"}),
                 "get_name": (["(none)"],),
-                "setnode_name": ("STRING", {"default": ""}),
-                "filename_prefix": ("STRING", {"default": "TJ_Video"}),
-                "path": ("STRING", {"default": ""}),
+                "setnode_name": ("STRING", {"default": "Save_video"}),
+                "filename_prefix": ("STRING", {"default": "Video"}),
+                "path": ("STRING", {"default": "video/%date/"}),
                 "mode": (["Preview", "Save"], {"default": "Preview"}),
             },
             "optional": {

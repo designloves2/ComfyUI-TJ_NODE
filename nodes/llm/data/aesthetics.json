@@ -1,0 +1,90 @@
+[
+  {
+    "name": "None (no aesthetic injection)",
+    "descriptor": ""
+  },
+  {
+    "name": "Photorealistic",
+    "descriptor": "Visual style: photorealistic, sharp focus, accurate textures, lifelike skin and materials, realistic lighting and shadows, shallow depth of field, 8k camera detail."
+  },
+  {
+    "name": "Cinematic Film",
+    "descriptor": "Visual style: cinematic film aesthetic, dramatic lighting with strong key and rim, filmic color grade, anamorphic framing, atmospheric haze, shallow depth of field."
+  },
+  {
+    "name": "Anime / Manga",
+    "descriptor": "Visual style: anime/manga aesthetic, cel-shaded coloring, stylized features, expressive large eyes, dynamic poses, vibrant saturated color palette, clean lineart."
+  },
+  {
+    "name": "Studio Ghibli",
+    "descriptor": "Visual style: Studio Ghibli aesthetic, hand-painted watercolor backgrounds, soft natural lighting, warm pastoral atmosphere, gentle character designs, nostalgic and serene mood."
+  },
+  {
+    "name": "Pixar / 3D Animation",
+    "descriptor": "Visual style: 3D animation aesthetic in the spirit of Pixar/Disney, expressive stylized character proportions, polished CG surfaces, warm cinematic lighting."
+  },
+  {
+    "name": "Comic Book / Graphic Novel",
+    "descriptor": "Visual style: comic book aesthetic, bold ink linework, halftone or hatching shading, dynamic poses, exaggerated proportions, saturated panel colors."
+  },
+  {
+    "name": "Concept Art",
+    "descriptor": "Visual style: digital concept art, painterly brushwork, atmospheric perspective, value-driven composition, professional production-art feel."
+  },
+  {
+    "name": "Oil Painting",
+    "descriptor": "Visual style: oil painting aesthetic, visible impasto brushwork, rich color depth, painterly textures, classical composition, warm gallery lighting."
+  },
+  {
+    "name": "Watercolor",
+    "descriptor": "Visual style: watercolor painting aesthetic, soft translucent washes, paper texture visible, flowing pigment bleeds, gentle edges, limited palette."
+  },
+  {
+    "name": "Pencil Sketch",
+    "descriptor": "Visual style: pencil sketch aesthetic, graphite linework, crosshatching shadows, monochrome or restrained color accents, loose unfinished sketchbook feel."
+  },
+  {
+    "name": "Cyberpunk",
+    "descriptor": "Visual style: cyberpunk aesthetic, neon signage, rain-slicked streets, holographic interfaces, dystopian high-tech low-life atmosphere, magenta-cyan color palette."
+  },
+  {
+    "name": "Steampunk",
+    "descriptor": "Visual style: steampunk aesthetic, brass and copper machinery, Victorian-era styling, exposed gears and clockwork, gas-lamp lighting, sepia and bronze color palette."
+  },
+  {
+    "name": "Fantasy",
+    "descriptor": "Visual style: high fantasy aesthetic, medieval or magical setting, ethereal lighting, ornate detail, mythological elements, lush detailed environments, painterly atmosphere."
+  },
+  {
+    "name": "Sci-Fi",
+    "descriptor": "Visual style: science fiction aesthetic, advanced technology, sleek futuristic surfaces, panel-screen lighting, industrial design, blue and white accent palette."
+  },
+  {
+    "name": "Horror / Dark",
+    "descriptor": "Visual style: horror aesthetic, low-key dramatic lighting, deep shadows, unsettling atmosphere, desaturated muted palette with occasional blood-red accents."
+  },
+  {
+    "name": "Vintage / Retro Film",
+    "descriptor": "Visual style: vintage film aesthetic, 35mm grain, faded warm color cast, soft contrast, period-appropriate styling, light leaks and lens artifacts."
+  },
+  {
+    "name": "Film Noir",
+    "descriptor": "Visual style: film noir aesthetic, high-contrast black-and-white or near-monochrome, dramatic chiaroscuro lighting, venetian-blind shadows, urban night atmosphere."
+  },
+  {
+    "name": "Glamour / Editorial",
+    "descriptor": "Visual style: high-fashion editorial aesthetic, polished beauty lighting, magazine-shoot composition, soft skin rendering, dramatic backdrop."
+  },
+  {
+    "name": "Minimalist",
+    "descriptor": "Visual style: minimalist aesthetic, clean composition, generous negative space, limited color palette, simple geometric forms, calm uncluttered framing."
+  },
+  {
+    "name": "Surreal / Dreamy",
+    "descriptor": "Visual style: surreal dreamlike aesthetic, soft hazy lighting, impossible compositions, dream-logic juxtapositions, ethereal color shifts."
+  },
+  {
+    "name": "3D Render / CGI",
+    "descriptor": "Visual style: 3D render aesthetic, clean CGI surfaces, ray-traced lighting, sharp reflections, subsurface scattering, Octane/Blender render quality."
+  }
+]

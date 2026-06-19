@@ -11,75 +11,55 @@ from ._llm_utils import (
     _resolve_text_encoder_path, _is_bad_choice, _free_llm, _clean_output,
     _load_clip_from_text_encoder, _generate_with_textgenerate,
     MODEL_FORMAT_INSTRUCTIONS, AESTHETIC_DESCRIPTORS,
+    _load_json_data,
     tensor_to_data_uri,
 )
 
-CONTENT_QUALITY_CHECK_INSTRUCTION = """You are an image usability reviewer for a ComfyUI workflow.
-
-Your goal is to decide whether the generated image should be saved automatically or sent to preview for human review.
-
-Return "OK" only when the image is clearly usable.
-
-Return "FAIL" when the image should be checked by a human before saving.
-
-Do not judge artistic style harshly.
-Do not fail for small texture issues or minor background artifacts.
-
-Return FAIL when any of the following is clearly visible:
-- missing arm
-- only one arm visible when two arms should be visible
-- missing hand
-- severely deformed hand
-- broken or impossible body structure
-- severely distorted face
-- missing or badly damaged eyes
-- strong blur on the main subject
-- low-detail or melted main subject
-- body parts cut off unexpectedly
-- major asymmetry in the body
-- heavy artifacts on the person
-- the main subject is not clearly usable
-
-If the person has unclear arms, unclear hands, or strong blur on the body, return FAIL.
-
-If the image is generally sharp, the face is usable, the body structure is believable, and the prompt is mostly represented, return OK.
-
-When uncertain, return FAIL.
-
-Return only valid JSON.
-
-{
-  "verdict":"OK" or "FAIL",
-  "reason":"short reason",
-  "matched":[...],
-  "issues":[...]
-}
-"""
-
-VISION_TASK_OPTIONS = [
-    "Caption (plain description)",
-    "Caption + Format (apply model_format below)",
-    "SD/Booru Tags",
-    "Pose & Anatomy Focus",
-    "Content Quality Check",
-    "Custom Instruction",
+# ── Vision Task 옵션 (편집: nodes/llm/data/vision_tasks.json) ───────────────
+# 각 항목의 "type" 값:
+#   "instruction" : instruction 텍스트를 그대로 사용 (일반적인 경우, 새 항목 추가 시 기본값)
+#   "format"      : instruction 뒤에 model_format 규칙을 자동으로 이어붙임 ("Caption + Format" 전용 동작)
+#   "custom"      : custom_instruction 입력값을 그대로 사용 ("Custom Instruction" 전용 동작)
+_VISION_TASK_FALLBACK = [
+    {"name": "Caption (plain description)", "type": "instruction",
+     "instruction": "Describe this image in one detailed paragraph covering subject, composition, "
+                     "lighting, colors, mood, and notable details. Output only the description."},
+    {"name": "Caption + Format (apply model_format below)", "type": "format",
+     "instruction": "Describe this image faithfully, then format the description according to the rules below. "},
+    {"name": "SD/Booru Tags", "type": "instruction",
+     "instruction": "Generate a comma-separated list of descriptive tags for this image. "
+                     "Include subject, action, setting, lighting, mood, and style tags. "
+                     "Output only the tags, comma-separated."},
+    {"name": "Pose & Anatomy Focus", "type": "instruction",
+     "instruction": "Describe the subject's pose, body position, expression, framing, and what's "
+                     "visible in detail. Be precise about positioning. Output only the description."},
+    {"name": "Content Quality Check", "type": "instruction",
+     "instruction": (
+        "You are an image usability reviewer for a ComfyUI workflow.\n\n"
+        "Your goal is to decide whether the generated image should be saved automatically or sent to preview for human review.\n\n"
+        "Return \"OK\" only when the image is clearly usable.\n\n"
+        "Return \"FAIL\" when the image should be checked by a human before saving.\n\n"
+        "Do not judge artistic style harshly.\n"
+        "Do not fail for small texture issues or minor background artifacts.\n\n"
+        "Return FAIL when any of the following is clearly visible:\n"
+        "- missing arm\n- only one arm visible when two arms should be visible\n- missing hand\n"
+        "- severely deformed hand\n- broken or impossible body structure\n- severely distorted face\n"
+        "- missing or badly damaged eyes\n- strong blur on the main subject\n- low-detail or melted main subject\n"
+        "- body parts cut off unexpectedly\n- major asymmetry in the body\n- heavy artifacts on the person\n"
+        "- the main subject is not clearly usable\n\n"
+        "If the person has unclear arms, unclear hands, or strong blur on the body, return FAIL.\n\n"
+        "If the image is generally sharp, the face is usable, the body structure is believable, "
+        "and the prompt is mostly represented, return OK.\n\n"
+        "When uncertain, return FAIL.\n\n"
+        "Return only valid JSON.\n\n"
+        "{\n  \"verdict\":\"OK\" or \"FAIL\",\n  \"reason\":\"short reason\",\n  \"matched\":[...],\n  \"issues\":[...]\n}\n"
+     )},
+    {"name": "Custom Instruction", "type": "custom", "instruction": ""},
 ]
-VISION_TASK_INSTRUCTIONS = {
-    "Caption (plain description)": (
-        "Describe this image in one detailed paragraph covering subject, composition, "
-        "lighting, colors, mood, and notable details. Output only the description."
-    ),
-    "SD/Booru Tags": (
-        "Generate a comma-separated list of descriptive tags for this image. "
-        "Include subject, action, setting, lighting, mood, and style tags. "
-        "Output only the tags, comma-separated."
-    ),
-    "Pose & Anatomy Focus": (
-        "Describe the subject's pose, body position, expression, framing, and what's "
-        "visible in detail. Be precise about positioning. Output only the description."
-    ),
-    "Content Quality Check": CONTENT_QUALITY_CHECK_INSTRUCTION,
-}
+_vision_task_data = _load_json_data("vision_tasks.json", _VISION_TASK_FALLBACK)
+VISION_TASK_OPTIONS = [item["name"] for item in _vision_task_data]
+VISION_TASK_INSTRUCTIONS = {item["name"]: item.get("instruction", "") for item in _vision_task_data}
+VISION_TASK_TYPES = {item["name"]: item.get("type", "instruction") for item in _vision_task_data}
 
 
 class TJ_ImageToPrompt:
@@ -161,16 +141,20 @@ class TJ_ImageToPrompt:
 
     def _build_instruction(self, vision_task, model_format, aesthetic, custom_instruction):
         custom = str(custom_instruction or "").strip()
-        if vision_task == "Custom Instruction":
+        task_type = VISION_TASK_TYPES.get(vision_task, "instruction")
+        if task_type == "custom":
             return custom or "Describe this image."
-        if vision_task == "Caption + Format (apply model_format below)":
-            base = "Describe this image faithfully, then format the description according to the rules below. "
-            base += MODEL_FORMAT_INSTRUCTIONS[model_format]
+        if task_type == "format":
+            base = VISION_TASK_INSTRUCTIONS.get(
+                vision_task,
+                "Describe this image faithfully, then format the description according to the rules below. ",
+            )
+            base += MODEL_FORMAT_INSTRUCTIONS.get(model_format, "")
             if aesthetic in AESTHETIC_DESCRIPTORS:
                 base += " " + AESTHETIC_DESCRIPTORS[aesthetic]
             base += " Output only the formatted prompt."
         else:
-            base = VISION_TASK_INSTRUCTIONS[vision_task]
+            base = VISION_TASK_INSTRUCTIONS.get(vision_task, "Describe this image.")
             if aesthetic in AESTHETIC_DESCRIPTORS:
                 base += " " + AESTHETIC_DESCRIPTORS[aesthetic]
         if custom:

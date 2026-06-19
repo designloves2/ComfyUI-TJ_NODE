@@ -273,10 +273,39 @@ function attachTJGetReceiver(node, opts = {}) {
     if (!getW || getW._tj_get_receiver_attached) return;
     getW._tj_get_receiver_attached = true;
 
+    const providerTypeMatches = (providerValue) => {
+        if (!providerValue || providerValue === "(none)" || tjSmartIsSeparator(providerValue)) return true;
+        if (!window.TJ_NODE_findProviderByValue) return true;
+        const provider = window.TJ_NODE_findProviderByValue(node.graph, providerValue);
+        if (!provider) return false;
+        const outType = String(tjGetOutputSlot(provider.node, provider.slot)?.type || "*").toUpperCase();
+        const wanted = String(defaultType || "*").toUpperCase();
+        if (!wanted || wanted === "*" || wanted === "ANY") return true;
+        if (!outType || outType === "*" || outType === "ANY") return true;
+        return outType === wanted;
+    };
+
+    const compactSeparators = (values) => {
+        const out = [];
+        for (const v of values) {
+            if (tjSmartIsSeparator(v)) {
+                if (out.length <= 1) continue;
+                if (tjSmartIsSeparator(out[out.length - 1])) continue;
+            }
+            out.push(v);
+        }
+        while (out.length && tjSmartIsSeparator(out[out.length - 1])) out.pop();
+        return out.length ? out : ["(none)"];
+    };
+
     const refreshProviderValues = () => {
         const values = tjSmartGetAllSetNames(node.graph);
-        const next = Array.isArray(values) ? [...values] : ["(none)"];
-        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) next.push(getW.value);
+        const raw = Array.isArray(values) ? values : ["(none)"];
+        const next = compactSeparators(raw.filter(providerTypeMatches));
+        if (getW.value && getW.value !== "(none)" && !next.includes(getW.value)) {
+            if (providerTypeMatches(getW.value)) next.push(getW.value);
+            else getW.value = "(none)";
+        }
         getW.options = { ...(getW.options || {}), values: next };
         return next;
     };
@@ -337,6 +366,14 @@ function attachTJGetReceiver(node, opts = {}) {
             input.label = `◀ ${tjSmartLabelName(this.graph, selected) || selected}`;
             window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 80);
             window.TJ_NODE_scheduleWirelessRepair?.(this.graph, 300);
+            app.canvas?.setDirty(true, true);
+            return;
+        }
+        if (!providerTypeMatches(selected)) {
+            if (w) w.value = "(none)";
+            removeWirelessInputOnly(this);
+            input.type = defaultType;
+            input.label = "";
             app.canvas?.setDirty(true, true);
             return;
         }
@@ -2158,3 +2195,87 @@ app.registerExtension({
     }
 });
 
+
+// ─── Save Text File (TJ) ───
+app.registerExtension({
+    name: "TJ.SaveTextFile",
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeData.name !== "TJ_SaveTextFile") return;
+
+        const origOnNodeCreated = nodeType.prototype.onNodeCreated;
+        nodeType.prototype.onNodeCreated = function() {
+            if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
+
+            window.TJ_NODE_applyTheme(this);
+            attachSetNodeSync(this);
+            attachTJGetReceiver(this, {
+                inputIndex: 0,
+                inputName: "text",
+                outputIndex: 0,
+                defaultType: "STRING",
+                defaultOutputType: "STRING"
+            });
+
+            const setW = this.widgets?.find(w => w.name === "setnode_name");
+            if (setW && !setW._tj_hidden_for_save_text) {
+                setW._tj_hidden_for_save_text = true;
+                setW._tj_origComputeSize = setW.computeSize;
+                setW.computeSize = function() {
+                    return [0, -4];
+                };
+                setW._hidden = true;
+            }
+
+            const getW = this.widgets?.find(w => w.name === "get_name");
+            if (getW) {
+                getW.label = "get_name";
+            }
+
+            requestAnimationFrame(() => {
+                this.size = [250, 160];
+                this.setDirtyCanvas?.(true, true);
+            });
+        };
+
+        const origOnConfigure = nodeType.prototype.onConfigure;
+        nodeType.prototype.onConfigure = function(data) {
+            if (origOnConfigure) origOnConfigure.apply(this, arguments);
+
+            setTimeout(() => {
+                window.TJ_NODE_applyTheme(this);
+                attachSetNodeSync(this);
+                attachTJGetReceiver(this, {
+                    inputIndex: 0,
+                    inputName: "text",
+                    outputIndex: 0,
+                    defaultType: "STRING",
+                    defaultOutputType: "STRING"
+                });
+
+                const setW = this.widgets?.find(w => w.name === "setnode_name");
+                if (setW) {
+                    setW.computeSize = function() {
+                        return [0, -4];
+                    };
+                    setW._hidden = true;
+                }
+
+                const getW = this.widgets?.find(w => w.name === "get_name");
+                if (getW) {
+                    getW.label = "get_name";
+                }
+
+                this.setDirtyCanvas?.(true, true);
+            }, 100);
+        };
+
+        const origOnDrawForeground = nodeType.prototype.onDrawForeground;
+        nodeType.prototype.onDrawForeground = function(ctx) {
+            this._tjUpdateGetReceiverOptions?.();
+
+            if (origOnDrawForeground) {
+                return origOnDrawForeground.apply(this, arguments);
+            }
+        };
+    }
+});

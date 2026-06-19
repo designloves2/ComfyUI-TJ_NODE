@@ -1,0 +1,3 @@
+{
+  "output_only_instruction": "Output only the final prompt, nothing else. Do not explain. Do not include thinking, analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'."
+}

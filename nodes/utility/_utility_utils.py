@@ -40,7 +40,7 @@ def _tj_safe_output_dir(path_text=""):
 
 
 def _tj_next_file(out_dir, base_name, ext):
-    candidate = f"{base_name}.{ext}"
+    candidate = f"{base_name}_0001.{ext}"
     if not os.path.exists(os.path.join(out_dir, candidate)):
         return candidate
     pattern = re.compile(rf"^{re.escape(base_name)}_(\d{{4,}})\.{re.escape(ext)}$", re.IGNORECASE)

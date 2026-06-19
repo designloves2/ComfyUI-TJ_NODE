@@ -4,12 +4,34 @@
 import os
 import gc
 import re
+import json
 import base64
 from io import BytesIO
 
 import numpy as np
 import torch
 from PIL import Image
+
+# ── User-editable option data (JSON) ────────────────────────────────────────
+# model_formats.json / aesthetics.json / vision_tasks.json 파일을 열어서
+# 항목을 자유롭게 추가/수정할 수 있습니다. (ComfyUI 재시작 후 반영)
+_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+def _load_json_data(filename, fallback):
+    """data/<filename> 을 읽어온다. 파일이 없거나 형식이 잘못되면 기본값(fallback)을 사용한다.
+    fallback이 list면 list, dict면 dict 형식을 기대한다."""
+    path = os.path.join(_DATA_DIR, filename)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, type(fallback)) and len(data) > 0:
+            return data
+        print(f"[TJ_Node] {filename} is empty or invalid, using built-in defaults.")
+    except Exception as e:
+        print(f"[TJ_Node] Could not load {filename} ({e}), using built-in defaults.")
+    return fallback
+
 
 # ── Vision chat handlers (best-effort import) ──────────────────────────────
 _HANDLER_CLASSES = {}
@@ -41,112 +63,90 @@ CLIP_LOADER_TYPE_OPTIONS = [
     "longcat_image", "cogvideox", "lens", "pixeldict", "ideogram4",
 ]
 
-# ── Purpose ────────────────────────────────────────────────────────────────
-PURPOSE_OPTIONS = ["Image", "Video", "Edit (Inpainting/I2V)"]
-PURPOSE_FRAMING = {
-    "Image": (
-        "Rewrite the user's input as a detailed prompt for a static image. "
-        "Cover subject, environment, lighting, composition, and mood."
-    ),
-    "Video": (
-        "Rewrite the user's input as a detailed prompt for a video shot. "
-        "Cover subject motion, camera movement, pacing, lighting, and mood."
-    ),
-    "Edit (Inpainting/I2V)": (
-        "Rewrite the user's edit instruction as a description of the final transformed "
-        "scene as it appears after the edit. Do not describe the editing process."
-    ),
-}
-
-# ── Model Format ───────────────────────────────────────────────────────────
-MODEL_FORMAT_OPTIONS = [
-    "Flux / Chroma (natural language)",
-    "Z-Image / Lumina-2 (LLM text encoder)",
-    "HiDream (hybrid prose + descriptors)",
-    "SDXL (tags + weights)",
-    "SD 1.5 (tags + weights)",
-    "Pony / Illustrious (booru tags + score)",
-    "LTX Video (motion-focused prose)",
-    "Hunyuan / Wan Video (cinematic motion prose)",
-    "Universal Natural Language",
+# ── Purpose (편집: nodes/llm/data/purposes.json) ────────────────────────────
+_PURPOSE_FALLBACK = [
+    {"name": "Image",
+     "framing": "Rewrite the user's input as a detailed prompt for a static image. "
+                "Cover subject, environment, lighting, composition, and mood."},
+    {"name": "Video",
+     "framing": "Rewrite the user's input as a detailed prompt for a video shot. "
+                "Cover subject motion, camera movement, pacing, lighting, and mood."},
+    {"name": "Edit (Inpainting/I2V)",
+     "framing": "Rewrite the user's edit instruction as a description of the final transformed "
+                "scene as it appears after the edit. Do not describe the editing process."},
 ]
-MODEL_FORMAT_INSTRUCTIONS = {
-    "Flux / Chroma (natural language)": (
-        "Format the output as flowing natural language in long descriptive sentences "
-        "suitable for Flux or Chroma. No tag syntax. No parenthesis weights. "
-        "No 'masterpiece' or quality boosters. Describe the scene as prose."
-    ),
-    "Z-Image / Lumina-2 (LLM text encoder)": (
-        "Format the output as long, richly descriptive natural-language prose suitable "
-        "for LLM-based text encoders (Z-Image, Lumina-2). Use complex sentences and "
-        "vivid concrete detail. No tag syntax, no weights."
-    ),
-    "HiDream (hybrid prose + descriptors)": (
-        "Format the output as flowing natural language with concrete photographic and "
-        "material descriptors woven in. Suitable for HiDream's multi-encoder pipeline. No weight syntax."
-    ),
-    "SDXL (tags + weights)": (
-        "Format the output as a comma-separated list of descriptive tags for SDXL. "
-        "Start with quality tags (masterpiece, best quality, highly detailed). "
-        "Use parenthesis weight syntax for emphasis like (cinematic lighting:1.2). "
-        "Order: subject, action, environment, lighting, camera, style, quality."
-    ),
-    "SD 1.5 (tags + weights)": (
-        "Format the output as a comma-separated list of descriptive tags for SD 1.5. "
-        "Lead with quality boosters (masterpiece, best quality, ultra-detailed). "
-        "Use parenthesis weight syntax. Keep tags compact."
-    ),
-    "Pony / Illustrious (booru tags + score)": (
-        "Format the output as comma-separated booru-style tags for Pony / Illustrious. "
-        "Lead with score tags: score_9, score_8_up, score_7_up. Include rating tag. "
-        "Use underscores for multi-word tags."
-    ),
-    "LTX Video (motion-focused prose)": (
-        "Format the output as a video shot description for LTX Video. "
-        "Lead with a clear shot description, then describe subject motion, camera movement, pacing, and atmosphere. No tag syntax."
-    ),
-    "Hunyuan / Wan Video (cinematic motion prose)": (
-        "Format the output as a cinematic video description with detailed motion. "
-        "Cover camera angle, camera movement, subject action, environmental motion, atmosphere, and pacing. No tag syntax."
-    ),
-    "Universal Natural Language": (
-        "Format the output as a flowing natural language paragraph describing the scene "
-        "in concrete visual detail. No tags, no weights."
-    ),
-}
+_purpose_data = _load_json_data("purposes.json", _PURPOSE_FALLBACK)
+PURPOSE_OPTIONS = [item["name"] for item in _purpose_data]
+PURPOSE_FRAMING = {item["name"]: item.get("framing", "") for item in _purpose_data}
 
-# ── Aesthetic ──────────────────────────────────────────────────────────────
-AESTHETIC_OPTIONS = [
-    "None (no aesthetic injection)", "Photorealistic", "Cinematic Film",
-    "Anime / Manga", "Studio Ghibli", "Pixar / 3D Animation",
-    "Comic Book / Graphic Novel", "Concept Art", "Oil Painting", "Watercolor",
-    "Pencil Sketch", "Cyberpunk", "Steampunk", "Fantasy", "Sci-Fi",
-    "Horror / Dark", "Vintage / Retro Film", "Film Noir", "Glamour / Editorial",
-    "Minimalist", "Surreal / Dreamy", "3D Render / CGI",
+# ── Model Format (편집: nodes/llm/data/model_formats.json) ─────────────────
+_MODEL_FORMAT_FALLBACK = [
+    {"name": "Flux / Chroma (natural language)",
+     "instruction": "Format the output as flowing natural language in long descriptive sentences "
+                     "suitable for Flux or Chroma. No tag syntax. No parenthesis weights. "
+                     "No 'masterpiece' or quality boosters. Describe the scene as prose."},
+    {"name": "Z-Image / Lumina-2 (LLM text encoder)",
+     "instruction": "Format the output as long, richly descriptive natural-language prose suitable "
+                     "for LLM-based text encoders (Z-Image, Lumina-2). Use complex sentences and "
+                     "vivid concrete detail. No tag syntax, no weights."},
+    {"name": "HiDream (hybrid prose + descriptors)",
+     "instruction": "Format the output as flowing natural language with concrete photographic and "
+                     "material descriptors woven in. Suitable for HiDream's multi-encoder pipeline. No weight syntax."},
+    {"name": "SDXL (tags + weights)",
+     "instruction": "Format the output as a comma-separated list of descriptive tags for SDXL. "
+                     "Start with quality tags (masterpiece, best quality, highly detailed). "
+                     "Use parenthesis weight syntax for emphasis like (cinematic lighting:1.2). "
+                     "Order: subject, action, environment, lighting, camera, style, quality."},
+    {"name": "SD 1.5 (tags + weights)",
+     "instruction": "Format the output as a comma-separated list of descriptive tags for SD 1.5. "
+                     "Lead with quality boosters (masterpiece, best quality, ultra-detailed). "
+                     "Use parenthesis weight syntax. Keep tags compact."},
+    {"name": "Pony / Illustrious (booru tags + score)",
+     "instruction": "Format the output as comma-separated booru-style tags for Pony / Illustrious. "
+                     "Lead with score tags: score_9, score_8_up, score_7_up. Include rating tag. "
+                     "Use underscores for multi-word tags."},
+    {"name": "LTX Video (motion-focused prose)",
+     "instruction": "Format the output as a video shot description for LTX Video. "
+                     "Lead with a clear shot description, then describe subject motion, camera movement, pacing, and atmosphere. No tag syntax."},
+    {"name": "Hunyuan / Wan Video (cinematic motion prose)",
+     "instruction": "Format the output as a cinematic video description with detailed motion. "
+                     "Cover camera angle, camera movement, subject action, environmental motion, atmosphere, and pacing. No tag syntax."},
+    {"name": "Universal Natural Language",
+     "instruction": "Format the output as a flowing natural language paragraph describing the scene "
+                     "in concrete visual detail. No tags, no weights."},
 ]
-AESTHETIC_DESCRIPTORS = {
-    "Photorealistic": "Visual style: photorealistic, sharp focus, accurate textures, lifelike skin and materials, realistic lighting and shadows, shallow depth of field, 8k camera detail.",
-    "Cinematic Film": "Visual style: cinematic film aesthetic, dramatic lighting with strong key and rim, filmic color grade, anamorphic framing, atmospheric haze, shallow depth of field.",
-    "Anime / Manga": "Visual style: anime/manga aesthetic, cel-shaded coloring, stylized features, expressive large eyes, dynamic poses, vibrant saturated color palette, clean lineart.",
-    "Studio Ghibli": "Visual style: Studio Ghibli aesthetic, hand-painted watercolor backgrounds, soft natural lighting, warm pastoral atmosphere, gentle character designs, nostalgic and serene mood.",
-    "Pixar / 3D Animation": "Visual style: 3D animation aesthetic in the spirit of Pixar/Disney, expressive stylized character proportions, polished CG surfaces, warm cinematic lighting.",
-    "Comic Book / Graphic Novel": "Visual style: comic book aesthetic, bold ink linework, halftone or hatching shading, dynamic poses, exaggerated proportions, saturated panel colors.",
-    "Concept Art": "Visual style: digital concept art, painterly brushwork, atmospheric perspective, value-driven composition, professional production-art feel.",
-    "Oil Painting": "Visual style: oil painting aesthetic, visible impasto brushwork, rich color depth, painterly textures, classical composition, warm gallery lighting.",
-    "Watercolor": "Visual style: watercolor painting aesthetic, soft translucent washes, paper texture visible, flowing pigment bleeds, gentle edges, limited palette.",
-    "Pencil Sketch": "Visual style: pencil sketch aesthetic, graphite linework, crosshatching shadows, monochrome or restrained color accents, loose unfinished sketchbook feel.",
-    "Cyberpunk": "Visual style: cyberpunk aesthetic, neon signage, rain-slicked streets, holographic interfaces, dystopian high-tech low-life atmosphere, magenta-cyan color palette.",
-    "Steampunk": "Visual style: steampunk aesthetic, brass and copper machinery, Victorian-era styling, exposed gears and clockwork, gas-lamp lighting, sepia and bronze color palette.",
-    "Fantasy": "Visual style: high fantasy aesthetic, medieval or magical setting, ethereal lighting, ornate detail, mythological elements, lush detailed environments, painterly atmosphere.",
-    "Sci-Fi": "Visual style: science fiction aesthetic, advanced technology, sleek futuristic surfaces, panel-screen lighting, industrial design, blue and white accent palette.",
-    "Horror / Dark": "Visual style: horror aesthetic, low-key dramatic lighting, deep shadows, unsettling atmosphere, desaturated muted palette with occasional blood-red accents.",
-    "Vintage / Retro Film": "Visual style: vintage film aesthetic, 35mm grain, faded warm color cast, soft contrast, period-appropriate styling, light leaks and lens artifacts.",
-    "Film Noir": "Visual style: film noir aesthetic, high-contrast black-and-white or near-monochrome, dramatic chiaroscuro lighting, venetian-blind shadows, urban night atmosphere.",
-    "Glamour / Editorial": "Visual style: high-fashion editorial aesthetic, polished beauty lighting, magazine-shoot composition, soft skin rendering, dramatic backdrop.",
-    "Minimalist": "Visual style: minimalist aesthetic, clean composition, generous negative space, limited color palette, simple geometric forms, calm uncluttered framing.",
-    "Surreal / Dreamy": "Visual style: surreal dreamlike aesthetic, soft hazy lighting, impossible compositions, dream-logic juxtapositions, ethereal color shifts.",
-    "3D Render / CGI": "Visual style: 3D render aesthetic, clean CGI surfaces, ray-traced lighting, sharp reflections, subsurface scattering, Octane/Blender render quality.",
-}
+_model_format_data = _load_json_data("model_formats.json", _MODEL_FORMAT_FALLBACK)
+MODEL_FORMAT_OPTIONS = [item["name"] for item in _model_format_data]
+MODEL_FORMAT_INSTRUCTIONS = {item["name"]: item.get("instruction", "") for item in _model_format_data}
+
+# ── Aesthetic (편집: nodes/llm/data/aesthetics.json) ────────────────────────
+_AESTHETIC_FALLBACK = [
+    {"name": "None (no aesthetic injection)", "descriptor": ""},
+    {"name": "Photorealistic", "descriptor": "Visual style: photorealistic, sharp focus, accurate textures, lifelike skin and materials, realistic lighting and shadows, shallow depth of field, 8k camera detail."},
+    {"name": "Cinematic Film", "descriptor": "Visual style: cinematic film aesthetic, dramatic lighting with strong key and rim, filmic color grade, anamorphic framing, atmospheric haze, shallow depth of field."},
+    {"name": "Anime / Manga", "descriptor": "Visual style: anime/manga aesthetic, cel-shaded coloring, stylized features, expressive large eyes, dynamic poses, vibrant saturated color palette, clean lineart."},
+    {"name": "Studio Ghibli", "descriptor": "Visual style: Studio Ghibli aesthetic, hand-painted watercolor backgrounds, soft natural lighting, warm pastoral atmosphere, gentle character designs, nostalgic and serene mood."},
+    {"name": "Pixar / 3D Animation", "descriptor": "Visual style: 3D animation aesthetic in the spirit of Pixar/Disney, expressive stylized character proportions, polished CG surfaces, warm cinematic lighting."},
+    {"name": "Comic Book / Graphic Novel", "descriptor": "Visual style: comic book aesthetic, bold ink linework, halftone or hatching shading, dynamic poses, exaggerated proportions, saturated panel colors."},
+    {"name": "Concept Art", "descriptor": "Visual style: digital concept art, painterly brushwork, atmospheric perspective, value-driven composition, professional production-art feel."},
+    {"name": "Oil Painting", "descriptor": "Visual style: oil painting aesthetic, visible impasto brushwork, rich color depth, painterly textures, classical composition, warm gallery lighting."},
+    {"name": "Watercolor", "descriptor": "Visual style: watercolor painting aesthetic, soft translucent washes, paper texture visible, flowing pigment bleeds, gentle edges, limited palette."},
+    {"name": "Pencil Sketch", "descriptor": "Visual style: pencil sketch aesthetic, graphite linework, crosshatching shadows, monochrome or restrained color accents, loose unfinished sketchbook feel."},
+    {"name": "Cyberpunk", "descriptor": "Visual style: cyberpunk aesthetic, neon signage, rain-slicked streets, holographic interfaces, dystopian high-tech low-life atmosphere, magenta-cyan color palette."},
+    {"name": "Steampunk", "descriptor": "Visual style: steampunk aesthetic, brass and copper machinery, Victorian-era styling, exposed gears and clockwork, gas-lamp lighting, sepia and bronze color palette."},
+    {"name": "Fantasy", "descriptor": "Visual style: high fantasy aesthetic, medieval or magical setting, ethereal lighting, ornate detail, mythological elements, lush detailed environments, painterly atmosphere."},
+    {"name": "Sci-Fi", "descriptor": "Visual style: science fiction aesthetic, advanced technology, sleek futuristic surfaces, panel-screen lighting, industrial design, blue and white accent palette."},
+    {"name": "Horror / Dark", "descriptor": "Visual style: horror aesthetic, low-key dramatic lighting, deep shadows, unsettling atmosphere, desaturated muted palette with occasional blood-red accents."},
+    {"name": "Vintage / Retro Film", "descriptor": "Visual style: vintage film aesthetic, 35mm grain, faded warm color cast, soft contrast, period-appropriate styling, light leaks and lens artifacts."},
+    {"name": "Film Noir", "descriptor": "Visual style: film noir aesthetic, high-contrast black-and-white or near-monochrome, dramatic chiaroscuro lighting, venetian-blind shadows, urban night atmosphere."},
+    {"name": "Glamour / Editorial", "descriptor": "Visual style: high-fashion editorial aesthetic, polished beauty lighting, magazine-shoot composition, soft skin rendering, dramatic backdrop."},
+    {"name": "Minimalist", "descriptor": "Visual style: minimalist aesthetic, clean composition, generous negative space, limited color palette, simple geometric forms, calm uncluttered framing."},
+    {"name": "Surreal / Dreamy", "descriptor": "Visual style: surreal dreamlike aesthetic, soft hazy lighting, impossible compositions, dream-logic juxtapositions, ethereal color shifts."},
+    {"name": "3D Render / CGI", "descriptor": "Visual style: 3D render aesthetic, clean CGI surfaces, ray-traced lighting, sharp reflections, subsurface scattering, Octane/Blender render quality."},
+]
+_aesthetic_data = _load_json_data("aesthetics.json", _AESTHETIC_FALLBACK)
+AESTHETIC_OPTIONS = [item["name"] for item in _aesthetic_data]
+AESTHETIC_DESCRIPTORS = {item["name"]: item["descriptor"] for item in _aesthetic_data if str(item.get("descriptor", "")).strip()}
 
 # ── Cleaning helpers ───────────────────────────────────────────────────────
 REASONING_MARKERS = (
@@ -258,14 +258,27 @@ def _free_llm(llm):
         torch.cuda.empty_cache()
 
 
+# ── 시스템 프롬프트 마무리 고정 지시문 (편집: nodes/llm/data/system_prompt_base.json) ──
+_SYSTEM_PROMPT_BASE_FALLBACK = {
+    "output_only_instruction": (
+        "Output only the final prompt, nothing else. Do not explain. Do not include thinking, "
+        "analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'."
+    )
+}
+_system_prompt_base_data = _load_json_data("system_prompt_base.json", _SYSTEM_PROMPT_BASE_FALLBACK)
+OUTPUT_ONLY_INSTRUCTION = _system_prompt_base_data.get(
+    "output_only_instruction", _SYSTEM_PROMPT_BASE_FALLBACK["output_only_instruction"]
+)
+
+
 def build_layered_system_prompt(purpose, model_format, aesthetic, extra_instructions="", append_no_think=False):
-    parts = [PURPOSE_FRAMING[purpose]]
+    parts = [PURPOSE_FRAMING.get(purpose, "")]
     if aesthetic in AESTHETIC_DESCRIPTORS:
         parts.append(AESTHETIC_DESCRIPTORS[aesthetic])
-    parts.append(MODEL_FORMAT_INSTRUCTIONS[model_format])
+    parts.append(MODEL_FORMAT_INSTRUCTIONS.get(model_format, ""))
     if extra_instructions.strip():
         parts.append(extra_instructions.strip())
-    parts.append("Output only the final prompt, nothing else. Do not explain. Do not include thinking, analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'.")
+    parts.append(OUTPUT_ONLY_INSTRUCTION)
     text = " ".join(parts)
     if append_no_think:
         text = text.rstrip() + " /no_think"

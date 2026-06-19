@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Image",
+    "framing": "Rewrite the user's input as a detailed prompt for a static image. Cover subject, environment, lighting, composition, and mood."
+  },
+  {
+    "name": "Video",
+    "framing": "Rewrite the user's input as a detailed prompt for a video shot. Cover subject motion, camera movement, pacing, lighting, and mood."
+  },
+  {
+    "name": "Edit (Inpainting/I2V)",
+    "framing": "Rewrite the user's edit instruction as a description of the final transformed scene as it appears after the edit. Do not describe the editing process."
+  }
+  {
+    "name": "Custom",
+    "framing": ""
+  }
+]

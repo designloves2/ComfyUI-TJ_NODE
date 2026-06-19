@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from datetime import datetime
 import folder_paths
-from ..utility._utility_utils import _tj_safe_output_dir
+from ..utility._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases
 
 
 class TJ_SaveAndPreviewImage:
@@ -15,9 +15,9 @@ class TJ_SaveAndPreviewImage:
             "required": {
                 "images": ("IMAGE",),
                 "get_name": (["(none)"],),
-                "setnode_name": ("STRING", {"default": ""}),
-                "filename_prefix": ("STRING", {"default": "TJ_Output"}),
-                "path": ("STRING", {"default": ""}),
+                "setnode_name": ("STRING", {"default": "Save_img"}),
+                "filename_prefix": ("STRING", {"default": "image"}),
+                "path": ("STRING", {"default": "image/%date/"}),
                 "type": (["png", "jpg", "webp"], {"default": "png"}),
                 "mode": (["Preview", "Save"], {"default": "Preview"}),
             }
@@ -35,8 +35,8 @@ class TJ_SaveAndPreviewImage:
 
     def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
         now = datetime.now()
-        parsed_prefix = now.strftime(filename_prefix)
-        parsed_path = now.strftime(path)
+        parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
+        parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
 
         if mode == "Preview":
             out_dir = folder_paths.get_temp_directory()
@@ -46,22 +46,23 @@ class TJ_SaveAndPreviewImage:
         os.makedirs(out_dir, exist_ok=True)
         results = []
         is_batch = len(images) > 1
+        save_counter = 1  # Save 모드에서 배치 전체에 걸쳐 이어지는 번호 (텍스트 노드와 번호 매칭용)
 
         for i, img_tensor in enumerate(images):
             img_np = 255.0 * img_tensor.cpu().numpy()
             img = Image.fromarray(np.clip(img_np, 0, 255).astype(np.uint8))
-            suffix = f"_{i:04d}" if is_batch else ""
-            filename = f"{parsed_prefix}{suffix}.{type}"
 
             if mode == "Save":
                 base = parsed_prefix
-                counter = 1
-                file_path = os.path.join(out_dir, filename)
-                while os.path.exists(file_path):
-                    filename = f"{base}{suffix}_{counter:04d}.{type}"
+                while True:
+                    filename = f"{base}_{save_counter:04d}.{type}"
                     file_path = os.path.join(out_dir, filename)
-                    counter += 1
+                    if not os.path.exists(file_path):
+                        break
+                    save_counter += 1
+                save_counter += 1
             else:
+                suffix = f"_{i:04d}" if is_batch else ""
                 rnd = random.randint(10000, 99999)
                 filename = f"tj_prev_{rnd}_{parsed_prefix}{suffix}.{type}"
                 file_path = os.path.join(out_dir, filename)
