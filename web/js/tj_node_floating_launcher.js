@@ -566,13 +566,19 @@ import {
   }
 
   function clientToGraphPos(clientX, clientY) {
+    const canvas = app?.canvas;
     const canvasEl = getCanvasElement();
-    if (!canvasEl || !app?.canvas?.ds) return [clientX, clientY];
+
+    if (!canvasEl || !canvas) return [clientX, clientY];
+
+    if (typeof canvas.convertEventToCanvasOffset === "function") {
+      return canvas.convertEventToCanvasOffset({ clientX, clientY });
+    }
 
     const rect = canvasEl.getBoundingClientRect();
-    const ds = app.canvas.ds;
-    const x = (clientX - rect.left - ds.offset[0]) / ds.scale;
-    const y = (clientY - rect.top - ds.offset[1]) / ds.scale;
+    const ds = canvas.ds;
+    const x = (clientX - rect.left) / ds.scale - ds.offset[0];
+    const y = (clientY - rect.top) / ds.scale - ds.offset[1];
     return [x, y];
   }
 
