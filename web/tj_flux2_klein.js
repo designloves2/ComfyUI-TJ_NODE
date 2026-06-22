@@ -20,9 +20,9 @@ const RATIO_PRESETS = {
 };
 
 const ADVANCED_WIDGETS = [
-    // Always-visible: model_name, clip_name, vae_name, kv_cache_mode, size_mode, cfg
-    "ratio_preset", "megapixels", "divisible_by", "batch_size",
-    "sampler_name", "denoise", "width", "height",
+    "divisible_by",
+    "sampler_name", "denoise",
+    "get_name_reference_3", "get_name_reference_4", "get_name_reference_5",
 ];
 
 const OVERRIDE_INPUT_SPECS = [
@@ -500,14 +500,42 @@ function updateLoraSlots(node) {
     setWidgetVisible(node, node._tjAddLoraBtn, advanced);
     if (node._tjAddLoraBtn) node._tjAddLoraBtn.name = count >= MAX_LORA_SLOTS ? "LoRA slots full" : "Add LoRA Slot";
 }
+
+function tjStyleFluxButtonWidget(widget, kind = "blue") {
+    if (!widget) return;
+    widget._tj_button_kind = kind;
+    widget._tj_orig_draw = widget._tj_orig_draw || widget.draw;
+    widget.draw = function(ctx, node, width, y, h) {
+        const margin = 10;
+        const x = margin;
+        const w = Math.max(10, width - margin * 2);
+        const r = 4;
+        ctx.save();
+        ctx.fillStyle = kind === "red" ? "#8c2626" : "#0055bb";
+        ctx.strokeStyle = kind === "red" ? "#ff4757" : "#0044aa";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect?.(x, y + 2, w, Math.max(16, h - 4), r);
+        if (!ctx.roundRect) ctx.rect(x, y + 2, w, Math.max(16, h - 4));
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = kind === "red" ? "#ffd5d5" : "#00efff";
+        ctx.font = "bold 11px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(this.name || "", width / 2, y + h / 2);
+        ctx.restore();
+    };
+}
 function installLoraButtons(node) {
     const loraSlotWidget = findWidget(node, "lora_slots");
     if (loraSlotWidget) setWidgetVisible(node, loraSlotWidget, false);
     if (node._tj_lora_buttons_installed) return;
     node._tj_lora_buttons_installed = true;
     for (let slot = 1; slot <= MAX_LORA_SLOTS; slot++) {
-        const button = node.addWidget("button", `✕ Remove LoRA ${slot}`, "remove", () => removeLoraSlot(node, slot), { serialize: false });
+        const button = node.addWidget("button", `Remove LoRA ${slot}`, "remove", () => removeLoraSlot(node, slot), { serialize: false });
         node[`_tjRemoveLora${slot}`] = button;
+        tjStyleFluxButtonWidget(button, "red");
         const widgets = node.widgets;
         const fromIndex = widgets.indexOf(button);
         if (fromIndex >= 0) widgets.splice(fromIndex, 1);
@@ -518,6 +546,7 @@ function installLoraButtons(node) {
     node._tjAddLoraBtn = node.addWidget("button", "Add LoRA Slot", "add", () => {
         if (activeLoraCount(node) < MAX_LORA_SLOTS) setActiveLoraCount(node, activeLoraCount(node) + 1);
     }, { serialize: false });
+    tjStyleFluxButtonWidget(node._tjAddLoraBtn, "blue");
 }
 
 function applyAdvanced(node) {
@@ -543,7 +572,7 @@ function makeReadoutWidget(name) {
     return {
         type: "tj_flux2_readout", name, value: "", options: { serialize: false }, serialize: false,
         draw(ctx, node, widgetWidth, widgetY, height) {
-            ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "600 12px sans-serif"; ctx.fillStyle = ACCENT;
+            ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "bold 10px sans-serif"; ctx.fillStyle = "#00efff";
             ctx.fillText(String(this.value || ""), widgetWidth * 0.5, widgetY + height * 0.5); ctx.restore();
         },
         computeSize(width) { return [width || 0, 22]; },
@@ -643,14 +672,106 @@ function installPromptHeight(node, widgetName, prop, defaultH) {
     w.computeSize = function(width) { return [width, node.properties[prop]]; };
 }
 
+function hideFluxWidget(node, name, hidden) {
+    const w = findWidget(node, name);
+    if (!w) return;
+    if (!w._tj_flux_toggle_saved) w._tj_flux_toggle_saved = { type: w.type, computeSize: w.computeSize };
+    w.type = hidden ? "hidden" : w._tj_flux_toggle_saved.type;
+    w.computeSize = hidden ? () => [0, -4] : w._tj_flux_toggle_saved.computeSize;
+    w.disabled = hidden;
+    w.hidden = hidden;
+    node.setDirtyCanvas?.(true, true);
+}
+
+function installFluxPromptToggle(node, widgetName, propName, title) {
+    const target = findWidget(node, widgetName);
+    if (!target || node[`_${propName}_toggle_added`]) return;
+    node[`_${propName}_toggle_added`] = true;
+    if (!node.properties) node.properties = {};
+    if (node.properties[propName] === undefined) node.properties[propName] = true;
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;width:100%;max-width:100%;height:22px;box-sizing:border-box;padding:1px 2px;";
+    const btn = document.createElement("button");
+    btn.style.cssText = "width:100%;max-width:100%;height:20px;background:#151515;color:#00efff;border:1px solid #333;border-radius:3px;cursor:pointer;font-size:10px;font-weight:bold;text-align:left;padding:0 6px;box-sizing:border-box;";
+    row.appendChild(btn);
+
+    const refresh = () => {
+        btn.textContent = `${node.properties[propName] ? "▼" : "▶"} ${title}`;
+        hideFluxWidget(node, widgetName, !node.properties[propName]);
+    };
+    btn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        node.properties[propName] = !node.properties[propName];
+        refresh();
+        scheduleFitNodeHeight(node);
+        app.canvas?.setDirty(true, true);
+    };
+
+    const toggle = node.addDOMWidget(`${widgetName}_toggle`, "btn", row, { serialize: false, hideOnZoom: false });
+    toggle.computeSize = function(width) { return [width || 0, 24]; };
+    const tIdx = node.widgets.indexOf(toggle);
+    const nIdx = node.widgets.findIndex(w => w.name === widgetName);
+    if (tIdx >= 0 && nIdx >= 0 && tIdx > nIdx) {
+        node.widgets.splice(tIdx, 1);
+        node.widgets.splice(nIdx, 0, toggle);
+    }
+    refresh();
+}
+
+function moveWidgetAfter(node, widgetName, afterName) {
+    const widgets = node.widgets || [];
+    const idx = widgets.findIndex(w => w.name === widgetName);
+    const after = widgets.findIndex(w => w.name === afterName);
+    if (idx >= 0 && after >= 0 && idx !== after + 1) {
+        const [w] = widgets.splice(idx, 1);
+        const freshAfter = widgets.findIndex(x => x.name === afterName);
+        widgets.splice(freshAfter + 1, 0, w);
+    }
+}
+
+function moveFluxManualSizeUnderSizeMode(node) {
+    moveWidgetAfter(node, "width", "divisible_by");
+    moveWidgetAfter(node, "height", "width");
+}
+
+function moveFluxSizeReadoutBelowAdvanced(node) {
+    const readout = findWidget(node, "tj_flux2_size_readout");
+    const adv = node._tjAdvButton;
+    if (!readout || !adv || !node.widgets) return;
+    const rIdx = node.widgets.indexOf(readout);
+    const aIdx = node.widgets.indexOf(adv);
+    if (rIdx >= 0 && aIdx >= 0 && rIdx !== aIdx + 1) {
+        node.widgets.splice(rIdx, 1);
+        const freshAIdx = node.widgets.indexOf(adv);
+        node.widgets.splice(freshAIdx + 1, 0, readout);
+    }
+}
+
 function reorderWidgets(node) {
-    const order = ["model_name", "clip_name", "vae_name", "kv_cache_mode", "positive", "negative", "auto_set", "setnode_name"];
-    for (let i = order.length - 1; i >= 0; i--) {
-        const idx = node.widgets?.findIndex(w => w.name === order[i]);
+    const topOrder = ["model_name", "clip_name", "vae_name", "kv_cache_mode", "positive_toggle", "positive", "negative_toggle", "negative", "auto_set", "setnode_name"];
+    for (let i = topOrder.length - 1; i >= 0; i--) {
+        const idx = node.widgets?.findIndex(w => w.name === topOrder[i]);
         if (idx > 0) {
             const [w] = node.widgets.splice(idx, 1);
             node.widgets.unshift(w);
         }
+    }
+    const detailOrder = [
+        "size_mode", "ratio_preset", "megapixels", "divisible_by", "width", "height",
+        "steps", "cfg", "batch_size", "sampler_name", "denoise", "seed", "control_after_generate",
+        "get_name_reference_1", "get_name_reference_2", "get_name_reference_3", "get_name_reference_4", "get_name_reference_5",
+    ];
+    let anchor = node.widgets?.findIndex(w => w.name === "setnode_name") ?? -1;
+    if (!node.widgets || anchor < 0) return;
+    for (const name of detailOrder) {
+        const idx = node.widgets.findIndex(w => w.name === name);
+        if (idx < 0) continue;
+        const [w] = node.widgets.splice(idx, 1);
+        if (idx < anchor) anchor -= 1;
+        node.widgets.splice(anchor + 1, 0, w);
+        anchor += 1;
     }
 }
 
@@ -726,14 +847,21 @@ function installNode(node) {
             node.properties = node.properties || {};
             node.properties.tj_flux2_advanced = !isAdvanced(node);
             applyAdvanced(node);
+            moveFluxSizeReadoutBelowAdvanced(node);
             scheduleFitNodeHeight(node);
         }, { serialize: false });
     }
 
-    installPromptHeight(node, "positive", "tj_flux2_positive_h", 90);
-    installPromptHeight(node, "negative", "tj_flux2_negative_h", 54);
+    installPromptHeight(node, "positive", "tj_flux2_positive_h", 120);
+    installPromptHeight(node, "negative", "tj_flux2_negative_h", 120);
+    installFluxPromptToggle(node, "positive", "tj_flux2_positive_open", "Positive prompt");
+    installFluxPromptToggle(node, "negative", "tj_flux2_negative_open", "Negative prompt");
+    reorderWidgets(node);
+    moveFluxManualSizeUnderSizeMode(node);
+    moveFluxSizeReadoutBelowAdvanced(node);
     applyAdvanced(node);
     updateAutoSets(node);
+    moveFluxSizeReadoutBelowAdvanced(node);
     updateSizeReadout(node);
     tjApplyOutputArrowState(node, tjAutosetEnabled(node));
     requestAnimationFrame(() => scheduleFitNodeHeight(node));
@@ -812,6 +940,8 @@ app.registerExtension({
         };
 
         const origOnMouseMove = nodeType.prototype.onMouseMove;
+        const origOnMouseDown = nodeType.prototype.onMouseDown;
+        nodeType.prototype.onMouseDown = function(event,pos){ const rect=this._tjInfoRect; if(rect&&Array.isArray(pos)){ const dx=pos[0]-rect.cx,dy=pos[1]-rect.cy; if(dx*dx+dy*dy<=(rect.r+4)*(rect.r+4)){ this._tjInfoHover=!this._tjInfoHover; this.setDirtyCanvas?.(true,true); return true; }} return origOnMouseDown?.apply(this,arguments);};
         nodeType.prototype.onMouseMove = function(event, pos) {
             const rect = this._tjInfoRect;
             let hover = false;
@@ -819,10 +949,7 @@ app.registerExtension({
                 const dx = pos[0] - rect.cx, dy = pos[1] - rect.cy;
                 hover = dx * dx + dy * dy <= (rect.r + 4) * (rect.r + 4);
             }
-            if (hover !== !!this._tjInfoHover) {
-                this._tjInfoHover = hover;
-                this.setDirtyCanvas?.(true, true);
-            }
+            
             return origOnMouseMove?.apply(this, arguments);
         };
     },

@@ -367,42 +367,65 @@ function tjApplyAutoSetOutputArrows(node, enabled) {
 }
 
 
-function tjOutputBaseName(name) {
-    return String(name || "").replace(/^▶\s*/, "").replace(/\s*▶$/, "");
-}
+function tjOutputBaseName(name) { return String(name || "").replace(/^▶\s*/, "").replace(/\s*▶$/, ""); }
 
-function tjApplyOutputArrowState(node, enabled) {
+const Z_OUTPUT_BASE_NAMES = ["image", "latent", "width", "height", "model", "model_clean", "clip", "vae", "positive", "negative"];
+function tjEnsureOriginalOutputNames(node) {
+    if (!node?.outputs) return;
+    node.outputs.forEach((out, idx) => {
+        if (!out) return;
+        if (out._tj_z_original_output_name === undefined) {
+            const fallback = Z_OUTPUT_BASE_NAMES[idx] || tjOutputBaseName(out.name || out.label || `output_${idx + 1}`);
+            const raw = tjOutputBaseName(out.name || out.label || fallback);
+            out._tj_z_original_output_name = raw.includes("/") ? fallback : (raw || fallback);
+        }
+    });
+}
+function tjRestoreOriginalOutputNames(node) {
     if (!node?.outputs) return;
     let changed = false;
-
-    for (const out of node.outputs) {
-        if (!out) continue;
-
-        // ComfyUI/LiteGraph builds may draw output text from name, label, or localized_name.
-        // Keep all three in sync so Auto Set state is visually reliable.
-        const raw = out._tj_output_base_name || out._tj_base_name || out.name || out.label || out.localized_name || "";
-        const base = tjOutputBaseName(raw);
-        const display = enabled ? `${base} ▶` : base;
-
+    tjEnsureOriginalOutputNames(node);
+    node.outputs.forEach((out, idx) => {
+        if (!out) return;
+        const base = out._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || `output_${idx + 1}`;
         out._tj_output_base_name = base;
         out._tj_base_name = base;
-
-        if (out.name !== display) { out.name = display; changed = true; }
-        if (out.label !== display) { out.label = display; changed = true; }
-        if (out.localized_name !== display) { out.localized_name = display; changed = true; }
-    }
-
+        if (out.name !== base) { out.name = base; changed = true; }
+        if (out.label !== base) { out.label = base; changed = true; }
+        if (out.localized_name !== base) { out.localized_name = base; changed = true; }
+    });
     if (changed) {
         node.setDirtyCanvas?.(true, true);
         app.canvas?.setDirty(true, true);
     }
 }
-
+function tjApplyOutputArrowState(node, enabled) {
+    if (!node?.outputs) return;
+    tjEnsureOriginalOutputNames(node);
+    if (!enabled) {
+        tjRestoreOriginalOutputNames(node);
+        return;
+    }
+    let changed = false;
+    for (const [idx, out] of (node.outputs || []).entries()) {
+        if (!out) continue;
+        const base = out._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || tjOutputBaseName(out.name || out.label || `output_${idx + 1}`);
+        const display = `${base} ▶`;
+        out._tj_output_base_name = base;
+        out._tj_base_name = base;
+        if (out.name !== display) { out.name = display; changed = true; }
+        if (out.label !== display) { out.label = display; changed = true; }
+        if (out.localized_name !== display) { out.localized_name = display; changed = true; }
+    }
+    if (changed) {
+        node.setDirtyCanvas?.(true, true);
+        app.canvas?.setDirty(true, true);
+    }
+}
 function tjAutosetEnabled(node) {
     const autoW = node.widgets?.find(w => w.name === "auto_set");
     return !!autoW?.value;
 }
-
 function updateAutoSets(node, prefix = "") {
     if (!node) return;
     if (!node.properties) node.properties = {};
@@ -412,19 +435,47 @@ function updateAutoSets(node, prefix = "") {
     tjApplyOutputArrowState(node, enabled);
     if (!enabled) {
         node.properties.auto_sets = {};
+        tjRestoreOriginalOutputNames(node);
     } else {
-        const base = String(setW?.value || prefix || node.title || node.type || "TJ").trim();
+        tjEnsureOriginalOutputNames(node);
+        const base = String(setW?.value || prefix || node.title || node.type || "Z-Image").trim();
         const autoSets = {};
         (node.outputs || []).forEach((out, idx) => {
-            if (!out) return;
-            const nm = tjOutputBaseName(out.name || `OUT_${idx + 1}`).trim();
-            if (nm && nm !== "status") autoSets[idx] = base ? `${base}/${nm}` : nm;
+            const nm = (out?._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || `OUT_${idx + 1}`).trim();
+            if (!nm || nm === "status") return;
+            // Match Flux2 Klein Auto Set display: every output slot is namespaced by setnode_name.
+            autoSets[idx] = base ? `${base}/${nm}` : nm;
         });
         node.properties.auto_sets = autoSets;
+    }
+    if (window.TJ_NODE_ensureUniqueAutoSetNames && node.graph) window.TJ_NODE_ensureUniqueAutoSetNames(node.graph);
+    if (enabled && node.properties?.auto_sets) {
+        for (const [idx, nm] of Object.entries(node.properties.auto_sets)) {
+            const out = node.outputs?.[parseInt(idx)];
+            if (out && nm) {
+                const display = `${nm} ▶`;
+                out.name = display; out.label = display; out.localized_name = display;
+            }
+        }
     }
     if (window.TJ_NODE_scheduleWirelessRepair && node.graph) window.TJ_NODE_scheduleWirelessRepair(node.graph, 80);
     node.setDirtyCanvas?.(true, true);
     app.canvas?.setDirty(true, true);
+}
+function zAutoSetDisplayNeedsRefresh(node) {
+    if (!tjAutosetEnabled(node)) return false;
+    const setW = node.widgets?.find(w => w.name === "setnode_name" || w.name === "set_name");
+    const base = String(setW?.value || node.title || node.type || "Z-Image").trim();
+    const autoSets = node.properties?.auto_sets || {};
+    for (const [idx, out] of (node.outputs || []).entries()) {
+        if (!out) continue;
+        const original = (out._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || `OUT_${idx + 1}`).trim();
+        if (!original || original === "status") continue;
+        const expectedRaw = autoSets[idx] || autoSets[String(idx)] || (base ? `${base}/${original}` : original);
+        const expected = `${expectedRaw} ▶`;
+        if (out.name !== expected || out.label !== expected || out.localized_name !== expected) return true;
+    }
+    return false;
 }
 
 function installAutoSet(node) {
@@ -496,7 +547,7 @@ function setWidgetHeight(node, name, prop, defaultH = 120) {
 
 
 const TJ_Z_MAX_LORA_SLOTS = 5;
-const TJ_Z_ADVANCED_WIDGETS = ["cfg", "sampler_name", "scheduler", "denoise", "aura_shift", "divisible_by"];
+const TJ_Z_ADVANCED_WIDGETS = ["sampler_name", "scheduler", "denoise", "aura_shift", "divisible_by"];
 const TJ_Z_OVERRIDE_INPUT_SPECS = [
     ["model_override", "MODEL"],
     ["clip_override", "CLIP"],
@@ -603,6 +654,40 @@ function zEnsureZitControlInput(node) {
     if (idx < 0) node.addInput("zit_control", "ZIT_CONTROL");
 }
 
+const TJ_Z_ADVANCED_OUTPUTS = new Set(["model", "model_clean", "clip", "vae", "positive", "negative"]);
+function zSetAdvancedOutputsVisible(node, visible) {
+    if (!node?.outputs) return;
+    tjEnsureOriginalOutputNames(node);
+    if (!node._tj_z_hidden_outputs) node._tj_z_hidden_outputs = {};
+
+    if (visible) {
+        const saved = Object.entries(node._tj_z_hidden_outputs)
+            .map(([idx, out]) => [Number(idx), out])
+            .sort((a, b) => a[0] - b[0]);
+        for (const [idx, out] of saved) {
+            if (!out) continue;
+            const base = out._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || tjOutputBaseName(out.name || out.label || "");
+            const exists = node.outputs.some(o => {
+                const oBase = o?._tj_z_original_output_name || tjOutputBaseName(o?.name || o?.label || "");
+                return oBase === base;
+            });
+            if (!exists) node.outputs.splice(Math.min(idx, node.outputs.length), 0, out);
+        }
+        node._tj_z_hidden_outputs = {};
+        return;
+    }
+
+    for (let idx = node.outputs.length - 1; idx >= 0; idx--) {
+        const out = node.outputs[idx];
+        if (!out) continue;
+        const base = out._tj_z_original_output_name || Z_OUTPUT_BASE_NAMES[idx] || tjOutputBaseName(out.name || out.label || "");
+        if (!TJ_Z_ADVANCED_OUTPUTS.has(base)) continue;
+        if (Array.isArray(out.links) && out.links.length > 0) continue;
+        node._tj_z_hidden_outputs[idx] = out;
+        node.outputs.splice(idx, 1);
+    }
+}
+
 function zUpdateAdvanced(node) {
     if (!node.properties) node.properties = {};
     const advanced = !!node.properties.tj_z_advanced;
@@ -611,6 +696,7 @@ function zUpdateAdvanced(node) {
     for (const name of TJ_Z_ADVANCED_WIDGETS) zSetWidgetVisible(node, zFindWidget(node, name), advanced);
     zSetOverrideInputsVisible(node, advanced);
     zEnsureZitControlInput(node);
+    zSetAdvancedOutputsVisible(node, advanced);
 
     const loraSlotsW = zFindWidget(node, "lora_slots");
     zSetWidgetVisible(node, loraSlotsW, false);
@@ -659,13 +745,14 @@ function tjStyleZButtonWidget(widget, kind = "blue") {
 function zReorderCoreWidgets(node) {
     const order = [
         "auto_set",
+        "setnode_name",
         "ratio_preset",
         "megapixels",
-        "steps",
         "width",
         "height",
-        "batch_size",
+        "steps",
         "cfg",
+        "batch_size",
         "sampler_name",
         "scheduler",
         "denoise",
@@ -721,6 +808,7 @@ function zInstallOriginalButtons(node) {
     node._tjAdvButton = node.addWidget("button", "Show advanced settings", "advanced", () => {
         node.properties.tj_z_advanced = !node.properties.tj_z_advanced;
         zUpdateAdvanced(node);
+        zScheduleFitNodeHeight(node);
     }, { serialize: false });
 
     zUpdateAdvanced(node);
@@ -749,6 +837,7 @@ function zInstallPromptToggle(node, widgetName, propName, title, beforeWidgetNam
         e.stopPropagation();
         node.properties[propName] = !node.properties[propName];
         refresh();
+        zScheduleFitNodeHeight(node);
         node.setDirtyCanvas?.(true, true);
         app.canvas?.setDirty(true, true);
     };
@@ -807,6 +896,37 @@ function zMoveSizeInfoToBottom(node) {
         node.widgets.splice(idx, 1);
         node.widgets.push(dom);
     }
+}
+
+function zFitNodeHeightToWidgets(node) {
+    if (!node || !node.size || node.flags?.collapsed) return;
+    try {
+        const width = Math.max(240, Number(node.size[0] || 350));
+        let total = 36;
+        for (const w of (node.widgets || [])) {
+            if (!w) continue;
+            let h = 24;
+            try {
+                const computed = w.computeSize ? w.computeSize(width) : null;
+                if (computed && Number.isFinite(Number(computed[1]))) h = Number(computed[1]);
+            } catch (_) {}
+            if (h > 0) total += h + 4;
+        }
+        // Native preview area is not touched. Only trim / expand the UI control area height.
+        const targetH = Math.max(520, Math.min(980, Math.round(total + 18)));
+        const currentH = Number(node.size[1] || 0);
+        if (Math.abs(currentH - targetH) > 12) {
+            node._tj_z_internal_resize = true;
+            try { node.setSize?.([width, targetH]); }
+            finally { setTimeout(() => { node._tj_z_internal_resize = false; }, 80); }
+        }
+    } catch (_) {}
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+}
+
+function zScheduleFitNodeHeight(node) {
+    for (const delay of [0, 60, 180]) setTimeout(() => zFitNodeHeightToWidgets(node), delay);
 }
 
 function zInstallSizeInfo(node) {
@@ -1024,6 +1144,8 @@ function tjZInstallInfoHover(nodeType) {
     if (nodeType.prototype._tj_z_info_hover_installed) return;
     nodeType.prototype._tj_z_info_hover_installed = true;
     const origOnMouseMove = nodeType.prototype.onMouseMove;
+    const origOnMouseDown = nodeType.prototype.onMouseDown;
+    nodeType.prototype.onMouseDown = function(event,pos){ const rect=this._tjZInfoRect; if(rect&&Array.isArray(pos)){ const dx=pos[0]-rect.cx,dy=pos[1]-rect.cy; if(dx*dx+dy*dy<=(rect.r+4)*(rect.r+4)){ this._tjZInfoHover=!this._tjZInfoHover; this.setDirtyCanvas?.(true,true); app.canvas?.setDirty(true,true); return true; }} return origOnMouseDown?.apply(this,arguments);};
     nodeType.prototype.onMouseMove = function(event, pos) {
         const rect = this._tjZInfoRect;
         let hover = false;
@@ -1032,11 +1154,7 @@ function tjZInstallInfoHover(nodeType) {
             const dy = pos[1] - rect.cy;
             hover = dx * dx + dy * dy <= (rect.r + 4) * (rect.r + 4);
         }
-        if (hover !== !!this._tjZInfoHover) {
-            this._tjZInfoHover = hover;
-            this.setDirtyCanvas?.(true, true);
-            app.canvas?.setDirty(true, true);
-        }
+        
         return origOnMouseMove?.apply(this, arguments);
     };
 }
@@ -1060,8 +1178,9 @@ app.registerExtension({
             zInstallSeedAfterGenerate(this);
             tjApplyOutputArrowState(this, tjAutosetEnabled(this));
 
-            // auto_set above ratio_preset
+            // auto_set / setnode_name above ratio_preset
             moveWidgetBefore(this, "auto_set", "ratio_preset");
+            moveWidgetBefore(this, "setnode_name", "ratio_preset");
 
             zReorderCoreWidgets(this);
             zInstallOriginalButtons(this);
@@ -1076,8 +1195,8 @@ app.registerExtension({
 
             requestAnimationFrame(() => {
                 updateAutoSets(this);
-                tjApplyOutputArrowState(this, tjAutosetEnabled(this));
                 zSyncDomWidgetWidths(this);
+                zScheduleFitNodeHeight(this);
                 requestAnimationFrame(() => zApplyPreviewOffStartupCompact(this));
             });
         };
@@ -1105,15 +1224,15 @@ app.registerExtension({
                 zUpdateAdvanced(this);
                 zMoveSizeInfoToBottom(this);
                 updateAutoSets(this);
-                tjApplyOutputArrowState(this, tjAutosetEnabled(this));
                 zSyncDomWidgetWidths(this);
+                zScheduleFitNodeHeight(this);
             });
         };
 
         const origOnDrawForeground = nodeType.prototype.onDrawForeground;
         nodeType.prototype.onDrawForeground = function(ctx) {
             this._tjUpdateGetOptions?.();
-            tjApplyOutputArrowState(this, tjAutosetEnabled(this));
+            if (zAutoSetDisplayNeedsRefresh(this)) updateAutoSets(this);
             zSyncDomWidgetWidths(this);
             this._tj_z_preview_top = Math.max(0, (this.widgets?.length || 0) * 24 + 30);
             const res = origOnDrawForeground ? origOnDrawForeground.apply(this, arguments) : undefined;
