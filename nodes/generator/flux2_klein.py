@@ -70,7 +70,12 @@ def _scan_for(names, patterns, fallback_preferred=None):
 
 def _model_names():
     fallback = [
-        "",
+        "klein9bKVCacheFP8_v10.safetensors",
+        "flux2Klein9bFp8_fp8.safetensors",
+        "flux2Klein4bFp8_fp8.safetensors",
+        "flux2Klein4bBaseFp8_fp8.safetensors",
+        "flux2Klein9bBaseFp8_fp8.safetensors",
+        "FLUX2/flux-2-klein-9b-kv-fp8.safetensors",
     ]
     names = list(_folder_list("diffusion_models", []) or _folder_list("unet", []))
     return names or fallback
@@ -78,14 +83,17 @@ def _model_names():
 
 def _clip_names():
     fallback = [
-        "",
+        "qwen_3_8b_fp8mixed.safetensors",
+        "qwen_3_4b_fp8mixed.safetensors",
+        "flux2/qwen_3_8b_fp8mixed.safetensors",
+        "flux2/qwen_3_4b_fp8mixed.safetensors",
     ]
     names = list(_folder_list("text_encoders", []) or _folder_list("clip", []))
     return names or fallback
 
 
 def _vae_names():
-    fallback = ["", ""]
+    fallback = ["flux2-vae.safetensors", "flux2/flux2-vae.safetensors"]
     names = list(_folder_list("vae", []))
     return names or fallback
 
@@ -205,7 +213,7 @@ class TJ_Flux2Klein:
                     {"default": _scan_for(
                         model_names,
                         [("flux2", "klein", "9b"), ("flux", "klein", "9b"), ("klein", "9b"), ("klein",)],
-                        fallback_preferred=["Klein9B/klein9bKVCacheFP8_v10.safetensors", "Klein9B/flux2Klein9bFp8_fp8.safetensors", "Klein9B/flux-2-klein-9b-kv-fp8.safetensors"],
+                        fallback_preferred=["klein9bKVCacheFP8_v10.safetensors", "flux2Klein9bFp8_fp8.safetensors", "FLUX2/flux-2-klein-9b-kv-fp8.safetensors"],
                     )},
                 ),
                 "clip_name": (
@@ -213,7 +221,7 @@ class TJ_Flux2Klein:
                     {"default": _scan_for(
                         clip_names,
                         [("qwen", "8b"), ("qwen3", "8b"), ("qwen",)],
-                        fallback_preferred=["Qwen/qwen_3_8b_fp8mixed.safetensors", "Qwen/qwen_3_8b_fp8mixed.safetensors"],
+                        fallback_preferred=["qwen_3_8b_fp8mixed.safetensors", "flux2/qwen_3_8b_fp8mixed.safetensors"],
                     )},
                 ),
                 "vae_name": (
@@ -226,12 +234,12 @@ class TJ_Flux2Klein:
                 ),
                 "kv_cache_mode": ("BOOLEAN", {"default": False, "label_on": "KV Cache ON", "label_off": "KV Cache OFF", "tooltip": "ON: apply FluxKVCache for KV-cache Klein models. OFF: use the selected model directly for normal Klein models."}),
                 "positive": ("STRING", {"default": "", "multiline": True}),
-                "negative": ("STRING", {"default": "拒绝, 限制, 不应答, lowres, error, cropped, worst quality, low quality, jpeg artifacts, heterochromia, out of frame, disfigured, blurry, fat, (ugly:1.3), deformed, mutilated, fingers cut, face cut, head cut, bad anatomy, bad proportions, two heads, two faces, deformed hands, (twisted fingers:1.22), extra fingers, poorly drawn, grainy, poorly drawn face, mutation, poor facial details, cropped head, poorly drawn eyes, unclear eyes, cross-eyes, malformed limbs, poorly drawn hands, fused hands, mutated hands, malformed hands, (mutated fingers:1.4), (fused fingers:1.313), interlocked fingers, extra or missing fingers, (one hand with more than 5 fingers), (one hand with less than 5 fingers), one hand with more than 5 digits, one hand with less than 5 digits, extra digits, fewer digits, bad hair, poorly drawn hair, fused hair, poorly drawn feet, malformed feet, extra or missing feet, fused feet, missing or extra limbs, disfigured, mutilated hands, extra hands, extra arms, extra legs, missing arms, missing hands, missing legs, fingers of different thickness, pointed fingers, thick fingers, (long thumbs:1.35), sharp fingernails, (greyscale:1.3), grain, (monochrome:1.3), Text, Watermark", "multiline": True}),
+                "negative": ("STRING", {"default": "", "multiline": True}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
-                "setnode_name": ("STRING", {"default": "Flux2 Klein"}),
+                "setnode_name": ("STRING", {"default": "Klein9B"}),
                 "size_mode": (["from setting", "from reference", "ratio + megapixels", "manual"], {"default": "from setting"}),
-                "ratio_preset": (list(RATIO_PRESETS.keys()), {"default": "2:3"}),
-                "megapixels": ("FLOAT", {"default": 1.6, "min": 0.1, "max": 4.0, "step": 0.05}),
+                "ratio_preset": (list(RATIO_PRESETS.keys()), {"default": "1:1"}),
+                "megapixels": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 4.0, "step": 0.05}),
                 "divisible_by": ("INT", {"default": 32, "min": 8, "max": 128, "step": 8}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64}),
                 "seed": ("INT", {"default": 1, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
@@ -283,10 +291,10 @@ class TJ_Flux2Klein:
         positive,
         negative,
         auto_set=False,
-        setnode_name="Flux2 Klein",
+        setnode_name="Klein9B",
         size_mode="from setting",
-        ratio_preset="2:3",
-        megapixels=1.6,
+        ratio_preset="1:1",
+        megapixels=1.0,
         divisible_by=32,
         batch_size=1,
         seed=1,
