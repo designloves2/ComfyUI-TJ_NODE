@@ -16,9 +16,7 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-#스크린샷 : HERO WORKFLOW SHOWCASE
-
----
+<img width="2713" height="1640" alt="12b63f61-5a0b-4f77-9827-b4f0918e3299" src="https://github.com/user-attachments/assets/8de8b406-b1c3-4c12-98cb-3fc292f4df26" />
 
 # ✨ Overview
 
