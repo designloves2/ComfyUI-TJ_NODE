@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import folder_paths
-from ._image_utils import save_image_with_quality, resolve_target_dir
+from ._image_utils import save_image_with_quality, resolve_target_dir, safe_filename_part
 
 
 class TJ_SaveImage_Subsequent:
@@ -29,6 +29,7 @@ class TJ_SaveImage_Subsequent:
     CATEGORY = " ✨ TJ_Node/Image"
 
     def save_images(self, images, filepath_json, filename_suffix, extension_option, save_path_opt):
+        filename_suffix = safe_filename_part(filename_suffix, "")
         try:
             paths = json.loads(filepath_json)
             if isinstance(paths, str):

@@ -5,6 +5,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import folder_paths
+from ._image_utils import safe_filename_part
 
 
 class TJ_SaveImage_Primary:
@@ -30,12 +31,16 @@ class TJ_SaveImage_Primary:
     def save_images(self, images, filename_prefix, subfolder, date_folder):
         from datetime import datetime
 
-        prefix_with_path = filename_prefix
+        prefix_with_path = safe_filename_part(filename_prefix, "TJ_Out")
         if date_folder:
             today = datetime.now().strftime("%Y-%m-%d")
             prefix_with_path = f"{today}/{prefix_with_path}"
         if subfolder.strip():
-            prefix_with_path = f"{subfolder.strip('/')}/{prefix_with_path}"
+            raw_subfolder = subfolder.replace("\\", "/").strip("/")
+            parts = [p for p in raw_subfolder.split("/") if p]
+            if os.path.isabs(subfolder) or subfolder.startswith(("/", "\\")) or any(p == ".." for p in parts):
+                raise ValueError("TJ_NODE: invalid output subfolder.")
+            prefix_with_path = f"{'/'.join(parts)}/{prefix_with_path}"
 
         full_output_folder, filename, counter, subfolder_ret, _ = \
             folder_paths.get_save_image_path(
@@ -43,6 +48,13 @@ class TJ_SaveImage_Primary:
                 images[0].shape[1],
                 images[0].shape[0]
             )
+        real_output_dir = os.path.realpath(self.output_dir)
+        real_output_folder = os.path.realpath(full_output_folder)
+        try:
+            if os.path.commonpath([real_output_dir, real_output_folder]) != real_output_dir:
+                raise ValueError
+        except ValueError:
+            raise ValueError("TJ_NODE: save path must stay inside ComfyUI/output.")
         os.makedirs(full_output_folder, exist_ok=True)
 
         saved_paths = []

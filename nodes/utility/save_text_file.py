@@ -55,6 +55,8 @@ class TJ_SaveTextFile:
         s = s.replace("\\", "_").replace("/", "_")
         s = re.sub(r"[\r\n\t]+", " ", s)
         s = re.sub(r"[<>:\"|?*]+", "_", s)
+        while ".." in s:
+            s = s.replace("..", "_")
         s = s.strip(" .")
         return s or fallback
 

@@ -25,13 +25,18 @@ def _resolve_base_dir(dir_type):
         return folder_paths.get_input_directory()
 
 def _safe_resolve(base_dir, subfolder):
+    real_base = os.path.realpath(base_dir)
     if subfolder:
+        if os.path.isabs(subfolder) or str(subfolder).startswith(("/", "\\")):
+            return None
         target = os.path.realpath(os.path.join(base_dir, subfolder))
-        real_base = os.path.realpath(base_dir)
-        if not target.startswith(real_base):
+        try:
+            if os.path.commonpath([real_base, target]) != real_base:
+                return None
+        except ValueError:
             return None
         return target
-    return base_dir
+    return real_base
 
 @server.PromptServer.instance.routes.post("/tj_node/download_url")
 async def download_url(request):
@@ -137,7 +142,11 @@ async def delete_files(request):
 
             abs_path = os.path.realpath(os.path.join(base, file_rel))
             real_base = os.path.realpath(base)
-            if not abs_path.startswith(real_base):
+            try:
+                contained = os.path.commonpath([real_base, abs_path]) == real_base
+            except ValueError:
+                contained = False
+            if not contained:
                 errors.append({"path": rel_path, "error": "Path traversal blocked"})
                 continue
             if not os.path.isfile(abs_path):

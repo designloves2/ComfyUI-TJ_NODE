@@ -8,7 +8,7 @@ from PIL import Image
 import folder_paths
 from ...core.tj_types import any_type
 from ._utility_utils import (
-    _tj_audio_payload, _tj_write_wav, get_supported_files
+    _tj_audio_payload, _tj_write_wav, _tj_is_relative_to, get_supported_files
 )
 
 
@@ -97,24 +97,34 @@ class TJ_SmartShow:
         if found_path and isinstance(found_path, str):
             input_dir = folder_paths.get_input_directory()
             output_dir = folder_paths.get_output_directory()
+            temp_dir = folder_paths.get_temp_directory()
+            roots = (input_dir, output_dir, temp_dir)
             resolved_path = None
-            if os.path.isabs(found_path) and os.path.exists(found_path):
-                resolved_path = found_path
+            if os.path.isabs(found_path):
+                candidate = os.path.realpath(found_path)
+                if os.path.exists(candidate) and any(_tj_is_relative_to(candidate, root) for root in roots):
+                    resolved_path = candidate
             elif os.path.exists(os.path.join(input_dir, found_path)):
                 resolved_path = os.path.join(input_dir, found_path)
             elif os.path.exists(os.path.join(output_dir, found_path)):
                 resolved_path = os.path.join(output_dir, found_path)
+            elif os.path.exists(os.path.join(temp_dir, found_path)):
+                resolved_path = os.path.join(temp_dir, found_path)
+            if resolved_path:
+                resolved_path = os.path.realpath(resolved_path)
+                if not any(_tj_is_relative_to(resolved_path, root) for root in roots):
+                    resolved_path = None
             if resolved_path:
                 ext = os.path.splitext(resolved_path)[1].lower()
                 if ext in {'.mp4', '.mov', '.webm', '.avi', '.mp3', '.m4a', '.wav', '.flac'}:
                     out_type = "video_file" if ext in {'.mp4', '.mov', '.webm', '.avi'} else "audio_file"
-                    if resolved_path.startswith(input_dir):
+                    if _tj_is_relative_to(resolved_path, input_dir):
                         rel = os.path.relpath(resolved_path, input_dir)
                         return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": os.path.basename(rel), "subfolder": os.path.dirname(rel), "type": "input"}]}, "result": (target_data,)}
-                    elif resolved_path.startswith(output_dir):
+                    elif _tj_is_relative_to(resolved_path, output_dir):
                         rel = os.path.relpath(resolved_path, output_dir)
                         return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": os.path.basename(rel), "subfolder": os.path.dirname(rel), "type": "output"}]}, "result": (target_data,)}
-                    else:
+                    elif _tj_is_relative_to(resolved_path, temp_dir):
                         out_dir_tmp = folder_paths.get_temp_directory()
                         rnd = random.randint(10000, 99999)
                         temp_filename = f"tj_media_ext_{rnd}{ext}"
