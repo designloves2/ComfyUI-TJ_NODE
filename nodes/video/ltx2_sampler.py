@@ -36,7 +36,8 @@ def _sampler_names():
     except Exception:
         pass
     try:
-        input_types = nodes.NODE_CLASS_MAPPINGS["KSamplerSelect"].INPUT_TYPES()
+        import nodes as _nodes
+        input_types = _nodes.NODE_CLASS_MAPPINGS["KSamplerSelect"].INPUT_TYPES()
         spec = input_types["required"]["sampler_name"][0]
         if not isinstance(spec, str):
             return list(spec)

@@ -25,6 +25,8 @@ class TJ_GoStop:
                 "get_name": ("STRING", {"default": "", "multiline": False}),
                 "set_name": ("STRING", {"default": "", "multiline": False}),
                 "sound_notice": ("BOOLEAN", {"default": False}),
+                "timeout_sec": ("INT", {"default": 0, "min": 0, "max": 3600, "step": 10,
+                                        "tooltip": "최대 대기 시간(초). 0 = 무제한. 시간 초과 시 자동으로 Stop 처리됩니다."}),
             },
             "hidden": {
                 "id": "UNIQUE_ID",
@@ -37,7 +39,7 @@ class TJ_GoStop:
     CATEGORY = " ✨ TJ_Node/Utility"
     OUTPUT_NODE = True
 
-    def execute(self, in_1=None, get_name="", set_name="", sound_notice=False, id=None):
+    def execute(self, in_1=None, get_name="", set_name="", sound_notice=False, timeout_sec=0, id=None):
         node_id = str(id)
         self.status_by_id[node_id] = "waiting"
         PromptServer.instance.send_sync(
@@ -47,11 +49,16 @@ class TJ_GoStop:
                 "get_name": get_name or "",
                 "set_name": set_name or "",
                 "sound_notice": bool(sound_notice),
+                "timeout_sec": int(timeout_sec),
             },
         )
 
+        deadline = (time.time() + float(timeout_sec)) if timeout_sec and timeout_sec > 0 else None
         try:
             while self.status_by_id.get(node_id) == "waiting":
+                if deadline is not None and time.time() >= deadline:
+                    self.status_by_id[node_id] = "stopped"
+                    break
                 time.sleep(0.1)
 
             if self.status_by_id.get(node_id) == "stopped":

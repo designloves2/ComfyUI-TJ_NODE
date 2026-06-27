@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.1.2 
+# ✨ TJ_NODE v2.2.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -113,6 +113,45 @@ Wireless routing is used between sections.
 
 ---
 
+# 🚀 What's New in v2.2.0
+
+## ✨ New: Model Set Loader (TJ)
+
+Model / Clip / VAE를 각각 개별 드롭다운으로 선택하여 CheckpointLoaderSimple처럼 한 노드에서 MODEL + CLIP + VAE를 한 번에 출력하는 신규 노드입니다.
+
+Select Model, Clip, and VAE independently with individual dropdowns and output all three in a single node — just like CheckpointLoaderSimple.
+
+- Model: `diffusion_models / unet / GGUF` 자동 감지 및 로더 선택
+- Clip: `text_encoders / clip` + GGUF CLIP 자동 지원
+- VAE: `vae` 폴더 목록
+- `model_dtype` / `clip_dtype` 위젯으로 fp8/fp16/bf16 직접 선택 가능
+- 각 슬롯 `[none]` 선택 시 해당 출력만 None 반환 (부분 연결 지원)
+- **Auto Set** 내장 — MODEL ▶ / CLIP ▶ / VAE ▶ 출력이 Wireless Provider로 자동 등록
+- 카테고리: `✨ TJ_Node/Loaders`
+
+---
+
+## ✨ TJ_Node/Loaders 카테고리 신설
+
+`TJ_MultiModelSelecter`와 `TJ_ModelSetLoader` 두 노드를 기존 Utility에서 분리하여 전용 **Loaders** 카테고리로 이동했습니다.
+
+---
+
+## 🔧 Bug Fixes v2.2.0
+
+| 파일 | 수정 내용 |
+| --- | --- |
+| `ltx2_sampler.py` | `_sampler_names()` 내 `nodes` NameError 수정 (Critical) |
+| `flux2_klein.py` | `ImageScaleToTotalPixels`에 존재하지 않는 `resolution_steps` 파라미터 제거 |
+| `flux2_klein.py` | BasicGuider fallback 시 콘솔 경고 출력 추가 (negative conditioning 무시됨 알림) |
+| `scene_maker.py` | CLIPLoader type 하드코딩(`stable_diffusion`) 제거 → 실제 타입 목록 동적 탐색으로 교체 |
+| `save_primary.py` | 파일명 카운터 파싱 `ValueError` 방지 try/except 추가 |
+| `z_image_turbo.py` | LoRA 이름 목록 중복 항목 제거 |
+| `go_stop_tj.py` | `timeout_sec` 파라미터 추가 — 사용자 설정 가능 타임아웃 (0=무제한, 기본값) |
+| `multi_model_selecter.py` | `_connected_output_indices()` 최적화 활성화 — 연결된 슬롯만 로드, PROMPT 감지 실패 시 load_all fallback |
+
+---
+
 # 🚀 What's New in v2.0.1
 
 TJ_NODE v2.x는 기존 Wireless Workflow Architecture를 유지하면서
@@ -144,6 +183,7 @@ Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
   https://www.youtube.com/@realrebelai<br>
 
   
+
 Several nodes were heavily reworked and integrated into the TJ wireless workflow architecture.
 
 ---
@@ -427,18 +467,18 @@ Core Features:
 ---
 # 🚀 v1.0 Major Features
 
-| Feature                   | Description                    |
-| ------------------------- | ------------------------------ |
-| Wireless Fake-Wire System | 숨겨진 Wireless Routing 시스템       |
-| Embedded Get System       | 일반 노드 내부 Wireless Receive      |
-| Multi Router Architecture | Section 기반 Workflow 분리         |
-| Realtime Hover Wire       | Hover 기반 Hidden Wire 표시        |
-| Preview Lifecycle         | Reload-safe Preview Restore    |
-| Save Pipeline System      | 구조적 Save Chain Architecture    |
-| Batch Workflow System     | Dynamic Batch & Routing        |
-| Eclipse Bridge            | Eclipse Workflow Compatibility |
-| HTML5 Overlay UI          | Advanced Interactive UI Layer  |
-| Reload-Safe Lifecycle     | Provider Reconnect & Restore   |
+| Feature                   | Description                     |
+| ------------------------- | ------------------------------- |
+| Wireless Fake-Wire System | 숨겨진 Wireless Routing 시스템  |
+| Embedded Get System       | 일반 노드 내부 Wireless Receive |
+| Multi Router Architecture | Section 기반 Workflow 분리      |
+| Realtime Hover Wire       | Hover 기반 Hidden Wire 표시     |
+| Preview Lifecycle         | Reload-safe Preview Restore     |
+| Save Pipeline System      | 구조적 Save Chain Architecture  |
+| Batch Workflow System     | Dynamic Batch & Routing         |
+| Eclipse Bridge            | Eclipse Workflow Compatibility  |
+| HTML5 Overlay UI          | Advanced Interactive UI Layer   |
+| Reload-Safe Lifecycle     | Provider Reconnect & Restore    |
 
 ---
 
@@ -945,7 +985,7 @@ Supported Features:
 
 | Feature           | Description               |
 | ----------------- | ------------------------- |
-| Fullscreen Viewer | 확대 이미지 검사                 |
+| Fullscreen Viewer | 확대 이미지 검사          |
 | Smart Grid        | Batch Grid Preview        |
 | Snapshot System   | Preview Checkpoint        |
 | Keyboard Control  | ← → ESC Navigation        |
@@ -1140,7 +1180,160 @@ Recommended Usage:
 
 ---
 
+## ✨ Go & Stop (TJ)
 
+Workflow 실행 중 사용자가 직접 계속(Go) 또는 중단(Stop)을 선택할 수 있는 수동 게이트 노드입니다.
+Manual gate node allowing users to continue (Go) or abort (Stop) mid-workflow.
+
+---
+
+핵심 기능:
+Core Features:
+
+* ANY 타입 Pass-through
+* Go / Stop 버튼 (UI 오버레이)
+* Sound Notice (알림음 지원)
+* `timeout_sec` 위젯 — 사용자 설정 가능한 최대 대기 시간 (0=무제한)
+* 타임아웃 초과 시 자동 Stop 처리
+
+---
+
+주의:
+Note:
+
+ComfyUI 실행 스레드를 점유하는 구조이므로 타임아웃 설정을 권장합니다.
+Since this occupies the ComfyUI execution thread, setting a timeout is strongly recommended.
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Intermediate Result Inspection
+* Human-in-the-loop Workflow
+* Conditional Generation Gate
+* Manual Quality Control Checkpoint
+
+---
+
+#스크린샷 : GO STOP NODE
+
+---
+
+# 🛠 Loaders System
+
+TJ_NODE Loaders는 Model / Clip / VAE 로딩을 더 유연하고 구조적으로 운영하기 위한 노드 그룹입니다.
+TJ_NODE Loaders is a node group for flexible and structured loading of Model, Clip, and VAE assets.
+
+카테고리: `✨ TJ_Node/Loaders`
+
+---
+
+## ✨ Model Set Loader (TJ)
+
+Model / Clip / VAE를 각각 개별 드롭다운으로 선택하여 CheckpointLoaderSimple처럼 한 노드에서 MODEL + CLIP + VAE를 한 번에 출력합니다.
+
+Select Model, Clip, and VAE independently but output all three together — just like CheckpointLoaderSimple.
+
+---
+
+입력 위젯:
+Input Widgets:
+
+| 위젯 | 설명 |
+| --- | --- |
+| `auto_set` | Auto Set ON/OFF — 출력 슬롯을 Wireless Provider로 자동 등록 |
+| `model_name` | diffusion_models / unet / GGUF 모델 선택 |
+| `model_dtype` | UNETLoader weight_dtype (default / fp8_e4m3fn / fp8_e5m2 / fp16 / bf16) |
+| `clip_name` | text_encoders / clip 파일 선택 |
+| `clip_type` | CLIPLoader type (아키텍처 타입 — ComfyUI에서 동적으로 탐색) |
+| `clip_dtype` | CLIPLoader weight_dtype |
+| `vae_name` | vae 폴더 파일 선택 |
+
+---
+
+출력:
+Outputs:
+
+* MODEL
+* CLIP
+* VAE
+
+---
+
+핵심 특징:
+Key Features:
+
+* GGUF 파일 자동 감지 → `UnetLoaderGGUF` / `CLIPLoaderGGUF` 자동 전환
+* 각 슬롯 `[none]` 선택 시 해당 출력만 None 반환 (부분 연결 가능)
+* CLIPLoader type 동적 탐색 — 하드코딩 없음
+* Auto Set ON 시: `{이름}/MODEL ▶`, `{이름}/CLIP ▶`, `{이름}/VAE ▶` Wireless Provider 자동 생성
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Flux / SDXL / SD3 분리 모델 로딩
+* GGUF 모델 + text encoder 조합
+* 공통 VAE 공유 Workflow
+* Wireless Model Routing
+
+---
+
+#스크린샷 : MODEL SET LOADER
+
+---
+
+## ✨ Multi Model Selecter (TJ)
+
+최대 64개 슬롯의 동적 모델 선택기입니다. Model / Checkpoint / Clip / VAE를 동적 슬롯 구조로 선택하고 출력합니다.
+Dynamic model selector with up to 64 slots. Supports Model, Checkpoint, Clip, and VAE selection with dynamic slot management.
+
+---
+
+지원 Select Type:
+Supported Select Types:
+
+* Model (diffusion_models / unet / GGUF)
+* Checkpoints (MODEL + CLIP + VAE 3출력)
+* Clip (text_encoders / clip)
+* VAE
+
+---
+
+출력 모드:
+Output Modes:
+
+| 모드 | 설명 |
+| --- | --- |
+| Model Direct out | 모델 객체를 직접 출력 (각 슬롯 = 1 출력) |
+| Model Path out | 모델 파일 경로를 STRING으로 출력 |
+
+---
+
+핵심 기능:
+Core Features:
+
+* Dynamic Slot Management (JS 기반 동적 슬롯 추가/제거)
+* 연결된 출력 슬롯만 선택적 로드 (PROMPT 기반 최적화)
+* PROMPT 감지 실패 시 전체 로드 fallback
+* Auto Set 내장 — 각 출력 슬롯 Wireless Provider 자동 등록
+* Clip type 슬롯별 개별 지정 지원
+
+---
+
+추천 사용:
+Recommended Usage:
+
+* Multi Model A/B Compare Workflow
+* Dynamic Model Switch
+* Batch Model Test
+* Model Path Routing
+
+---
+
+#스크린샷 : MULTI MODEL SELECTER
 
 ---
 
@@ -1324,15 +1517,15 @@ tj_vhs_hotkey_remote.js
 지원 단축키:
 Supported Shortcuts:
 
-| Shortcut | Function |
-| --- | --- |
-| Space | Pause / Play |
-| Alt + H | Preview Hide |
-| Alt + M | Mute |
-| Alt + O | Open in Browser |
-| Alt + S | Save Preview |
-| Alt + C | Copy Original Path |
-| Alt + Y | Sync Preview |
+| Shortcut | Function           |
+| -------- | ------------------ |
+| Space    | Pause / Play       |
+| Alt + H  | Preview Hide       |
+| Alt + M  | Mute               |
+| Alt + O  | Open in Browser    |
+| Alt + S  | Save Preview       |
+| Alt + C  | Copy Original Path |
+| Alt + Y  | Sync Preview       |
 
 ---
 
@@ -1928,11 +2121,15 @@ Category Structure:
 
 ```python id="n0jxll"
 CATEGORY = " ✨ TJ_Node/Wireless"
+CATEGORY = " ✨ TJ_Node/Loaders"   # NEW: Model Set Loader, Multi Model Selecter
 CATEGORY = " ✨ TJ_Node/Batch"
 CATEGORY = " ✨ TJ_Node/Preview"
 CATEGORY = " ✨ TJ_Node/Utility"
 CATEGORY = " ✨ TJ_Node/Save"
 CATEGORY = " ✨ TJ_Node/Eclipse"
+CATEGORY = " ✨ TJ_Node/LLM"
+CATEGORY = " ✨ TJ_Node/Generator"
+CATEGORY = " ✨ TJ_Node/Video"
 ```
 
 ---
@@ -1943,6 +2140,217 @@ This structure allows TJ_NODE workflows to be instantly recognizable.
 ---
 
 #스크린샷 : TJ NODE VISUAL IDENTITY
+
+---
+
+# 📦 Required Models & Setup
+
+각 노드 그룹별로 필요한 모델과 설치 방법을 안내합니다.
+Required models and setup instructions for each node group.
+
+---
+
+## 🤖 LLM 노드 — 백엔드별 필요 사항
+
+TJ_NODE LLM 노드는 **3가지 백엔드**를 지원합니다.
+
+### 백엔드 1: GGUF / llama.cpp (Prompt Enhancer, Image to Prompt, Prompt Studio)
+
+**필수 설치:**
+```
+pip install llama-cpp-python
+```
+
+GPU 가속 (권장):
+```
+CMAKE_ARGS="-DGGML_CUDA=on" pip install llama-cpp-python --force-reinstall --no-cache-dir
+```
+
+**필요 모델 파일** → `ComfyUI/models/text_encoders/` 폴더에 배치:
+
+| 용도 | 기본 파일명 | 설명 |
+|---|---|---|
+| LLM 본체 (텍스트) | `qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf` | Prompt Enhancer / Prompt Studio |
+| Vision 프로젝터 | `mmproj-qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf` | Image to Prompt (이미지 입력 시 필요) |
+
+> 다른 GGUF 모델도 사용 가능합니다. `models/text_encoders/` 에 `.gguf` 파일을 넣으면 드롭다운에 자동으로 표시됩니다.
+
+---
+
+### 📋 추천 GGUF 모델 목록 (HuggingFace)
+
+**⭐ Vision 지원 모델 (Image to Prompt 용)**
+
+Vision 모델은 **본체 GGUF** + **mmproj GGUF** 두 파일 모두 필요합니다. 같은 레포에 함께 있습니다.
+
+| 모델 | VRAM | 품질 | HuggingFace |
+|---|---|---|---|
+| **Qwen2.5-VL 7B** (권장) | 8GB+ | ★★★★★ | [bartowski/Qwen2.5-VL-7B-Instruct-GGUF](https://huggingface.co/bartowski/Qwen2.5-VL-7B-Instruct-GGUF) |
+| **Qwen2.5-VL 3B** (경량) | 4GB+ | ★★★★☆ | [bartowski/Qwen2.5-VL-3B-Instruct-GGUF](https://huggingface.co/bartowski/Qwen2.5-VL-3B-Instruct-GGUF) |
+| **MiniCPM-V 2.6** | 6GB+ | ★★★★☆ | [openbmb/MiniCPM-V-2_6-gguf](https://huggingface.co/openbmb/MiniCPM-V-2_6-gguf) |
+| **LLaVA 1.6 Mistral 7B** | 8GB+ | ★★★☆☆ | [cjpais/llava-1.6-mistral-7b-gguf](https://huggingface.co/cjpais/llava-1.6-mistral-7b-gguf) |
+| **LLaVA 1.5 7B** | 6GB+ | ★★★☆☆ | [mys/ggml_llava-v1.5-7b](https://huggingface.co/mys/ggml_llava-v1.5-7b) |
+
+> **Qwen2.5-VL 7B Q4_K_M** 기준: 본체 `~5GB` + mmproj `~1GB`. 총 약 **6GB** VRAM.
+> bartowski의 양자화 버전이 속도와 품질 균형이 가장 좋습니다.
+
+**다운로드 및 배치 예시 (Qwen2.5-VL 7B Q4_K_M):**
+```
+models/text_encoders/
+├── qwen2_5_vl_7b_instruct_q4_k_m.gguf        ← 본체 (gguf_model 선택)
+└── mmproj-qwen2_5_vl_7b_instruct-f16.gguf    ← Vision 프로젝터 (mmproj_file 선택)
+```
+
+---
+
+**✏️ 텍스트 전용 모델 (Prompt Enhancer / Prompt Studio 용, Vision 불필요)**
+
+| 모델 | VRAM | 특징 | HuggingFace |
+|---|---|---|---|
+| **Qwen3 8B** (권장) | 6GB+ | Thinking 모드 지원, 한국어 강력 | [Qwen/Qwen3-8B-GGUF](https://huggingface.co/Qwen/Qwen3-8B-GGUF) |
+| **Qwen3 4B** (경량) | 4GB+ | 빠름, 가성비 최상 | [Qwen/Qwen3-4B-GGUF](https://huggingface.co/Qwen/Qwen3-4B-GGUF) |
+| **Qwen3 8B** (bartowski) | 6GB+ | 다양한 양자화 선택 가능 | [bartowski/Qwen3-8B-GGUF](https://huggingface.co/bartowski/Qwen3-8B-GGUF) |
+| **Llama 3.2 3B** | 3GB+ | 영어 특화, 초경량 | [bartowski/Llama-3.2-3B-Instruct-GGUF](https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF) |
+
+> **권장 양자화 등급**: VRAM 여유가 있으면 `Q6_K` 또는 `Q8_0`, 부족하면 `Q4_K_M`
+
+---
+
+**양자화 등급 가이드:**
+
+| 등급 | 파일 크기 | 품질 | 권장 상황 |
+|---|---|---|---|
+| `Q8_0` | 가장 큼 | 원본에 근접 | VRAM 충분 |
+| `Q6_K` | 크다 | 매우 좋음 | **균형 권장** |
+| `Q4_K_M` | 중간 | 좋음 | VRAM 8GB 이하 |
+| `Q3_K_M` | 작음 | 보통 | VRAM 6GB 이하 |
+
+---
+
+### 백엔드 2: ComfyUI TextGenerate (Prompt Enhancer, Image to Prompt, Prompt Studio)
+
+**필수 설치:** ComfyUI Manager에서 `ComfyUI-TextGen` 또는 `TextGenerate` 노드 설치
+
+**필요 모델 파일** → `ComfyUI/models/text_encoders/` 폴더에 배치:
+
+| 용도 | 기본 파일명 | 설명 |
+|---|---|---|
+| Text Encoder (LLM) | `gemma4_e4b_it_fp8_scaled.safetensors` | TextGenerate 백엔드용 |
+
+> `clip_loader_type` 위젯에서 모델 아키텍처에 맞는 type을 선택하세요. `Auto` 선택 시 파일명 기반으로 자동 탐색합니다.
+
+---
+
+### 백엔드 3: Ollama (TJ Ollama LLM Loader)
+
+**필수 설치:** Ollama 별도 설치 필요
+- https://ollama.com 에서 설치
+
+**서버 실행:**
+```bash
+ollama serve
+```
+
+**모델 다운로드 예시:**
+```bash
+ollama pull qwen3:8b
+ollama pull llama3.2:3b
+ollama pull gemma3:4b
+```
+
+> 기본 서버 주소: `http://127.0.0.1:11434`
+> 로컬 서버만 허용됩니다. 외부 서버 URL은 보안상 차단됩니다.
+
+---
+
+## 🖼 Scene Maker (TJ)
+
+**필요 모델** → `ComfyUI/models/clip/` 또는 `ComfyUI/models/text_encoders/` 에 배치:
+
+| 기본 파일명 | 용도 |
+|---|---|
+| `t5xxl_fp16.safetensors` | CLIP 텍스트 인코더 (기본값) |
+| `clip_l.safetensors` | CLIP L (fallback) |
+
+> Scene Maker는 `ComfyUI TextGenerate` 노드를 사용합니다. TextGenerate 노드가 없으면 CLIP 직접 로드 경로를 사용합니다.
+
+---
+
+## ⚡ Z-Image Turbo (TJ)
+
+**필요 모델** — 아래 경로에 맞게 배치:
+
+| 폴더 | 파일명 | 용도 |
+|---|---|---|
+| `models/diffusion_models/ZIT/` | `z_Image_turbo_bf16.safetensors` | Diffusion 모델 본체 |
+| `models/text_encoders/Qwen3/` | `qwen_3_4b.safetensors` | Text Encoder (CLIP) |
+| `models/vae/` | `z-image-Vae.safetensors` | VAE |
+| `models/loras/Lora/lina/` | `LINA_ZIT.safetensors` | LoRA (선택사항) |
+
+> 파일을 위 경로 구조대로 배치하면 드롭다운에서 자동으로 기본값으로 선택됩니다.
+
+---
+
+## 🔷 Flux2 Klein 4B/9B (TJ)
+
+**필요 모델** — 아래 경로에 맞게 배치:
+
+| 폴더 | 파일명 예시 | 용도 |
+|---|---|---|
+| `models/diffusion_models/` | `klein9bKVCacheFP8_v10.safetensors` | Klein 9B (KV Cache FP8) — 권장 |
+| `models/diffusion_models/` | `flux2Klein9bFp8_fp8.safetensors` | Klein 9B FP8 |
+| `models/diffusion_models/` | `flux2Klein4bFp8_fp8.safetensors` | Klein 4B FP8 |
+| `models/diffusion_models/Klein9B/` | `flux-2-klein-9b.safetensors` | Klein 9B (서브폴더 형식) |
+| `models/text_encoders/` | `qwen_3_8b_fp8mixed.safetensors` | Text Encoder — 권장 |
+| `models/text_encoders/Qwen3/` | `qwen_3_8b_fp8mixed.safetensors` | Text Encoder (서브폴더 형식) |
+| `models/vae/` | `flux2-vae.safetensors` | VAE |
+| `models/vae/flux2/` | `flux2-vae.safetensors` | VAE (서브폴더 형식) |
+
+> 노드가 파일명 키워드를 기반으로 자동 매핑합니다. 정확한 이름이 아니어도 `klein`, `flux2`, `qwen` 등 키워드가 포함되어 있으면 자동 인식됩니다.
+
+---
+
+## 📂 전체 모델 폴더 구조 요약
+
+```
+ComfyUI/models/
+├── diffusion_models/
+│   ├── ZIT/
+│   │   └── z_Image_turbo_bf16.safetensors        ← Z-Image Turbo
+│   ├── Klein9B/
+│   │   └── flux-2-klein-9b.safetensors           ← Flux2 Klein 9B
+│   └── klein9bKVCacheFP8_v10.safetensors         ← Flux2 Klein 9B (루트)
+├── text_encoders/
+│   ├── Qwen3/
+│   │   ├── qwen_3_4b.safetensors                 ← Z-Image Turbo CLIP
+│   │   └── qwen_3_8b_fp8mixed.safetensors        ← Flux2 Klein CLIP
+│   ├── gemma4_e4b_it_fp8_scaled.safetensors      ← TextGenerate LLM
+│   ├── t5xxl_fp16.safetensors                    ← Scene Maker CLIP
+│   └── *.gguf                                    ← GGUF LLM 모델들
+├── clip/
+│   └── t5xxl_fp16.safetensors                    ← Scene Maker fallback
+├── vae/
+│   ├── z-image-Vae.safetensors                   ← Z-Image Turbo VAE
+│   └── flux2-vae.safetensors                     ← Flux2 Klein VAE
+└── loras/
+    └── Lora/lina/
+        └── LINA_ZIT.safetensors                  ← Z-Image Turbo LoRA
+```
+
+---
+
+## 🔌 외부 노드 의존성
+
+일부 TJ_NODE 기능은 아래 외부 노드가 있어야 동작합니다.
+
+| 기능 | 필요 노드 | 설치 |
+|---|---|---|
+| ComfyUI TextGenerate 백엔드 | `TextGenerate` 노드 | ComfyUI Manager 검색: `TextGenerate` |
+| GGUF 모델 로딩 (UNETLoader) | `UNETLoader` | ComfyUI 기본 내장 |
+| GGUF CLIP 로딩 | `CLIPLoaderGGUF` | ComfyUI-GGUF 설치 필요 |
+| GGUF Unet 로딩 | `UnetLoaderGGUF` | ComfyUI-GGUF 설치 필요 |
+
+> ComfyUI-GGUF: https://github.com/city96/ComfyUI-GGUF
 
 ---
 

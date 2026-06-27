@@ -274,7 +274,7 @@ class TJ_MultiModelSelecter:
     RETURN_TYPES = tuple(["*"] * (MAX_SLOTS * 3))
     RETURN_NAMES = tuple([f"out_{i + 1}" for i in range(MAX_SLOTS * 3)])
     FUNCTION = "select"
-    CATEGORY = " ✨ TJ_Node/Utility"
+    CATEGORY = " ✨ TJ_Node/Loaders"
 
     @classmethod
     def VALIDATE_INPUTS(cls, **kwargs):
@@ -291,13 +291,10 @@ class TJ_MultiModelSelecter:
 
         max_out = MAX_SLOTS * 3
         result = [None] * max_out
-        # Dynamic frontend outputs can be serialized with visible slot indexes that do not
-        # always match the Python max-output table during workflow reload. Loading only
-        # indexes detected from PROMPT made slot 2+ appear connected in the UI but skip
-        # actual model loading at execution time.
-        # Safer rule for this selector: load every selected visible slot once the node runs.
-        connected = None
-        load_all_fallback = True
+        # Try to detect which output slots are actually wired downstream.
+        # Falls back to loading everything when PROMPT is not available or detection fails.
+        connected = _connected_output_indices(prompt, unique_id)
+        load_all_fallback = connected is None
 
         if output_mode == "Model Path out":
             # Path out never loads model objects. It returns widget-safe relative paths as STRING.

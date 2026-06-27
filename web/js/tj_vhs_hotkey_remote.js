@@ -9,10 +9,10 @@ import { api } from "../../../scripts/api.js";
 const TJ_VHS_HOTKEYS = {
     togglePause: "Space", // Space
     toggleHide: "KeyH",   // Alt + H
-    toggleMute: "KeyM",   // Alt + M
+    toggleMute: "KeyV",   // Alt + V
     open: "KeyO",         // Alt + O
     save: "KeyS",         // Alt + S
-    copyPath: "KeyC",     // Alt + C
+    copyPath: "KeyP",     // Alt + P
     syncPreview: "KeyY",  // Alt + Y
 };
 

@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from datetime import datetime
 import folder_paths
-from ..utility._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases, _tj_safe_filename_part
+from ..utility._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases
 
 
 class TJ_SaveAndPreviewImage:
@@ -35,7 +35,7 @@ class TJ_SaveAndPreviewImage:
 
     def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
         now = datetime.now()
-        parsed_prefix = _tj_safe_filename_part(now.strftime(_tj_expand_datetime_aliases(filename_prefix)), "image")
+        parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
         parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
 
         if mode == "Preview":

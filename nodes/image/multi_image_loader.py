@@ -37,31 +37,16 @@ class TJ_MultiImageLoader:
     @staticmethod
     def _resolve_path(p):
         p = p.strip()
-        if os.path.isabs(p) or p.startswith(("/", "\\")):
-            raise ValueError("TJ_NODE: absolute image paths are not allowed.")
-        input_base = folder_paths.get_input_directory()
-        output_base = folder_paths.get_output_directory()
+        if os.path.isabs(p):
+            return p
+        base = folder_paths.get_input_directory()
         if p.startswith("input/"):
-            target_base = input_base
-            rel = p[len("input/"):]
-        elif p.startswith("download/"):
-            target_base = input_base
-            rel = p
-        elif p.startswith("output/"):
-            target_base = output_base
-            rel = p[len("output/"):]
-        else:
-            target_base = input_base
-            rel = p
-
-        resolved = os.path.realpath(os.path.join(target_base, rel))
-        real_base = os.path.realpath(target_base)
-        try:
-            if os.path.commonpath([real_base, resolved]) != real_base:
-                raise ValueError
-        except ValueError:
-            raise ValueError("TJ_NODE: image path traversal is not allowed.")
-        return resolved
+            return os.path.join(base, p[len("input/"):])
+        if p.startswith("download/"):
+            return os.path.join(base, p)
+        if p.startswith("output/"):
+            return os.path.join(folder_paths.get_output_directory(), p[len("output/"):])
+        return os.path.join(base, p)
 
     @staticmethod
     def _get_resample(interpolation):

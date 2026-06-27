@@ -49,9 +49,28 @@ def _first_existing(names, preferred):
 
 def _load_clip(clip_name):
     try:
-        return _call_node("CLIPLoader", clip_name=clip_name, type="stable_diffusion")[0]
+        import nodes as _nodes
+        cls = _nodes.NODE_CLASS_MAPPINGS.get("CLIPLoader")
+        if cls is not None:
+            spec = cls.INPUT_TYPES().get("required", {}).get("type", [None])[0]
+            types = list(spec) if isinstance(spec, (list, tuple)) else []
+        else:
+            types = []
     except Exception:
+        types = []
+    if not types:
+        types = ["stable_diffusion"]
+    errors = []
+    for t in types:
+        try:
+            return _call_node("CLIPLoader", clip_name=clip_name, type=t)[0]
+        except Exception as e:
+            errors.append(f"{t}: {e}")
+    try:
         return _call_node("CLIPLoader", clip_name=clip_name)[0]
+    except Exception as e:
+        errors.append(f"no type: {e}")
+        raise RuntimeError("CLIPLoader failed. Tried: " + " | ".join(errors))
 
 
 def _sampling_mode(seed, temperature=0.7, top_k=64, top_p=0.95, min_p=0.05, repetition_penalty=1.05):

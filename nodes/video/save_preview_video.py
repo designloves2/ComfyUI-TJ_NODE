@@ -8,7 +8,6 @@ import folder_paths
 from ...core.tj_types import any_type
 from ..utility._utility_utils import (
     _tj_expand_datetime_aliases, _tj_safe_output_dir, _tj_next_file,
-    _tj_safe_filename_part,
     _tj_write_wav, _tj_mix_audio, _tj_make_monitor_wav, _tj_ffmpeg_run,
     _tj_apply_output_fallbacks, _tj_extract_original_audio,
     _tj_media_meta_for_path, _tj_find_video_path,
@@ -56,7 +55,7 @@ class TJ_SaveAndPreviewVideo:
                 image=None, video=None, audio_a=None, audio_b=None):
 
         now = datetime.now()
-        parsed_prefix = _tj_safe_filename_part(now.strftime(_tj_expand_datetime_aliases(filename_prefix)), "video")
+        parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
         parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
         out_dir = folder_paths.get_temp_directory() if mode == "Preview" else _tj_safe_output_dir(parsed_path)
         os.makedirs(out_dir, exist_ok=True)

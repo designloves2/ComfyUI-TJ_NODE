@@ -24,7 +24,7 @@ def _tj_safe_output_dir(path_text=""):
     raw = str(path_text or "").strip()
     if not raw:
         return output_root
-    if os.path.isabs(raw) or raw.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:[\\/]", raw):
+    if os.path.isabs(raw) or re.match(r"^[A-Za-z]:[\\/]", raw):
         raise ValueError("TJ_NODE: absolute save paths are not allowed.")
     normalized = raw.replace("\\", "/").strip("/")
     parts = [p for p in normalized.split("/") if p]
@@ -39,22 +39,7 @@ def _tj_safe_output_dir(path_text=""):
     return final_dir
 
 
-def _tj_safe_filename_part(value, fallback="file"):
-    text = str(value if value is not None else "").strip()
-    if not text:
-        text = fallback
-    text = text.replace("\\", "_").replace("/", "_")
-    text = re.sub(r"[\r\n\t]+", " ", text)
-    text = re.sub(r"[<>:\"|?*]+", "_", text)
-    while ".." in text:
-        text = text.replace("..", "_")
-    text = text.strip(" .")
-    return text or fallback
-
-
 def _tj_next_file(out_dir, base_name, ext):
-    base_name = _tj_safe_filename_part(base_name, "file")
-    ext = _tj_safe_filename_part(ext, "dat").lstrip(".")
     candidate = f"{base_name}_0001.{ext}"
     if not os.path.exists(os.path.join(out_dir, candidate)):
         return candidate
@@ -170,13 +155,6 @@ def _tj_make_monitor_wav(audio_a, audio_b, wav_path, monitor="A+B"):
     return _tj_mix_audio(audio_a, audio_b, wav_path, "A+B")
 
 
-def _tj_is_relative_to(path, base):
-    try:
-        return os.path.commonpath([os.path.realpath(base), os.path.realpath(path)]) == os.path.realpath(base)
-    except ValueError:
-        return False
-
-
 def _tj_ffmpeg_run(args):
     import subprocess
     p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -259,11 +237,11 @@ def _tj_media_meta_for_path(media_path, media_type="video_file"):
     output_dir = os.path.realpath(folder_paths.get_output_directory())
     input_dir = os.path.realpath(folder_paths.get_input_directory())
     media_real = os.path.realpath(media_path)
-    if _tj_is_relative_to(media_real, temp_dir):
+    if media_real.startswith(temp_dir):
         meta_type, base = "temp", temp_dir
-    elif _tj_is_relative_to(media_real, output_dir):
+    elif media_real.startswith(output_dir):
         meta_type, base = "output", output_dir
-    elif _tj_is_relative_to(media_real, input_dir):
+    elif media_real.startswith(input_dir):
         meta_type, base = "input", input_dir
     else:
         import shutil
@@ -291,16 +269,11 @@ def _tj_resolve_media_path(candidate):
         return None
     if not cand:
         return None
+    if os.path.isabs(cand) and os.path.exists(cand):
+        return cand
     search_roots = [folder_paths.get_input_directory(), folder_paths.get_output_directory(), folder_paths.get_temp_directory()]
-    if os.path.isabs(cand):
-        resolved = os.path.realpath(cand)
-        if os.path.exists(resolved) and any(_tj_is_relative_to(resolved, root) for root in search_roots):
-            return resolved
-        return None
     for root in search_roots:
-        p = os.path.realpath(os.path.join(root, cand))
-        if not _tj_is_relative_to(p, root):
-            continue
+        p = os.path.join(root, cand)
         if os.path.exists(p):
             return p
     base = os.path.basename(cand)

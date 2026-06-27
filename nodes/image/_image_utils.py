@@ -2,26 +2,12 @@
 # image 카테고리 노드들이 공통으로 사용하는 유틸 함수
 
 import os
-import re
 import numpy as np
 from PIL import Image
 from pathlib import Path
 
 
 ECLIPSE_NAME_REGISTRY = {}
-
-
-def safe_filename_part(value, fallback="image"):
-    text = str(value if value is not None else "").strip()
-    if not text:
-        text = fallback
-    text = text.replace("\\", "_").replace("/", "_")
-    text = re.sub(r"[\r\n\t]+", " ", text)
-    text = re.sub(r"[<>:\"|?*]+", "_", text)
-    while ".." in text:
-        text = text.replace("..", "_")
-    text = text.strip(" .")
-    return text or fallback
 
 
 def save_image_with_quality(img_obj, file_path, ext):
@@ -48,7 +34,7 @@ def resolve_target_dir(base_dir_path, input_path_str):
     if not input_str:
         resolved_path = base_dir
     else:
-        if Path(input_str).is_absolute() or input_str.startswith(("/", "\\")) or re.match(r"^[A-Za-z]:[\\/]", input_str):
+        if Path(input_str).is_absolute() or re.match(r"^[A-Za-z]:[\\/]", input_str):
             raise ValueError("TJ_NODE: absolute save paths are not allowed.")
 
         normalized = input_str.replace("\\", "/").strip("/")

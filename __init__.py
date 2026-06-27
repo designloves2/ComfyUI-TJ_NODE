@@ -33,6 +33,7 @@ from .nodes.utility import (
     TJ_SmartShow,
     TJ_ShowAny,
     TJ_MultiModelSelecter,
+    TJ_ModelSetLoader,
     TJ_SaveTextFile,
     TJ_QueueLoop,
 )
@@ -89,6 +90,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SmartShow":         TJ_SmartShow,
     "TJ_ShowAny":           TJ_ShowAny,
     "TJ_MultiModelSelecter": TJ_MultiModelSelecter,
+    "TJ_ModelSetLoader":    TJ_ModelSetLoader,
     "TJ_SaveTextFile":     TJ_SaveTextFile,
     "TJ_QueueLoop":       TJ_QueueLoop,
     "TJ_GoStop":         TJ_GoStop,
@@ -141,6 +143,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SmartShow":         "Smart show (TJ)",
     "TJ_ShowAny":           "Show Any (TJ)",
     "TJ_MultiModelSelecter": "Multi Model Selecter (TJ)",
+    "TJ_ModelSetLoader":    "Model Set Loader (TJ)",
     "TJ_SaveTextFile":     "Save Text File (TJ)",
     "TJ_QueueLoop":       "Queue Loop (TJ)",
     "TJ_GoStop":         "Go & Stop (TJ)",

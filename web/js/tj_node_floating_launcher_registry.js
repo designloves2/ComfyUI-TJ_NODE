@@ -67,5 +67,7 @@ export const TJ_LAUNCHER_NODES = [
   // Generator
   { category: "Generator", title: "Flux2 Klein 4B/9B (TJ)", type: "Flux2 Klein 4B/9B (TJ)" },
   { category: "Generator", title: "Z-Image Turbo (TJ)", type: "Z-Image Turbo (TJ)" },
-  { category: "Generator", title: "ZIT ControlNet (TJ)", type: "ZIT ControlNet (TJ)" }
+  { category: "Generator", title: "ZIT ControlNet (TJ)", type: "ZIT ControlNet (TJ)" },
+  { category: "Generator", title: "Z-Image ONE (TJ)", type: "Z-Image ONE (TJ)" },
+  { category: "Generator", title: "Flux2 Klein ONE (TJ)", type: "flux2 klein One (TJ)" }
 ];

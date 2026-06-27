@@ -13,6 +13,7 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_Flux2Klein",
     "TJ_SceneMaker",
     "TJ_MultiModelSelecter",
+    "TJ_ModelSetLoader",
     "TJ_LLMContentQualityController",
     "TJ_QueueLoop"
 ]);

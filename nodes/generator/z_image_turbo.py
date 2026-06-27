@@ -37,9 +37,9 @@ def _sampler_names():
 
 
 def _default_sampler_name(sampler_names):
-    if "res_multistep" in sampler_names:
-        return "res_multistep"
-    return "res_2s" if "res_2s" in sampler_names else sampler_names[0]
+    if "euler" in sampler_names:
+        return "euler"
+    return "res_multistep" if "res_multistep" in sampler_names else sampler_names[0]
 
 
 def _scan_for(names, keyword_groups, fallback_preferred=None):
@@ -85,30 +85,30 @@ def _model_names():
     names = _folder_list("diffusion_models", [])
     if not names:
         names = _folder_list("unet", [])
-    return names or ["ZIT/zImage_turbo.safetensors"]
+    return names or ["ZIT/z_Image_turbo_bf16.safetensors"]
 
 
 def _clip_names():
     names = _folder_list("text_encoders", [])
     if not names:
         names = _folder_list("clip", [])
-    return names or ["ZIT/zImage_textEncoder.safetensors"]
+    return names or ["Qwen3/qwen_3_4b.safetensors"]
 
 
 def _vae_names():
-    return _folder_list("vae", ["FLUX1/ae.safetensors"])
+    return _folder_list("vae", ["z-image-Vae.safetensors"])
 
 
 def _lora_names():
-    return ["None"] + _folder_list("loras", ["Lora/ZIT/ZIT_Neobabae_v1.safetensors"])
+    return ["None"] + _folder_list("loras", ["Lora/lina/LINA_ZIT.safetensors"])
 
 
 def _default_lora_name(lora_names):
-    for name in ["Lora/ZIT/ZIT_Neobabae_v1.safetensors", "ZIT/ZIT_Neobabae_v1.safetensors"]:
+    for name in ["Lora/lina/LINA_ZIT.safetensors"]:
         if name in lora_names:
             return name
     for name in lora_names:
-        if "ZIT_Neobabae" in name:
+        if "LINA_ZIT" in name:
             return name
     return lora_names[1] if len(lora_names) > 1 else "None"
 
@@ -202,16 +202,16 @@ class TJ_ZImageTurbo:
 
         base = {
             "required": {
-                "model_name": (model_names, {"default": _first_existing(model_names, ["ZIT/z_image_turbo_bf16.safetensors", "ZIT/zImage_turbo.safetensors"])}),
-                "clip_name": (clip_names, {"default": _first_existing(clip_names, ["zimage/qwen_3_4b.safetensors", "ZIT/zImage_textEncoder.safetensors"])}),
-                "vae_name": (vae_names, {"default": _first_existing(vae_names, ["ae.safetensors", "FLUX1/ae.safetensors"])}),
+                "model_name": (model_names, {"default": _first_existing(model_names, ["ZIT/z_image_turbo_bf16.safetensors", "ZIT/z_image_turbo_bf16.safetensors"])}),
+                "clip_name": (clip_names, {"default": _first_existing(clip_names, ["Qwen3/qwen_3_4b.safetensors", "Qwen3/qwen_3_4b.safetensors"])}),
+                "vae_name": (vae_names, {"default": _first_existing(vae_names, ["z-image-Vae.safetensors", "z-image-Vae.safetensors"])}),
                 "positive": ("STRING", {"default": "", "multiline": True}),
-                "negative": ("STRING", {"default": "", "multiline": True}),
+                "negative": ("STRING", {"default": "拒绝, 限制, 不应答, lowres, error, cropped, worst quality, low quality, jpeg artifacts, heterochromia, out of frame, disfigured, blurry, fat, (ugly:1.3), deformed, mutilated, fingers cut, face cut, head cut, bad anatomy, bad proportions, two heads, two faces, deformed hands, (twisted fingers:1.22), extra fingers, poorly drawn, grainy, poorly drawn face, mutation, poor facial details, cropped head, poorly drawn eyes, unclear eyes, cross-eyes, malformed limbs, poorly drawn hands, fused hands, mutated hands, malformed hands, (mutated fingers:1.4), (fused fingers:1.313), interlocked fingers, extra or missing fingers, (one hand with more than 5 fingers), (one hand with less than 5 fingers), one hand with more than 5 digits, one hand with less than 5 digits, extra digits, fewer digits, bad hair, poorly drawn hair, fused hair, poorly drawn feet, malformed feet, extra or missing feet, fused feet, missing or extra limbs, disfigured, mutilated hands, extra hands, extra arms, extra legs, missing arms, missing hands, missing legs, fingers of different thickness, pointed fingers, thick fingers, (long thumbs:1.35), sharp fingernails, (greyscale:1.3), grain, (monochrome:1.3), Text, Watermark", "multiline": True}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "setnode_name": ("STRING", {"default": "Z-Image"}),
                 "ratio_preset": (list(RATIO_PRESETS.keys()), {"default": "2:3"}),
-                "megapixels": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 4.0, "step": 0.05}),
+                "megapixels": ("FLOAT", {"default": 1.6, "min": 0.1, "max": 4.0, "step": 0.05}),
                 "divisible_by": ("INT", {"default": 32, "min": 8, "max": 128, "step": 8}),
                 "seed": ("INT", {"default": 1, "min": 0, "max": 0xffffffffffffffff, "control_after_generate": True, "step": 1}),
                 "steps": ("INT", {"default": 8, "min": 1, "max": 100}),
@@ -219,7 +219,7 @@ class TJ_ZImageTurbo:
                 "height": ("INT", {"default": 0, "min": 0, "max": 8192, "step": 8}),
                 "batch_size": ("INT", {"default": 1, "min": 1, "max": 64}),
                 "cfg": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 30.0, "step": 0.1}),
-                "sampler_name": (sampler_names, {"default": "res_multistep" if "res_multistep" in sampler_names else _default_sampler_name(sampler_names)}),
+                "sampler_name": (sampler_names, {"default": "euler" if "euler" in sampler_names else _default_sampler_name(sampler_names)}),
                 "scheduler": (scheduler_names, {"default": "simple" if "simple" in scheduler_names else scheduler_names[0]}),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 "aura_shift": ("FLOAT", {"default": 3.0, "min": 0.0, "max": 20.0, "step": 0.1}),

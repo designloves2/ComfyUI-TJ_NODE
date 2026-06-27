@@ -1,10 +1,10 @@
 [
   {
-    "name": "Flux / Chroma (natural language)",
+    "name": "Flux & Chroma (natural language)",
     "instruction": "Format the output as flowing natural language in long descriptive sentences suitable for Flux or Chroma. No tag syntax. No parenthesis weights. No 'masterpiece' or quality boosters. Describe the scene as prose."
   },
   {
-    "name": "Z-Image / Lumina-2 (LLM text encoder)",
+    "name": "Z-Image & Lumina-2 (LLM text encoder)",
     "instruction": "Format the output as long, richly descriptive natural-language prose suitable for LLM-based text encoders (Z-Image, Lumina-2). Use complex sentences and vivid concrete detail. No tag syntax, no weights."
   },
   {
@@ -20,7 +20,7 @@
     "instruction": "Format the output as a comma-separated list of descriptive tags for SD 1.5. Lead with quality boosters (masterpiece, best quality, ultra-detailed). Use parenthesis weight syntax. Keep tags compact."
   },
   {
-    "name": "Pony / Illustrious (booru tags + score)",
+    "name": "Pony & Illustrious (booru tags + score)",
     "instruction": "Format the output as comma-separated booru-style tags for Pony / Illustrious. Lead with score tags: score_9, score_8_up, score_7_up. Include rating tag. Use underscores for multi-word tags."
   },
   {
@@ -28,7 +28,7 @@
     "instruction": "Format the output as a video shot description for LTX Video. Lead with a clear shot description, then describe subject motion, camera movement, pacing, and atmosphere. No tag syntax."
   },
   {
-    "name": "Hunyuan / Wan Video (cinematic motion prose)",
+    "name": "Hunyuan & Wan Video (cinematic motion prose)",
     "instruction": "Format the output as a cinematic video description with detailed motion. Cover camera angle, camera movement, subject action, environmental motion, atmosphere, and pacing. No tag syntax."
   },
   {

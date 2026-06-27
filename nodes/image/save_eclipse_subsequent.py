@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import folder_paths
-from ._image_utils import ECLIPSE_NAME_REGISTRY, save_image_with_quality, resolve_target_dir, safe_filename_part
+from ._image_utils import ECLIPSE_NAME_REGISTRY, save_image_with_quality, resolve_target_dir
 
 
 class TJ_SaveImage_EclipseSubsequent:
@@ -28,7 +28,6 @@ class TJ_SaveImage_EclipseSubsequent:
     CATEGORY = " ✨ TJ_Node/Image"
 
     def save_images(self, images, filename_suffix, extension_option, save_path_opt):
-        filename_suffix = safe_filename_part(filename_suffix, "")
         source_paths = ECLIPSE_NAME_REGISTRY.get(id(images), None)
         if source_paths is None:
             for registered_id, value in ECLIPSE_NAME_REGISTRY.items():
