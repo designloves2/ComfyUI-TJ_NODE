@@ -28,7 +28,11 @@ def _safe_resolve(base_dir, subfolder):
     if subfolder:
         target = os.path.realpath(os.path.join(base_dir, subfolder))
         real_base = os.path.realpath(base_dir)
-        if not target.startswith(real_base):
+        # str.startswith prefix confusion 방지 — commonpath 사용
+        try:
+            if os.path.commonpath([real_base, target]) != real_base:
+                return None
+        except ValueError:
             return None
         return target
     return base_dir
@@ -137,7 +141,12 @@ async def delete_files(request):
 
             abs_path = os.path.realpath(os.path.join(base, file_rel))
             real_base = os.path.realpath(base)
-            if not abs_path.startswith(real_base):
+            # str.startswith prefix confusion 방지 — commonpath 사용
+            try:
+                contained = os.path.commonpath([real_base, abs_path]) == real_base
+            except ValueError:
+                contained = False
+            if not contained:
                 errors.append({"path": rel_path, "error": "Path traversal blocked"})
                 continue
             if not os.path.isfile(abs_path):

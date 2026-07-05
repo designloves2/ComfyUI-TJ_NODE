@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from datetime import datetime
 import folder_paths
-from ..utility._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases
+from ..utility._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases, _tj_safe_filename_part
 
 
 class TJ_SaveAndPreviewImage:
@@ -20,7 +20,13 @@ class TJ_SaveAndPreviewImage:
                 "path": ("STRING", {"default": "image/%date/"}),
                 "type": (["png", "jpg", "webp"], {"default": "png"}),
                 "mode": (["Preview", "Save"], {"default": "Preview"}),
-            }
+            },
+            "optional": {
+                "condition": ("BOOLEAN", {
+                    "forceInput": True,
+                    "tooltip": "연결하지 않으면 항상 저장합니다. Images Compare Sheet의 is_complete 출력을 연결하면 Queue Loop 마지막 실행에만 저장됩니다.",
+                }),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -33,9 +39,13 @@ class TJ_SaveAndPreviewImage:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode):
+    def process(self, images, get_name, setnode_name, filename_prefix, path, type, mode, condition=None):
+        # condition이 연결된 경우: 값이 False면 저장 건너뜀. 미연결(None)이면 항상 저장.
+        if condition is not None and not condition:
+            return {"ui": {"tj_images": []}, "result": (images,)}
+
         now = datetime.now()
-        parsed_prefix = now.strftime(_tj_expand_datetime_aliases(filename_prefix))
+        parsed_prefix = _tj_safe_filename_part(now.strftime(_tj_expand_datetime_aliases(filename_prefix)))
         parsed_path = now.strftime(_tj_expand_datetime_aliases(path))
 
         if mode == "Preview":

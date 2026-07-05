@@ -10,6 +10,15 @@ import torch
 import folder_paths
 
 
+def _tj_safe_filename_part(name: str) -> str:
+    """파일명 구성요소에서 경로 구분자와 순회 시퀀스를 제거합니다."""
+    if not name:
+        return name
+    name = re.sub(r'[\\/]', '', str(name))   # / \ 제거 → ../../ 탈출 차단
+    name = re.sub(r'^\.+', '', name)          # 선행 점 제거 → .hidden / .. 차단
+    return name
+
+
 def _tj_expand_datetime_aliases(text):
     if not text:
         return text
@@ -237,11 +246,18 @@ def _tj_media_meta_for_path(media_path, media_type="video_file"):
     output_dir = os.path.realpath(folder_paths.get_output_directory())
     input_dir = os.path.realpath(folder_paths.get_input_directory())
     media_real = os.path.realpath(media_path)
-    if media_real.startswith(temp_dir):
+
+    def _in(root, path):
+        try:
+            return os.path.commonpath([root, path]) == root
+        except ValueError:
+            return False
+
+    if _in(temp_dir, media_real):
         meta_type, base = "temp", temp_dir
-    elif media_real.startswith(output_dir):
+    elif _in(output_dir, media_real):
         meta_type, base = "output", output_dir
-    elif media_real.startswith(input_dir):
+    elif _in(input_dir, media_real):
         meta_type, base = "input", input_dir
     else:
         import shutil
@@ -270,7 +286,19 @@ def _tj_resolve_media_path(candidate):
     if not cand:
         return None
     if os.path.isabs(cand) and os.path.exists(cand):
-        return cand
+        # 절대경로는 ComfyUI 알려진 디렉터리 내부만 허용
+        real_cand = os.path.realpath(cand)
+        known_roots = [
+            os.path.realpath(folder_paths.get_input_directory()),
+            os.path.realpath(folder_paths.get_output_directory()),
+            os.path.realpath(folder_paths.get_temp_directory()),
+        ]
+        try:
+            if any(os.path.commonpath([root, real_cand]) == root for root in known_roots):
+                return cand
+        except ValueError:
+            pass
+        # 알려진 디렉터리 외부 절대경로 → 상대경로 검색으로 fall-through
     search_roots = [folder_paths.get_input_directory(), folder_paths.get_output_directory(), folder_paths.get_temp_directory()]
     for root in search_roots:
         p = os.path.join(root, cand)

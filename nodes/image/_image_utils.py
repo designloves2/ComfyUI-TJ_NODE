@@ -2,12 +2,22 @@
 # image 카테고리 노드들이 공통으로 사용하는 유틸 함수
 
 import os
+import re
 import numpy as np
 from PIL import Image
 from pathlib import Path
 
 
 ECLIPSE_NAME_REGISTRY = {}
+
+
+def _tj_safe_filename_part(name: str) -> str:
+    """파일명 구성요소에서 경로 구분자와 순회 시퀀스를 제거합니다."""
+    if not name:
+        return name
+    name = re.sub(r'[\\/]', '', str(name))
+    name = re.sub(r'^\.+', '', name)
+    return name
 
 
 def save_image_with_quality(img_obj, file_path, ext):

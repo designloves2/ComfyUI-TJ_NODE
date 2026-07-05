@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import folder_paths
-from ._image_utils import save_image_with_quality, resolve_target_dir
+from ._image_utils import save_image_with_quality, resolve_target_dir, _tj_safe_filename_part
 
 
 class TJ_SaveImage_Subsequent:
@@ -45,10 +45,11 @@ class TJ_SaveImage_Subsequent:
             final_dir = resolve_target_dir(orig_path.parent, save_path_opt)
             final_dir.mkdir(parents=True, exist_ok=True)
 
+            safe_suffix = _tj_safe_filename_part(filename_suffix)
             if len(images) > 1:
-                file_name = f"{pure_name}{filename_suffix}_{idx + 1}.{target_ext}"
+                file_name = f"{pure_name}{safe_suffix}_{idx + 1}.{target_ext}"
             else:
-                file_name = f"{pure_name}{filename_suffix}.{target_ext}"
+                file_name = f"{pure_name}{safe_suffix}.{target_ext}"
 
             arr = 255.0 * image.cpu().numpy()
             img = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
