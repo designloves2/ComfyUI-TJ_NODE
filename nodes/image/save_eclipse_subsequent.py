@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 import folder_paths
-from ._image_utils import ECLIPSE_NAME_REGISTRY, save_image_with_quality, resolve_target_dir
+from ._image_utils import ECLIPSE_NAME_REGISTRY, save_image_with_quality, resolve_target_dir, _tj_safe_filename_part
 
 
 class TJ_SaveImage_EclipseSubsequent:
@@ -51,7 +51,8 @@ class TJ_SaveImage_EclipseSubsequent:
             final_dir = resolve_target_dir(orig_path_obj.parent, save_path_opt)
             final_dir.mkdir(parents=True, exist_ok=True)
 
-            file_path = final_dir / f"{pure_name}{filename_suffix}.{target_ext}"
+            safe_suffix = _tj_safe_filename_part(filename_suffix)
+            file_path = final_dir / f"{pure_name}{safe_suffix}.{target_ext}"
             save_image_with_quality(img, str(file_path), target_ext)
 
         return {"ui": {"images": []}}

@@ -2,6 +2,8 @@
 # TJ_NODE 공용 API 라우트 - 파일 다운로드/업로드/삭제/목록 기능
 
 import os
+import socket
+import ipaddress
 import shutil
 import urllib.request
 import urllib.parse
@@ -10,6 +12,31 @@ from aiohttp import web
 import server
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
+
+
+def _validate_download_url(url):
+    """SSRF/로컬파일 방어: http(s)만 허용하고, 호스트가 사설/루프백/링크로컬로
+    해석되면 거부한다. 문제가 있으면 사유 문자열을, 없으면 None을 반환한다."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return "Only http/https URLs are allowed."
+    host = parsed.hostname
+    if not host:
+        return "URL has no host."
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        return "Could not resolve host."
+    for info in infos:
+        ip_str = info[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if (ip.is_private or ip.is_loopback or ip.is_link_local
+                or ip.is_reserved or ip.is_multicast or ip.is_unspecified):
+            return "Access to internal/private addresses is blocked."
+    return None
 
 def _get_download_dir():
     d = os.path.join(folder_paths.get_input_directory(), "download")
@@ -44,6 +71,10 @@ async def download_url(request):
         url = data.get("url", "").strip()
         if not url:
             return web.json_response({"success": False, "error": "No URL provided"})
+
+        url_error = _validate_download_url(url)
+        if url_error:
+            return web.json_response({"success": False, "error": url_error})
 
         parsed = urllib.parse.urlparse(url)
         filename = os.path.basename(parsed.path) or "downloaded_image.png"

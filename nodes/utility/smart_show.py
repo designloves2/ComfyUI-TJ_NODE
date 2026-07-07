@@ -42,9 +42,13 @@ class TJ_SmartShow:
         target_data = input
 
         if target_data is None and file != "(none)":
-            input_dir = folder_paths.get_input_directory()
-            file_path = os.path.join(input_dir, file)
-            if os.path.exists(file_path):
+            input_dir = os.path.realpath(folder_paths.get_input_directory())
+            file_path = os.path.realpath(os.path.join(input_dir, file))
+            try:
+                file_contained = os.path.commonpath([input_dir, file_path]) == input_dir
+            except ValueError:
+                file_contained = False
+            if file_contained and os.path.exists(file_path):
                 ext = os.path.splitext(file_path)[1].lower()
                 if ext == '.txt':
                     with open(file_path, "r", encoding="utf-8") as f:
@@ -95,36 +99,43 @@ class TJ_SmartShow:
 
         found_path = find_media_path(target_data)
         if found_path and isinstance(found_path, str):
-            input_dir = folder_paths.get_input_directory()
-            output_dir = folder_paths.get_output_directory()
-            resolved_path = None
-            if os.path.isabs(found_path) and os.path.exists(found_path):
-                resolved_path = found_path
-            elif os.path.exists(os.path.join(input_dir, found_path)):
-                resolved_path = os.path.join(input_dir, found_path)
-            elif os.path.exists(os.path.join(output_dir, found_path)):
-                resolved_path = os.path.join(output_dir, found_path)
-            if resolved_path:
+            input_dir = os.path.realpath(folder_paths.get_input_directory())
+            output_dir = os.path.realpath(folder_paths.get_output_directory())
+            temp_dir = os.path.realpath(folder_paths.get_temp_directory())
+            known_roots = [("input", input_dir), ("output", output_dir), ("temp", temp_dir)]
+
+            def _contained_root(path):
+                """path가 알려진 루트(input/output/temp) 내부이면 (루트타입, realpath) 반환."""
+                try:
+                    rp = os.path.realpath(path)
+                except Exception:
+                    return None
+                if not os.path.exists(rp):
+                    return None
+                for root_type, root in known_roots:
+                    try:
+                        if os.path.commonpath([root, rp]) == root:
+                            return root_type, rp
+                    except ValueError:
+                        continue
+                return None
+
+            match = None
+            if os.path.isabs(found_path):
+                match = _contained_root(found_path)
+            else:
+                # 상대경로는 input → output 순으로 알려진 루트 안에서만 해석
+                match = _contained_root(os.path.join(input_dir, found_path)) \
+                    or _contained_root(os.path.join(output_dir, found_path))
+
+            if match:
+                root_type, resolved_path = match
                 ext = os.path.splitext(resolved_path)[1].lower()
                 if ext in {'.mp4', '.mov', '.webm', '.avi', '.mp3', '.m4a', '.wav', '.flac'}:
                     out_type = "video_file" if ext in {'.mp4', '.mov', '.webm', '.avi'} else "audio_file"
-                    if resolved_path.startswith(input_dir):
-                        rel = os.path.relpath(resolved_path, input_dir)
-                        return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": os.path.basename(rel), "subfolder": os.path.dirname(rel), "type": "input"}]}, "result": (target_data,)}
-                    elif resolved_path.startswith(output_dir):
-                        rel = os.path.relpath(resolved_path, output_dir)
-                        return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": os.path.basename(rel), "subfolder": os.path.dirname(rel), "type": "output"}]}, "result": (target_data,)}
-                    else:
-                        out_dir_tmp = folder_paths.get_temp_directory()
-                        rnd = random.randint(10000, 99999)
-                        temp_filename = f"tj_media_ext_{rnd}{ext}"
-                        temp_path = os.path.join(out_dir_tmp, temp_filename)
-                        try:
-                            import shutil
-                            shutil.copy2(resolved_path, temp_path)
-                            return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": temp_filename, "subfolder": "", "type": "temp"}]}, "result": (target_data,)}
-                        except Exception:
-                            pass
+                    base_dir = {"input": input_dir, "output": output_dir, "temp": temp_dir}[root_type]
+                    rel = os.path.relpath(resolved_path, base_dir)
+                    return {"ui": {"tj_type": [out_type], "tj_data": [{"filename": os.path.basename(rel), "subfolder": os.path.dirname(rel), "type": root_type}]}, "result": (target_data,)}
 
         if isinstance(target_data, str):
             final_output = text_content if edit_mode else target_data

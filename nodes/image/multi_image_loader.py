@@ -36,17 +36,47 @@ class TJ_MultiImageLoader:
 
     @staticmethod
     def _resolve_path(p):
-        p = p.strip()
+        """경로를 ComfyUI input/output/temp 내부로 격리해서 해석한다.
+        프론트엔드는 항상 input/ · output/ · download/ 접두사 또는 상대경로만
+        넘기므로 정상 동작에는 영향이 없고, '..' 탈출과 외부 절대경로만 차단한다."""
+        p = str(p or "").strip()
+        if not p:
+            raise ValueError("TJ_MultiImageLoader: empty path.")
+
+        input_dir = os.path.realpath(folder_paths.get_input_directory())
+        output_dir = os.path.realpath(folder_paths.get_output_directory())
+        try:
+            temp_dir = os.path.realpath(folder_paths.get_temp_directory())
+        except Exception:
+            temp_dir = None
+
         if os.path.isabs(p):
-            return p
-        base = folder_paths.get_input_directory()
-        if p.startswith("input/"):
-            return os.path.join(base, p[len("input/"):])
-        if p.startswith("download/"):
-            return os.path.join(base, p)
+            # 절대경로는 알려진 루트 내부일 때만 허용
+            real = os.path.realpath(p)
+            for root in [r for r in (input_dir, output_dir, temp_dir) if r]:
+                try:
+                    if os.path.commonpath([root, real]) == root:
+                        return real
+                except ValueError:
+                    continue
+            raise ValueError("TJ_MultiImageLoader: absolute paths outside ComfyUI directories are not allowed.")
+
         if p.startswith("output/"):
-            return os.path.join(folder_paths.get_output_directory(), p[len("output/"):])
-        return os.path.join(base, p)
+            base, rel = output_dir, p[len("output/"):]
+        elif p.startswith("input/"):
+            base, rel = input_dir, p[len("input/"):]
+        elif p.startswith("download/"):
+            base, rel = input_dir, p
+        else:
+            base, rel = input_dir, p
+
+        final = os.path.realpath(os.path.join(base, rel))
+        try:
+            if os.path.commonpath([base, final]) != base:
+                raise ValueError
+        except ValueError:
+            raise ValueError("TJ_MultiImageLoader: path escapes the allowed directory.")
+        return final
 
     @staticmethod
     def _get_resample(interpolation):
