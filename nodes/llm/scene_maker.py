@@ -5,6 +5,13 @@
 # -----------------------------------------------------------------------------
 
 import inspect
+import os
+
+from ._llm_utils import (
+    MMPROJ_NONE, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL, _HANDLER_CLASSES,
+    _text_encoder_ggufs, _text_encoder_mmproj_options,
+    _resolve_text_encoder_path, _is_bad_choice, _free_llm, tensor_to_data_uri,
+)
 
 
 def _call_node(class_name, **kwargs):
@@ -128,6 +135,87 @@ def _generate_text(clip, prompt, max_length, seed, image=None):
     if image is not None:
         kwargs["image"] = image
     return _call_node("TextGenerate", **kwargs)[0]
+
+
+# ── GGUF / llama.cpp backend ───────────────────────────────────────────────
+MODEL_TYPE_OPTIONS = ["textencode", "llama(gguf)"]
+
+# Scene Maker → Result pipe 전용 타입. 두 노드가 동일 문자열을 써야 슬롯이 연결된다.
+SCENE_PIPE_TYPE = "TJ_SCENE_PIPE"
+
+
+def _resolve_vision_handler(chat_handler_choice, model_file):
+    """Return a llama-cpp vision chat-handler class (or None if unavailable)."""
+    if not _HANDLER_CLASSES:
+        return None
+    if chat_handler_choice and chat_handler_choice != "Auto-detect":
+        return _HANDLER_CLASSES.get(chat_handler_choice)
+    mf = str(model_file or "").lower()
+    if "moondream" in mf and "Moondream" in _HANDLER_CLASSES:
+        return _HANDLER_CLASSES["Moondream"]
+    if "qwen" in mf and "Qwen2.5-VL" in _HANDLER_CLASSES:
+        return _HANDLER_CLASSES["Qwen2.5-VL"]
+    if "minicpm" in mf and "MiniCPM-V 2.6" in _HANDLER_CLASSES:
+        return _HANDLER_CLASSES["MiniCPM-V 2.6"]
+    if "nano" in mf and "llava" in mf and "NanoLLaVA" in _HANDLER_CLASSES:
+        return _HANDLER_CLASSES["NanoLLaVA"]
+    if "llava" in mf:
+        if "LLaVA 1.6" in _HANDLER_CLASSES:
+            return _HANDLER_CLASSES["LLaVA 1.6"]
+        if "LLaVA 1.5" in _HANDLER_CLASSES:
+            return _HANDLER_CLASSES["LLaVA 1.5"]
+    return _HANDLER_CLASSES.get("LLaVA 1.5")
+
+
+class _GGUFRunner:
+    """Loads a GGUF model once and generates text for every scene step.
+    If an mmproj file + vision handler are available, image-based briefs use
+    vision; otherwise image is ignored and the text brief path is used."""
+
+    def __init__(self, gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, seed):
+        from llama_cpp import Llama
+        if _is_bad_choice(gguf_model):
+            raise FileNotFoundError("No .gguf model found in models/text_encoders.")
+        model_path = _resolve_text_encoder_path(gguf_model)
+        if not model_path or not os.path.isfile(model_path):
+            raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
+
+        self.has_vision = False
+        self.chat_handler_instance = None
+        kwargs = dict(model_path=model_path, n_gpu_layers=int(n_gpu_layers),
+                      verbose=False, n_ctx=int(n_ctx), seed=int(seed))
+
+        if mmproj_file and mmproj_file != MMPROJ_NONE:
+            mmproj_path = _resolve_text_encoder_path(mmproj_file)
+            handler_cls = _resolve_vision_handler(chat_handler, gguf_model)
+            if mmproj_path and os.path.isfile(mmproj_path) and handler_cls is not None:
+                self.chat_handler_instance = handler_cls(clip_model_path=mmproj_path, verbose=False)
+                kwargs["chat_handler"] = self.chat_handler_instance
+                kwargs["logits_all"] = True
+                self.has_vision = True
+
+        self.llm = Llama(**kwargs)
+
+    def generate(self, prompt, max_length, seed, image=None):
+        if image is not None and self.has_vision:
+            messages = [{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": tensor_to_data_uri(image)}},
+                {"type": "text", "text": prompt},
+            ]}]
+        else:
+            messages = [{"role": "user", "content": prompt}]
+        output = self.llm.create_chat_completion(
+            messages=messages, max_tokens=int(max_length),
+            temperature=0.7, top_p=0.95, min_p=0.05, repeat_penalty=1.05, seed=int(seed),
+        )
+        return str(output["choices"][0]["message"]["content"])
+
+    def close(self):
+        _free_llm(self.llm)
+        try:
+            del self.chat_handler_instance
+        except Exception:
+            pass
 
 
 # ── Prompt Templates ───────────────────────────────────────────────────────
@@ -333,9 +421,16 @@ class TJ_SceneMaker:
     @classmethod
     def INPUT_TYPES(cls):
         clip_names = _clip_names()
+        handler_options = ["Auto-detect"] + list(_HANDLER_CLASSES.keys())
         return {
             "required": {
+                "Model_Type": (MODEL_TYPE_OPTIONS, {"default": "textencode"}),
                 "clip_name": (clip_names, {"default": _first_existing(clip_names, ["t5xxl_fp16.safetensors", "clip_l.safetensors"])}),
+                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
+                "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
+                "chat_handler": (handler_options, {"default": "Auto-detect"}),
+                "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999, "step": 1}),
+                "n_ctx": ("INT", {"default": 8192, "min": 512, "max": 32768, "step": 512}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "mode": (["Product Commercial", "Music Video", "Short Drama"], {"default": "Product Commercial"}),
@@ -358,59 +453,96 @@ class TJ_SceneMaker:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING")
-    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result")
-    OUTPUT_IS_LIST = (False, False, False, False, True, False)
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING", SCENE_PIPE_TYPE)
+    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result", "pipe")
+    OUTPUT_IS_LIST = (False, False, False, False, True, False, False)
     FUNCTION = "make"
     CATEGORY = " ✨ TJ_Node/LLM"
 
-    def make(self, clip_name, get_name, auto_set, mode, translate, idea, style, fixed_elements,
-             shot_count, seed, brief_override="", visual_beat_override="", input_image=None, clip=None):
+    def make(self, Model_Type="textencode", clip_name=None, gguf_model="", mmproj_file=MMPROJ_NONE,
+             chat_handler="Auto-detect", n_gpu_layers=-1, n_ctx=8192,
+             get_name="(none)", auto_set=False, mode="Product Commercial", translate="KO",
+             idea="", style="", fixed_elements="", shot_count=6, seed=1,
+             brief_override="", visual_beat_override="", input_image=None, clip=None):
 
-        if clip is None:
-            clip = _load_clip(clip_name)
+        # An externally connected CLIP always forces the textencode backend.
+        if clip is not None:
+            Model_Type = "textencode"
 
-        effective_shot_count = int(shot_count)
-        product_brief = brief_override.strip()
-        if not product_brief:
-            if input_image is not None:
-                product_brief = _generate_text(clip, _brief_prompt_for_mode(mode), 512, seed, image=input_image).strip()
-            else:
-                product_brief = _generate_text(clip, _text_brief_prompt(mode, idea, style, fixed_elements), 512, seed).strip()
+        runner = None
+        if Model_Type == "llama(gguf)":
+            runner = _GGUFRunner(gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, seed)
+            if input_image is not None and not runner.has_vision:
+                runner.close()
+                raise RuntimeError(
+                    "Scene Maker (TJ): An input image is connected but GGUF vision is not ready. "
+                    "Select an 'mmproj_file' (not 'none') and ensure a vision chat handler is available "
+                    "(update/install llama-cpp-python), or disconnect the image to use text-only brief."
+                )
 
-        shot_beats = visual_beat_override.strip()
-        if shot_beats:
-            override_count = _line_count(shot_beats)
-            if override_count:
-                effective_shot_count = override_count
+            def gen(prompt, max_length, s, image=None):
+                return runner.generate(prompt, max_length, s, image=image)
         else:
-            shot_beats_prompt = _format_template(SHOT_BEATS_TEMPLATE, SHOT_COUNT=effective_shot_count,
-                MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea, STYLE=style, FIXED=fixed_elements)
-            shot_beats = _generate_text(clip, shot_beats_prompt, 512, seed + 1).strip()
+            if clip is None:
+                clip = _load_clip(clip_name)
 
-        anchor = _generate_text(clip, _format_template(ANCHOR_TEMPLATE, BRIEF=product_brief, STYLE=style, FIXED=fixed_elements), 256, seed + 2).strip()
+            def gen(prompt, max_length, s, image=None):
+                return _generate_text(clip, prompt, max_length, s, image=image)
 
-        keyframe_prompts = _generate_text(clip,
-            _format_template(KEYFRAME_PROMPTS_TEMPLATE, SHOT_COUNT=effective_shot_count, BEATS=shot_beats,
-                BRIEF=product_brief, ANCHOR=anchor, STYLE=style, FIXED=fixed_elements), 2048, seed + 3).strip()
-        keyframe_prompt_lines = _prompt_lines(keyframe_prompts)
+        try:
+            effective_shot_count = int(shot_count)
+            product_brief = brief_override.strip()
+            if not product_brief:
+                if input_image is not None:
+                    product_brief = gen(_brief_prompt_for_mode(mode), 512, seed, image=input_image).strip()
+                else:
+                    product_brief = gen(_text_brief_prompt(mode, idea, style, fixed_elements), 512, seed).strip()
 
-        language_map = {"KO": ("Korean", "Korean headings"), "EN": ("English", "English headings"),
-                        "JP": ("Japanese", "Japanese headings"), "CN": ("Chinese", "Chinese headings")}
-        language_name, heading_rule = language_map.get(str(translate or "KO"), language_map["KO"])
-        story_template = KOREAN_STORY_TEMPLATE.replace(
-            "Output in Korean only.",
-            f"Output in {language_name} only. Use {heading_rule} where possible."
-        )
+            shot_beats = visual_beat_override.strip()
+            if shot_beats:
+                override_count = _line_count(shot_beats)
+                if override_count:
+                    effective_shot_count = override_count
+            else:
+                shot_beats_prompt = _format_template(SHOT_BEATS_TEMPLATE, SHOT_COUNT=effective_shot_count,
+                    MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea, STYLE=style, FIXED=fixed_elements)
+                shot_beats = gen(shot_beats_prompt, 512, seed + 1).strip()
 
-        korean_story = _generate_text(clip,
-            _format_template(story_template, MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea,
-                STYLE=style, BEATS=shot_beats, FINAL_PROMPTS=keyframe_prompts, CUT_LIST=_cut_list(effective_shot_count)),
-            2048, seed + 4).strip()
+            anchor = gen(_format_template(ANCHOR_TEMPLATE, BRIEF=product_brief, STYLE=style, FIXED=fixed_elements), 256, seed + 2).strip()
+
+            keyframe_prompts = gen(
+                _format_template(KEYFRAME_PROMPTS_TEMPLATE, SHOT_COUNT=effective_shot_count, BEATS=shot_beats,
+                    BRIEF=product_brief, ANCHOR=anchor, STYLE=style, FIXED=fixed_elements), 2048, seed + 3).strip()
+            keyframe_prompt_lines = _prompt_lines(keyframe_prompts)
+
+            language_map = {"KO": ("Korean", "Korean headings"), "EN": ("English", "English headings"),
+                            "JP": ("Japanese", "Japanese headings"), "CN": ("Chinese", "Chinese headings")}
+            language_name, heading_rule = language_map.get(str(translate or "KO"), language_map["KO"])
+            story_template = KOREAN_STORY_TEMPLATE.replace(
+                "Output in Korean only.",
+                f"Output in {language_name} only. Use {heading_rule} where possible."
+            )
+
+            korean_story = gen(
+                _format_template(story_template, MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea,
+                    STYLE=style, BEATS=shot_beats, FINAL_PROMPTS=keyframe_prompts, CUT_LIST=_cut_list(effective_shot_count)),
+                2048, seed + 4).strip()
+        finally:
+            if runner is not None:
+                runner.close()
+
+        pipe = {
+            "scene_brief": product_brief,
+            "visual_beat": shot_beats,
+            "visual_anchor": anchor,
+            "scene_prompt": keyframe_prompts,
+            "scene_prompt_line": keyframe_prompt_lines,
+            "translated_result": korean_story,
+        }
 
         return {
             "ui": {"text": ["Reference brief:", product_brief, "Shot beats:", shot_beats,
                             "Visual anchor:", anchor, "Keyframe prompts:", keyframe_prompts,
                             "Korean story:", korean_story, "Effective shot count:", str(effective_shot_count)]},
-            "result": (product_brief, shot_beats, anchor, keyframe_prompts, keyframe_prompt_lines, korean_story),
+            "result": (product_brief, shot_beats, anchor, keyframe_prompts, keyframe_prompt_lines, korean_story, pipe),
         }

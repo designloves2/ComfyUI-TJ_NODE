@@ -53,6 +53,7 @@ from .nodes.llm import (
     TJ_PromptShowLocker,
     TJ_PromptStudio,
     TJ_SceneMaker,
+    TJ_SceneMakerResultPipe,
     TJ_OllamaLLMLoader,
     TJ_LLMContentQualityController,
 )
@@ -106,6 +107,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_PromptShowLocker":  TJ_PromptShowLocker,
     "TJ_PromptStudio":      TJ_PromptStudio,
     "TJ_SceneMaker":        TJ_SceneMaker,
+    "TJ_SceneMakerResultPipe": TJ_SceneMakerResultPipe,
     "TJ_OllamaLLMLoader":   TJ_OllamaLLMLoader,
     "TJ_LLMContentQualityController": TJ_LLMContentQualityController,
 
@@ -159,6 +161,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_PromptShowLocker":  "Prompt Show & Locker (TJ)",
     "TJ_PromptStudio":      "Prompt Studio (TJ)",
     "TJ_SceneMaker":        "Scene Maker (TJ)",
+    "TJ_SceneMakerResultPipe": "Scene Maker Result - pipe(TJ)",
     "TJ_OllamaLLMLoader":   "Ollama LLM Loader (TJ)",
     "TJ_LLMContentQualityController": "LLM Content Quality Controller (TJ)",
 

@@ -233,7 +233,13 @@ function tjSceneApplyWidgetLabels(node) {
 
 function tjSceneReorderWidgets(node) {
     const order = [
+        "Model_Type",
         "clip_name",
+        "gguf_model",
+        "mmproj_file",
+        "chat_handler",
+        "n_gpu_layers",
+        "n_ctx",
         "get_name",
         "auto_set",
         "mode",
@@ -387,6 +393,125 @@ function setWidgetHeight(node, name, prop, defaultH = 120) {
 }
 
 
+function tjSceneShowMmprojAlert() {
+    // Debounce so we don't stack multiple modals from repeated events.
+    if (document.getElementById("tj-scene-mmproj-alert")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "tj-scene-mmproj-alert";
+    Object.assign(overlay.style, {
+        position: "fixed", inset: "0", zIndex: "10000",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)",
+    });
+
+    const box = document.createElement("div");
+    Object.assign(box.style, {
+        minWidth: "340px", maxWidth: "440px", padding: "26px 28px 22px",
+        borderRadius: "14px", textAlign: "center",
+        background: "linear-gradient(160deg, #1a0b2e 0%, #0a0a0a 100%)",
+        border: "1px solid rgba(160,90,240,0.65)",
+        boxShadow: "0 0 40px rgba(118,18,218,0.45)",
+        color: "#eee", fontFamily: "sans-serif",
+        transform: "scale(0.92)", opacity: "0",
+        transition: "transform 0.16s ease, opacity 0.16s ease",
+    });
+
+    box.innerHTML = `
+        <div style="font-size:34px;line-height:1;margin-bottom:12px;">🖼️✨</div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px;color:#d9b3ff;">
+            mmproj 설정이 필요합니다
+        </div>
+        <div style="font-size:13px;line-height:1.55;opacity:0.92;">
+            <b>llama(gguf)</b> 모드에서 <b>이미지 입력</b>을 사용하려면<br>
+            비전(Vision) 기능이 필요합니다.<br><br>
+            노드의 <b>mmproj_file</b> 항목에서 <b>none 이 아닌</b><br>
+            mmproj 모델을 선택해 주세요.
+        </div>
+        <button id="tj-scene-mmproj-ok" style="
+            margin-top:18px;padding:8px 26px;border:none;border-radius:8px;cursor:pointer;
+            font-size:13px;font-weight:600;color:#fff;
+            background:linear-gradient(135deg,#7612da,#a05af0);
+            box-shadow:0 2px 10px rgba(118,18,218,0.5);">확인</button>
+    `;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => { box.style.transform = "scale(1)"; box.style.opacity = "1"; });
+
+    const close = () => overlay.remove();
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+    box.querySelector("#tj-scene-mmproj-ok")?.addEventListener("click", close);
+    document.addEventListener("keydown", function onKey(e) {
+        if (e.key === "Escape") { close(); document.removeEventListener("keydown", onKey); }
+    });
+}
+
+function tjSceneNeedsMmproj(node) {
+    const typeW = node.widgets?.find(x => x.name === "Model_Type");
+    const mmW = node.widgets?.find(x => x.name === "mmproj_file");
+    const imageInput = node.inputs?.find(i => i.name === "input_image");
+    const isGguf = String(typeW?.value || "textencode") === "llama(gguf)";
+    const imageConnected = !!(imageInput && imageInput.link != null);
+    const mmprojNone = !mmW?.value || String(mmW.value) === "none";
+    return isGguf && imageConnected && mmprojNone;
+}
+
+function tjSceneCheckMmproj(node) {
+    if (tjSceneNeedsMmproj(node)) tjSceneShowMmprojAlert();
+}
+
+function tjSceneApplyModelType(node) {
+    const w = node.widgets?.find(x => x.name === "Model_Type");
+    const isGguf = String(w?.value || "textencode") === "llama(gguf)";
+    // textencode uses clip_name; llama(gguf) uses the gguf model + vision options.
+    hideWidget(node, "clip_name", isGguf);
+    hideWidget(node, "gguf_model", !isGguf);
+    hideWidget(node, "mmproj_file", !isGguf);
+    hideWidget(node, "chat_handler", !isGguf);
+    hideWidget(node, "n_gpu_layers", !isGguf);
+    hideWidget(node, "n_ctx", !isGguf);
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+}
+
+function installSceneModelType(node) {
+    const w = node.widgets?.find(x => x.name === "Model_Type");
+    if (w && !w._tj_model_type_attached) {
+        w._tj_model_type_attached = true;
+        const orig = w.callback;
+        w.callback = function(v) {
+            if (orig) orig.call(this, v);
+            tjSceneApplyModelType(node);
+            tjSceneCheckMmproj(node);
+        };
+    }
+    const mmW = node.widgets?.find(x => x.name === "mmproj_file");
+    if (mmW && !mmW._tj_mmproj_attached) {
+        mmW._tj_mmproj_attached = true;
+        const orig = mmW.callback;
+        mmW.callback = function(v) {
+            if (orig) orig.call(this, v);
+            tjSceneCheckMmproj(node);
+        };
+    }
+    if (!node._tj_mmproj_conn_attached) {
+        node._tj_mmproj_conn_attached = true;
+        const origConn = node.onConnectionsChange;
+        node.onConnectionsChange = function(type, index, connected) {
+            if (origConn) origConn.apply(this, arguments);
+            // When an image is newly connected to the input_image slot, verify vision readiness.
+            if (type === LiteGraph.INPUT && connected) {
+                const input = this.inputs?.[index];
+                if (input && input.name === "input_image") {
+                    requestAnimationFrame(() => tjSceneCheckMmproj(this));
+                }
+            }
+        };
+    }
+    tjSceneApplyModelType(node);
+}
+
 function findSceneWidget(node, name) {
     return node.widgets?.find((widget) => widget.name === name);
 }
@@ -525,9 +650,10 @@ app.registerExtension({
 
             tjSceneApplyWidgetLabels(this);
             tjSceneReorderWidgets(this);
+            installSceneModelType(this);
             installSceneButtons(this);
 
-            requestAnimationFrame(() => { updateAutoSets(this); updateSceneSummary(this); });
+            requestAnimationFrame(() => { updateAutoSets(this); updateSceneSummary(this); tjSceneApplyModelType(this); });
         };
 
         const origOnConfigure = nodeType.prototype.onConfigure;
@@ -540,6 +666,7 @@ app.registerExtension({
                 installAutoSet(this);
                 tjSceneApplyWidgetLabels(this);
                 tjSceneReorderWidgets(this);
+                installSceneModelType(this);
                 installSceneButtons(this);
                 updateAutoSets(this);
                 tjApplyOutputArrowState(this, tjAutosetEnabled(this));
