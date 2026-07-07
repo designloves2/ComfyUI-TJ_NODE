@@ -108,11 +108,17 @@ class TJ_PromptEnhancer:
                 raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
             llm = Llama(model_path=model_path, n_gpu_layers=n_gpu_layers, verbose=False, n_ctx=int(n_ctx), seed=int(seed))
             try:
+                messages = [
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": prompt_in},
+                ]
+                if append_no_think:
+                    messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
                 output = llm.create_chat_completion(
-                    messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": prompt_in}],
+                    messages=messages,
                     max_tokens=int(max_tokens), temperature=float(temperature), top_p=float(top_p),
                     repeat_penalty=float(repeat_penalty),
-                    stop=["\n\nUser:", "\n\nAssistant:", "Human:", "</think>", "</thinking>"],
+                    stop=["\n\nUser:", "\n\nAssistant:", "Human:", "</think>", "</thinking>", "Thinking Process:"],
                 )
                 raw_output = output["choices"][0]["message"]["content"].strip()
             finally:
