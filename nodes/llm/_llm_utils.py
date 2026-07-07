@@ -176,6 +176,34 @@ def _strip_thinking_tags(text):
     return text
 
 
+_THINKING_HEADING = re.compile(
+    r"^\s*(thinking\s+process|chain[- ]of[- ]thought|reasoning\s+process|my\s+thinking|analysis)\s*[:\n]",
+    re.IGNORECASE,
+)
+_NUMBERED_ITEM = re.compile(r"^\d+\.\s")
+_BULLET_LINE = re.compile(r"^\s*[-*•]|\s*\d+\.")
+
+
+def _strip_thinking_process_block(text):
+    """'Thinking Process:' 헤딩으로 시작하는 평문 사고 블록을 제거하고 마지막 실제 출력만 반환."""
+    if not _THINKING_HEADING.match(text):
+        return text
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    for p in reversed(paragraphs):
+        if _THINKING_HEADING.match(p):
+            continue
+        if _NUMBERED_ITEM.match(p):
+            continue
+        lines = p.split("\n")
+        bullet_count = sum(1 for l in lines if _BULLET_LINE.match(l.strip()))
+        if bullet_count > len(lines) * 0.5:
+            continue
+        if len(p) < 40:
+            continue
+        return p
+    return text
+
+
 def _extract_final_paragraph(text):
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if len(paragraphs) < 2:
@@ -238,6 +266,7 @@ def _extract_after_final_marker(text):
 def _clean_output(text, original_input=""):
     text = text.strip()
     text = _strip_thinking_tags(text)
+    text = _strip_thinking_process_block(text)
     text = _extract_after_final_marker(text)
     text = _extract_final_paragraph(text)
     text = _strip_preambles(text)

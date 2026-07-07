@@ -146,15 +146,15 @@ function indexMode(node) {
     return String(findWidget(node, "index_loop_mode")?.value || "Index Loop");
 }
 function nextIndexValue(node, current) {
-    const start = Math.max(0, intWidget(node, "start_index", 0));
+    const start = Math.max(1, intWidget(node, "start_index", 1));
     const end = Math.max(start, intWidget(node, "end_index", start));
     const step = Math.max(1, intWidget(node, "step", 1));
-    const next = Math.max(0, Number(current || 0)) + step;
+    const next = Math.max(1, Number(current || 1)) + step;
     if (indexMode(node) === "Index Loop") return next > end ? start : next;
     return Math.min(next, end);
 }
 function resetToStart(node) {
-    const start = Math.max(0, intWidget(node, "start_index", 0));
+    const start = Math.max(1, intWidget(node, "start_index", 1));
     setWidgetValue(node, "current_index", start);
     setWidgetValue(node, "current_queue", 0);
     node.properties = node.properties || {};
@@ -170,15 +170,20 @@ function stopLoop(node, reason = "Stopped") {
     stopTimer(node);
     setStatus(node, reason, TJ_WARN);
 }
+
 function startLoop(node) {
     node.properties = node.properties || {};
-    const start = Math.max(0, intWidget(node, "start_index", 0));
+    const start = Math.max(1, intWidget(node, "start_index", 1));
+
+    // 연결된 IndexLoRALoader의 활성 LoRA 수를 자동으로 반영합니다.
+
     setWidgetValue(node, "current_index", start);
     setWidgetValue(node, "current_queue", 0);
     node.properties.tj_queue_loop_running = true;
     node._tj_queue_loop_pending = null;
     startTimer(node);
-    setStatus(node, `running - 1/${intWidget(node, "queue_count", 1)}`, TJ_OK);
+    const total = Math.max(1, intWidget(node, "queue_count", 1));
+    setStatus(node, `running - 1/${total}`, TJ_OK);
     setTimeout(() => queuePromptSafe(), 40);
 }
 function continueAfterWorkflowFinished(node) {
@@ -200,7 +205,7 @@ function continueAfterWorkflowFinished(node) {
         return;
     }
 
-    const current = Math.max(0, Number(info.index ?? intWidget(node, "current_index", intWidget(node, "start_index", 0))));
+    const current = Math.max(1, Number(info.index ?? intWidget(node, "current_index", intWidget(node, "start_index", 1))));
     const nextIndex = nextIndexValue(node, current);
     setWidgetValue(node, "current_index", nextIndex);
     setWidgetValue(node, "current_queue", nextQueuePos);
@@ -208,71 +213,109 @@ function continueAfterWorkflowFinished(node) {
     setTimeout(() => queuePromptSafe(), 80);
 }
 
+const PANEL_INNER_H = 76; // status(22) + gap(10) + buttons(26) + margins
+const WIDGET_H = PANEL_INNER_H + 14; // top(6) + panel + bottom(8)
+const MIN_NODE_W = 280;
+
 class QueueLoopControlsWidget {
     constructor(node) {
         this.name = "tj_queue_loop_controls";
         this.type = "custom";
         this.node = node;
         this.options = { serialize: false };
-        this.hitAreas = {};
+        this._drawY = 0;
+        this._drawW = MIN_NODE_W;
         this.pressed = "";
     }
     serializeValue() { return undefined; }
-    computeSize(width) { return [Math.max(width || 420, 420), 84]; }
-    _button(ctx, key, x, y, w, h, label, active = false) {
-        this.hitAreas[key] = [x, y, w, h];
+    computeSize(width) { return [width || MIN_NODE_W, WIDGET_H]; }
+
+    _buttonBounds(panelW) {
+        const x = 12;
+        const gap = 8;
+        const bw = Math.max(40, Math.floor((panelW - 20 - gap * 2) / 3));
+        const by = this._drawY + 6 + 30; // top + status area
+        return {
+            start: [x + 10,               by, bw, 26],
+            stop:  [x + 10 + bw + gap,    by, bw, 26],
+            reset: [x + 10 + (bw+gap)*2,  by, bw, 26],
+        };
+    }
+
+    _drawButton(ctx, bounds, key, label, active) {
+        const [bx, by, bw, bh] = bounds[key];
         ctx.save();
         ctx.fillStyle = this.pressed === key ? TJ_PURPLE : active ? "#1a0630" : "#151515";
         ctx.strokeStyle = active ? TJ_PURPLE : "#444";
         ctx.lineWidth = 1;
-        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill(); ctx.stroke(); }
-        else { ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); }
+        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill(); ctx.stroke(); }
+        else { ctx.fillRect(bx, by, bw, bh); ctx.strokeRect(bx, by, bw, bh); }
         ctx.fillStyle = active ? TJ_OK : TJ_TEXT;
         ctx.font = "11px sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(label, x + w / 2, y + h / 2);
+        ctx.fillText(label, bx + bw / 2, by + bh / 2);
         ctx.restore();
     }
+
     draw(ctx, node, width, y) {
         this.node = node;
-        const w = Math.max(1, Number(width || node.size?.[0] || 420));
+        this._drawY = y;
+        this._drawW = Math.max(MIN_NODE_W, Number(width || node.size?.[0] || MIN_NODE_W));
+
+        const w = this._drawW;
         const x = 12;
-        const panelW = Math.max(1, w - 24);
+        const panelW = Math.max(60, w - 24);
         const top = y + 6;
         const running = !!node.properties?.tj_queue_loop_running;
-        this.hitAreas = {};
 
+        // Panel background
         ctx.save();
         ctx.fillStyle = TJ_PANEL;
         ctx.strokeStyle = TJ_PURPLE;
         ctx.lineWidth = 1;
-        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, top, panelW, 72, 7); ctx.fill(); ctx.stroke(); }
-        else { ctx.fillRect(x, top, panelW, 72); ctx.strokeRect(x, top, panelW, 72); }
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(x, top, panelW, PANEL_INNER_H, 7);
+            ctx.fill(); ctx.stroke();
+        } else {
+            ctx.fillRect(x, top, panelW, PANEL_INNER_H);
+            ctx.strokeRect(x, top, panelW, PANEL_INNER_H);
+        }
 
+        // Status text + elapsed
         const status = node._tj_queue_loop_status || "ready - 0/0";
         const elapsed = formatElapsed(currentElapsedMs(node));
-        ctx.font = "bold 18px monospace";
+        ctx.font = "bold 15px monospace";
         ctx.textBaseline = "alphabetic";
         ctx.fillStyle = node._tj_queue_loop_status_color || TJ_TEXT;
         ctx.textAlign = "left";
-        ctx.fillText(status, x + 10, top + 18);
+        ctx.fillText(status, x + 10, top + 20);
         ctx.fillStyle = TJ_TEXT;
+        ctx.font = "13px monospace";
         ctx.textAlign = "right";
-        ctx.fillText(elapsed, x + panelW - 10, top + 18);
-        ctx.textAlign = "left";
+        ctx.fillText(elapsed, x + panelW - 10, top + 20);
 
-        const gap = 8;
-        const bw = Math.floor((panelW - 20 - gap * 2) / 3);
-        const by = top + 34;
-        this._button(ctx, "start", x + 10, by, bw, 26, running ? "Restart" : "Start", running);
-        this._button(ctx, "stop", x + 10 + bw + gap, by, bw, 26, "Stop", false);
-        this._button(ctx, "reset", x + 10 + (bw + gap) * 2, by, bw, 26, "Reset", false);
+        // Buttons
+        const bounds = this._buttonBounds(panelW);
+        this._drawButton(ctx, bounds, "start", running ? "Restart" : "Start", running);
+        this._drawButton(ctx, bounds, "stop",  "Stop",  false);
+        this._drawButton(ctx, bounds, "reset", "Reset", false);
         ctx.restore();
     }
+
     mouse(event, pos, node) {
         const type = String(event?.type || "");
-        const key = Object.entries(this.hitAreas || {}).find(([, b]) => pos[0] >= b[0] && pos[0] <= b[0] + b[2] && pos[1] >= b[1] && pos[1] <= b[1] + b[3])?.[0] || "";
+        const w = this._drawW;
+        const panelW = Math.max(60, w - 24);
+        const bounds = this._buttonBounds(panelW);
+
+        const hit = (key) => {
+            const [bx, by, bw, bh] = bounds[key];
+            return pos[0] >= bx && pos[0] <= bx + bw && pos[1] >= by && pos[1] <= by + bh;
+        };
+        const key = ["start","stop","reset"].find(hit) || "";
+
         if ((type === "pointerdown" || type === "mousedown") && key) {
             this.pressed = key;
             markDirty(node);
@@ -291,6 +334,12 @@ class QueueLoopControlsWidget {
         }
         return Boolean(this.pressed);
     }
+}
+
+function enforceMinSize(node) {
+    const minH = node.computeSize()[1];
+    if (node.size[0] < MIN_NODE_W) node.size[0] = MIN_NODE_W;
+    if (node.size[1] < minH) node.size[1] = minH;
 }
 
 function installQueueLoop(node) {
@@ -319,10 +368,19 @@ function installQueueLoop(node) {
     if (!findWidget(node, "tj_queue_loop_controls")) node.addCustomWidget(new QueueLoopControlsWidget(node));
     updateAutoSet(node);
     if (!node._tj_queue_loop_status) {
-        setStatus(node, `Ready · index ${intWidget(node, "current_index", intWidget(node, "start_index", 0))} · ${intWidget(node, "current_queue", 0)}/${intWidget(node, "queue_count", 1)}`, TJ_TEXT);
+        setStatus(node, `ready - 0/${intWidget(node, "queue_count", 1)}`, TJ_TEXT);
     }
-    node.size[0] = Math.max(Number(node.size?.[0] || 0), 420);
-    markDirty(node);
+
+    // 최소 사이즈 강제 적용
+    node.onResize = function(size) {
+        if (size[0] < MIN_NODE_W) size[0] = MIN_NODE_W;
+        const minH = this.computeSize()[1];
+        if (size[1] < minH) size[1] = minH;
+    };
+    queueMicrotask(() => {
+        enforceMinSize(node); // 최솟값만 보장 — 사용자가 키운 사이즈는 건드리지 않음
+        markDirty(node);
+    });
 }
 
 app.registerExtension({

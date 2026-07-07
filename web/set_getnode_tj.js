@@ -15,7 +15,9 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_MultiModelSelecter",
     "TJ_ModelSetLoader",
     "TJ_LLMContentQualityController",
-    "TJ_QueueLoop"
+    "TJ_QueueLoop",
+    "TJ_ImagesCompareSheetQueueLoop",
+    "TJ_IndexLoRALoader"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";

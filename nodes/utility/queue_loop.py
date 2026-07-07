@@ -15,10 +15,10 @@ class TJ_QueueLoop:
             "required": {
                 "auto_set": ("BOOLEAN", {"default": True, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "queue_count": ("INT", {"default": 50, "min": 1, "max": 1000000, "step": 1}),
-                "current_index": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
+                "current_index": ("INT", {"default": 1, "min": 1, "max": 1000000, "step": 1}),
                 "current_queue": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
-                "start_index": ("INT", {"default": 0, "min": 0, "max": 1000000, "step": 1}),
-                "end_index": ("INT", {"default": 4, "min": 0, "max": 1000000, "step": 1}),
+                "start_index": ("INT", {"default": 1, "min": 1, "max": 1000000, "step": 1}),
+                "end_index": ("INT", {"default": 4, "min": 1, "max": 1000000, "step": 1}),
                 "step": ("INT", {"default": 1, "min": 1, "max": 1000000, "step": 1}),
                 "index_loop_mode": (["Index Stop at End", "Index Loop"], {"default": "Index Loop"}),
             },
@@ -63,13 +63,13 @@ class TJ_QueueLoop:
             index_loop_mode = "Index Loop" if str(loop_mode) == "Loop" else "Index Stop at End"
 
         total = max(1, int(queue_count))
-        start = max(0, int(start_index))
+        start = max(1, int(start_index))
         end = max(start, int(end_index))
         step_value = max(1, int(step))
         queue_pos = max(0, int(current_queue))
         mode = str(index_loop_mode or "Index Loop")
 
-        index = max(0, int(current_index))
+        index = max(1, int(current_index))
         if mode == "Index Loop":
             if index < start or index > end:
                 index = start

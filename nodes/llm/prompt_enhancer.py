@@ -6,6 +6,7 @@ from ._llm_utils import (
     CLIP_LOADER_TYPE_OPTIONS, PURPOSE_OPTIONS, MODEL_FORMAT_OPTIONS, AESTHETIC_OPTIONS,
     _text_encoder_ggufs, _text_encoder_mmproj_options, _text_encoder_model_options,
     _resolve_text_encoder_path, _is_bad_choice, _free_llm, _clean_output,
+    _strip_thinking_tags, _strip_thinking_process_block,
     _load_clip_from_text_encoder, _generate_with_textgenerate,
     build_layered_system_prompt,
 )
@@ -120,7 +121,9 @@ class TJ_PromptEnhancer:
 
         final_prompt = _clean_output(raw_output, prompt_in)
         if not final_prompt.strip() or len(final_prompt) < 20:
-            final_prompt = raw_output
+            final_prompt = _strip_thinking_process_block(_strip_thinking_tags(raw_output)).strip()
+            if not final_prompt:
+                final_prompt = raw_output
 
         thought = (
             f"=== 🔄 LIVE — Prompt Enhancer (TJ) ===\n"

@@ -7,3 +7,4 @@ from .dynamic_batch_eclipse import DynamicImageBatchEclipse
 from .save_eclipse_subsequent import TJ_SaveImage_EclipseSubsequent
 from .batch_to_multi_output import TJ_BatchToMultiOutput
 from .save_preview_image import TJ_SaveAndPreviewImage
+from .images_compare_sheet_queue_loop import TJ_ImagesCompareSheetQueueLoop

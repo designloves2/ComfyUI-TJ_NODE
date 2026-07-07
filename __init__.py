@@ -24,6 +24,7 @@ from .nodes.image import (
     TJ_SaveImage_EclipseSubsequent,
     TJ_BatchToMultiOutput,
     TJ_SaveAndPreviewImage,
+    TJ_ImagesCompareSheetQueueLoop,
 )
 
 # ── Utility ───────────────────────────────────────────────────────────────
@@ -36,6 +37,9 @@ from .nodes.utility import (
     TJ_ModelSetLoader,
     TJ_SaveTextFile,
     TJ_QueueLoop,
+    TJ_IndexLoRALoader,
+    TJ_LEDDisplay,
+    TJ_UniversalCalculator,
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
@@ -84,6 +88,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveImage_EclipseSubsequent":   TJ_SaveImage_EclipseSubsequent,
     "TJ_BatchToMultiOutput":            TJ_BatchToMultiOutput,
     "TJ_SaveAndPreviewImage":           TJ_SaveAndPreviewImage,
+    "TJ_ImagesCompareSheetQueueLoop":    TJ_ImagesCompareSheetQueueLoop,
 
     # Utility
     "TJ_PromptText":        TJ_PromptText,
@@ -94,7 +99,10 @@ NODE_CLASS_MAPPINGS = {
     "TJ_ModelSetLoader":    TJ_ModelSetLoader,
     "TJ_SaveTextFile":     TJ_SaveTextFile,
     "TJ_QueueLoop":       TJ_QueueLoop,
+    "TJ_IndexLoRALoader": TJ_IndexLoRALoader,
     "TJ_GoStop":         TJ_GoStop,
+    "TJ_LEDDisplay":     TJ_LEDDisplay,
+    "TJ_UniversalCalculator": TJ_UniversalCalculator,
 
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
@@ -138,6 +146,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveImage_EclipseSubsequent":   "Save Image(Eclipse Suffix-TJ)",
     "TJ_BatchToMultiOutput":            "Batch to Multi Image Output(TJ)",
     "TJ_SaveAndPreviewImage":           "Save & Preview Image (TJ)",
+    "TJ_ImagesCompareSheetQueueLoop":    "Images Compare Sheet - Queue Loop (TJ)",
 
     # Utility
     "TJ_PromptText":        "Prompt Text (TJ)",
@@ -148,7 +157,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_ModelSetLoader":    "Model Set Loader (TJ)",
     "TJ_SaveTextFile":     "Save Text File (TJ)",
     "TJ_QueueLoop":       "Queue Loop (TJ)",
+    "TJ_IndexLoRALoader": "Index LoRA Loader (TJ)",
     "TJ_GoStop":         "Go & Stop (TJ)",
+    "TJ_LEDDisplay":     "LED Display (TJ)",
+    "TJ_UniversalCalculator": "Universal Calculator (TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
