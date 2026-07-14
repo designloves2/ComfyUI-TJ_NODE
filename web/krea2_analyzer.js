@@ -3,6 +3,7 @@ import { app } from "../../scripts/app.js";
 const NODE_CLASS   = "Krea2LoRAAnalyzer";
 const TOTAL_BLOCKS = 32;
 const PRESET_KEY   = "krea2_analyzer_presets_v1";
+const LANG_KEY     = "krea2_analyzer_lang";
 
 const BLOCK_NAMES = (() => {
     const n = [];
@@ -12,19 +13,96 @@ const BLOCK_NAMES = (() => {
     return n;
 })();
 
+// ── i18n (한국어 / English) ──────────────────────────
+const STR = {
+    ko: {
+        langBtn: "🌐 English",
+        guideHTML:
+            `<b style="color:#eaf3ff;">🔰 사용법</b>　` +
+            `① <b>🔍 분석</b> 눌러 분석　→　② 색으로 중요도 확인　→　③ 아래 <b>자동 조절</b> 버튼 클릭<br>` +
+            `<span style="color:#4a9eff;">■</span> 약함(빼도 됨)　` +
+            `<span style="color:#8fd14f;">■</span>　` +
+            `<span style="color:#ffbb33;">■</span> 보조　` +
+            `<span style="color:#ff5555;">■</span> 핵심(유지 권장)　` +
+            `— 진할수록(빨강) 중요한 블록`,
+        presetLabel: "프리셋:",
+        presetNamePh: "프리셋 이름…",
+        selectPh: "— 선택 —",
+        btnSavePreset: "💾 저장",
+        btnDelPreset: "🗑 삭제",
+        alertName: "프리셋 이름을 입력하세요.",
+        confirmDel: (n) => `"${n}" 프리셋을 삭제할까요?`,
+        autoLabel: "🎚 자동:",
+        nmCore: "핵심만", nmBalance: "균형", nmTrim: "약한블록 정리",
+        btnCore: "🎯 핵심만", btnBalance: "⚖️ 균형", btnTrim: "🧹 약한블록 정리",
+        hintAnalyzeFirst: "← 먼저 🔍 분석 을 누르세요",
+        hintKept: (name, on, off) => `${name}: ${on}개 유지 / ${off}개 끔`,
+        summaryAnalyzed: (c, m, l) => `분석완료 → 핵심 ${c} · 보조 ${m} · 약함 ${l}`,
+        saveLabel: "저장:",
+        savePathPh: "filtered/my_lora.safetensors  (loras 폴더 기준)",
+        btnSaveFiltered: "💾 필터 저장",
+        btnAnalyze: "🔍 분석",
+        stNeedLora: "⚠ LoRA 선택 필요",
+        stNeedPath: "⚠ 경로 입력 필요",
+        stSaving: "저장 중…",
+        stSaved: (k, b) => `✅ 저장완료 (${k}키 / ${b}블록)`,
+        stAnalyzing: "분석 중…",
+        stAnalyzed: "✅ 분석 완료",
+        secMain: "■ 메인 블록 (0–27)",
+        secTxt: "■ TxtFusion (Layerwise 0-1 / Refiner 0-1)",
+        resetTitle: "이 블록 강도를 1.00으로 초기화",
+    },
+    en: {
+        langBtn: "🌐 한국어",
+        guideHTML:
+            `<b style="color:#eaf3ff;">🔰 How to</b>　` +
+            `① Click <b>🔍 Analyze</b>　→　② Read importance by color　→　③ Click an <b>Auto</b> button below<br>` +
+            `<span style="color:#4a9eff;">■</span> Weak (removable)　` +
+            `<span style="color:#8fd14f;">■</span>　` +
+            `<span style="color:#ffbb33;">■</span> Mid　` +
+            `<span style="color:#ff5555;">■</span> Core (keep)　` +
+            `— redder = more important`,
+        presetLabel: "Preset:",
+        presetNamePh: "preset name…",
+        selectPh: "— select —",
+        btnSavePreset: "💾 Save",
+        btnDelPreset: "🗑 Del",
+        alertName: "Enter a preset name.",
+        confirmDel: (n) => `Delete preset "${n}"?`,
+        autoLabel: "🎚 Auto:",
+        nmCore: "Core only", nmBalance: "Balanced", nmTrim: "Trim weak",
+        btnCore: "🎯 Core only", btnBalance: "⚖️ Balanced", btnTrim: "🧹 Trim weak",
+        hintAnalyzeFirst: "← Press 🔍 Analyze first",
+        hintKept: (name, on, off) => `${name}: kept ${on} / off ${off}`,
+        summaryAnalyzed: (c, m, l) => `Analyzed → Core ${c} · Mid ${m} · Weak ${l}`,
+        saveLabel: "Save:",
+        savePathPh: "filtered/my_lora.safetensors  (relative to loras)",
+        btnSaveFiltered: "💾 Save Filtered",
+        btnAnalyze: "🔍 Analyze",
+        stNeedLora: "⚠ Select a LoRA",
+        stNeedPath: "⚠ Enter a path",
+        stSaving: "Saving…",
+        stSaved: (k, b) => `✅ Saved (${k} keys / ${b} blocks)`,
+        stAnalyzing: "Analyzing…",
+        stAnalyzed: "✅ Analysis done",
+        secMain: "■ Main Blocks (0–27)",
+        secTxt: "■ TxtFusion (Layerwise 0-1 / Refiner 0-1)",
+        resetTitle: "Reset this block to 1.00",
+    },
+};
+
 // 부드러운 그라데이션: 0%(파랑) → 50%(초록/노랑) → 100%(빨강)
-// 4단계 하드밴드보다 서열이 한눈에 보인다.
 const impactColor = (pct) => {
     const p = Math.max(0, Math.min(100, pct)) / 100;
     const hue = 220 - 220 * p;   // 220=파랑 → 120=초록 → 60=노랑 → 0=빨강
     return `hsl(${hue.toFixed(0)}, 78%, 55%)`;
 };
 
-// 임팩트 등급(초보자 안내용)
+// 임팩트 등급 (core / mid / weak)
 const impactTier = (pct) => {
-    if (pct >= 66) return { label: "핵심", color: "#ff5555" };
-    if (pct >= 33) return { label: "보조", color: "#ffbb33" };
-    return { label: "약함", color: "#4a9eff" };
+    if (pct >= 66) return "core";
+    if (pct >= 33) return "mid";
+    return "weak";
 };
 
 // ── 프리셋 저장소 ─────────────────────────────────────
@@ -74,6 +152,25 @@ app.registerExtension({
         // block_config 위젯 높이 0으로 숨기기
         cfgWidget.computeSize = () => [0, -4];
 
+        // ── 언어 상태 ─────────────────────────────────
+        let lang = localStorage.getItem(LANG_KEY);
+        if (lang !== "ko" && lang !== "en") {
+            lang = (navigator.language || "").toLowerCase().startsWith("ko") ? "ko" : "en";
+        }
+        const t = (k, ...a) => {
+            const v = STR[lang][k];
+            return typeof v === "function" ? v(...a) : v;
+        };
+        const langUpdaters = [];
+        const onLang = (fn) => { fn(); langUpdaters.push(fn); };
+        const setLang = (l) => {
+            lang = l;
+            localStorage.setItem(LANG_KEY, l);
+            langUpdaters.forEach(fn => fn());
+            node.setDirtyCanvas(true, true);
+            requestAnimationFrame(() => { try { fitNode(); } catch (_) {} });
+        };
+
         // ── 상태 ──────────────────────────────────────
         const states = Array.from({ length: TOTAL_BLOCKS }, () => ({ enable: true, strength: 1.0 }));
 
@@ -107,21 +204,19 @@ app.registerExtension({
             width:100%; box-sizing:border-box;
         `);
 
-        // ════════════════════════════════════════════════
-        // 0. 초보자 안내 (사용법 3단계 + 색 범례)
-        // ════════════════════════════════════════════════
+        // ── 언어 토글 (우측 상단) ──────────────────────
+        const topBar = mkDiv("display:flex;justify-content:flex-end;margin-bottom:4px;");
+        const langBtn = mkBtn("", () => setLang(lang === "ko" ? "en" : "ko"), "padding:2px 8px;");
+        onLang(() => langBtn.textContent = t("langBtn"));
+        topBar.appendChild(langBtn);
+        wrap.appendChild(topBar);
+
+        // ── 초보자 안내 (사용법 + 색 범례) ─────────────
         const guide = mkDiv(`
             background:#12202e; border:1px solid #274156; border-radius:5px;
             padding:6px 8px; margin-bottom:8px; line-height:1.5; color:#bcd;
         `);
-        guide.innerHTML =
-            `<b style="color:#eaf3ff;">🔰 사용법</b>　` +
-            `① <b>🔍 Analyze</b> 눌러 분석　→　② 색으로 중요도 확인　→　③ 아래 <b>자동 조절</b> 버튼 클릭<br>` +
-            `<span style="color:#4a9eff;">■</span> 약함(빼도 됨)　` +
-            `<span style="color:#8fd14f;">■</span>　` +
-            `<span style="color:#ffbb33;">■</span> 보조　` +
-            `<span style="color:#ff5555;">■</span> 핵심(유지 권장)　` +
-            `— 진할수록(빨강) 중요한 블록`;
+        onLang(() => guide.innerHTML = t("guideHTML"));
         wrap.appendChild(guide);
 
         // ════════════════════════════════════════════════
@@ -130,7 +225,9 @@ app.registerExtension({
         const presetRow = mkDiv("display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap;");
         wrap.appendChild(presetRow);
 
-        presetRow.appendChild(mkSpan("Preset:", "color:#888;flex-shrink:0;"));
+        const presetLbl = mkSpan("", "color:#888;flex-shrink:0;");
+        onLang(() => presetLbl.textContent = t("presetLabel"));
+        presetRow.appendChild(presetLbl);
 
         const presetSelect = css(document.createElement("select"), `
             background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:4px;
@@ -142,18 +239,21 @@ app.registerExtension({
             background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:4px;
             padding:2px 6px;font-size:11px;width:100px;
         `);
-        presetNameInput.placeholder = "preset name…";
+        onLang(() => presetNameInput.placeholder = t("presetNamePh"));
         presetRow.appendChild(presetNameInput);
 
         const refreshPresetSelect = () => {
             const presets = getPresets();
-            presetSelect.innerHTML = '<option value="">— select —</option>';
+            const cur = presetSelect.value;
+            presetSelect.innerHTML = `<option value="">${t("selectPh")}</option>`;
             Object.keys(presets).sort().forEach(name => {
                 const opt = document.createElement("option");
                 opt.value = name; opt.textContent = name;
                 presetSelect.appendChild(opt);
             });
+            if (cur) presetSelect.value = cur;
         };
+        onLang(refreshPresetSelect);
 
         presetSelect.onchange = () => {
             const presets = getPresets();
@@ -178,9 +278,9 @@ app.registerExtension({
             } catch (_) {}
         };
 
-        presetRow.appendChild(mkBtn("💾 Save", () => {
+        const btnSaveP = mkBtn("", () => {
             const name = presetNameInput.value.trim();
-            if (!name) { alert("프리셋 이름을 입력하세요."); return; }
+            if (!name) { alert(t("alertName")); return; }
             const presets = getPresets();
             const obj = {};
             for (let i = 0; i < TOTAL_BLOCKS; i++) obj[i] = { ...states[i] };
@@ -192,22 +292,24 @@ app.registerExtension({
             savePresets(presets);
             refreshPresetSelect();
             presetSelect.value = name;
-        }));
+        });
+        onLang(() => btnSaveP.textContent = t("btnSavePreset"));
+        presetRow.appendChild(btnSaveP);
 
-        presetRow.appendChild(mkBtn("🗑 Del", () => {
+        const btnDelP = mkBtn("", () => {
             const name = presetSelect.value;
             if (!name) return;
-            if (!confirm(`"${name}" 프리셋을 삭제할까요?`)) return;
+            if (!confirm(t("confirmDel", name))) return;
             const presets = getPresets();
             delete presets[name];
             savePresets(presets);
             refreshPresetSelect();
-        }));
-
-        refreshPresetSelect();
+        });
+        onLang(() => btnDelP.textContent = t("btnDelPreset"));
+        presetRow.appendChild(btnDelP);
 
         // ════════════════════════════════════════════════
-        // 2. 빠른 조작 버튼
+        // 2. 빠른 조작 버튼 (수동 / 범용)
         // ════════════════════════════════════════════════
         const btnBar = mkDiv("display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;");
         wrap.appendChild(btnBar);
@@ -242,16 +344,26 @@ app.registerExtension({
         // ════════════════════════════════════════════════
         const autoRow = mkDiv("display:flex;gap:4px;margin-bottom:6px;align-items:center;flex-wrap:wrap;");
         wrap.appendChild(autoRow);
-        autoRow.appendChild(mkSpan("🎚 자동:", "color:#8fd; flex-shrink:0;"));
+        const autoLbl = mkSpan("", "color:#8fd; flex-shrink:0;");
+        onLang(() => autoLbl.textContent = t("autoLabel"));
+        autoRow.appendChild(autoLbl);
 
         const autoHint = mkSpan("", "font-size:10px;color:#889;flex-shrink:0;");
 
-        // 분석됐는지 확인 (임팩트가 하나라도 0 초과)
+        // 분석 요약 상태 (언어 전환 시 재렌더 위해 보관)
+        let lastCounts = null;
+        const applySummary = () => {
+            if (lastCounts) {
+                autoHint.textContent = t("summaryAnalyzed", lastCounts.core, lastCounts.mid, lastCounts.weak);
+                autoHint.style.color = "#8fd14f";
+            }
+        };
+        onLang(applySummary);
+
         const isAnalyzed = () => rows.some(r => (r._impact ?? 0) > 0);
-        // minPct 이상만 ON, 나머지 OFF
-        const applyByImpact = (minPct, name) => {
+        const applyByImpact = (minPct, nameKey) => {
             if (!isAnalyzed()) {
-                autoHint.textContent = "← 먼저 🔍 Analyze 를 누르세요";
+                autoHint.textContent = t("hintAnalyzeFirst");
                 autoHint.style.color = "#ffaa00";
                 return;
             }
@@ -262,16 +374,19 @@ app.registerExtension({
                 if (keep) on++;
             });
             writeConfig();
-            autoHint.textContent = `${name}: ${on}개 유지 / ${rows.length - on}개 끔`;
+            autoHint.textContent = t("hintKept", t(nameKey), on, rows.length - on);
             autoHint.style.color = "#8fd14f";
         };
 
-        autoRow.append(
-            mkBtn("🎯 핵심만",      () => applyByImpact(66, "핵심만"),      "border-color:#ff5555;"),
-            mkBtn("⚖️ 균형",       () => applyByImpact(40, "균형"),        "border-color:#ffbb33;"),
-            mkBtn("🧹 약한블록 정리", () => applyByImpact(25, "약한블록 정리"), "border-color:#4a9eff;"),
-            autoHint,
-        );
+        const bCore = mkBtn("", () => applyByImpact(66, "nmCore"), "border-color:#ff5555;");
+        const bBal  = mkBtn("", () => applyByImpact(40, "nmBalance"), "border-color:#ffbb33;");
+        const bTrim = mkBtn("", () => applyByImpact(25, "nmTrim"), "border-color:#4a9eff;");
+        onLang(() => {
+            bCore.textContent = t("btnCore");
+            bBal.textContent  = t("btnBalance");
+            bTrim.textContent = t("btnTrim");
+        });
+        autoRow.append(bCore, bBal, bTrim, autoHint);
 
         // ════════════════════════════════════════════════
         // 3. 저장 섹션
@@ -279,27 +394,29 @@ app.registerExtension({
         const saveRow = mkDiv("display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap;");
         wrap.appendChild(saveRow);
 
-        saveRow.appendChild(mkSpan("Save:", "color:#888;flex-shrink:0;"));
+        const saveLbl = mkSpan("", "color:#888;flex-shrink:0;");
+        onLang(() => saveLbl.textContent = t("saveLabel"));
+        saveRow.appendChild(saveLbl);
 
         const savePathInput = css(document.createElement("input"), `
             flex:1;background:#2a2a2a;color:#eee;border:1px solid #444;
             border-radius:4px;padding:2px 6px;font-size:11px;min-width:160px;
         `);
-        savePathInput.placeholder = "filtered/my_lora.safetensors  (loras 폴더 기준)";
+        onLang(() => savePathInput.placeholder = t("savePathPh"));
         saveRow.appendChild(savePathInput);
 
         const saveStatusLabel = mkSpan("", "font-size:10px;color:#888;flex-shrink:0;");
         saveRow.appendChild(saveStatusLabel);
 
-        saveRow.appendChild(mkBtn("💾 Save Filtered", async () => {
+        const btnSaveFiltered = mkBtn("", async () => {
             const loraWidget = node.widgets?.find(w => w.name === "lora_name");
             const loraName   = loraWidget?.value;
             const savePath   = savePathInput.value.trim();
 
-            if (!loraName) { saveStatusLabel.textContent = "⚠ LoRA 선택 필요"; saveStatusLabel.style.color="#ffaa00"; return; }
-            if (!savePath) { saveStatusLabel.textContent = "⚠ 경로 입력 필요"; saveStatusLabel.style.color="#ffaa00"; return; }
+            if (!loraName) { saveStatusLabel.textContent = t("stNeedLora"); saveStatusLabel.style.color="#ffaa00"; return; }
+            if (!savePath) { saveStatusLabel.textContent = t("stNeedPath"); saveStatusLabel.style.color="#ffaa00"; return; }
 
-            saveStatusLabel.textContent = "저장 중…";
+            saveStatusLabel.textContent = t("stSaving");
             saveStatusLabel.style.color = "#888";
 
             const cfg = {};
@@ -315,23 +432,24 @@ app.registerExtension({
                     saveStatusLabel.textContent = `❌ ${result.error}`;
                     saveStatusLabel.style.color = "#ff4444";
                 } else {
-                    saveStatusLabel.textContent =
-                        `✅ 저장완료 (${result.filtered_keys}키 / ${result.enabled_blocks}블록)`;
+                    saveStatusLabel.textContent = t("stSaved", result.filtered_keys, result.enabled_blocks);
                     saveStatusLabel.style.color = "#44dd88";
                 }
             } catch (e) {
                 saveStatusLabel.textContent = `❌ ${e.message}`;
                 saveStatusLabel.style.color = "#ff4444";
             }
-        }));
+        });
+        onLang(() => btnSaveFiltered.textContent = t("btnSaveFiltered"));
+        saveRow.appendChild(btnSaveFiltered);
 
         // ── 분석 버튼 (워크플로우 없이 직접 분석) ─────
-        saveRow.appendChild(mkBtn("🔍 Analyze", async () => {
+        const btnAnalyze = mkBtn("", async () => {
             const loraWidget = node.widgets?.find(w => w.name === "lora_name");
             const loraName   = loraWidget?.value;
-            if (!loraName) { saveStatusLabel.textContent = "⚠ LoRA 선택 필요"; return; }
+            if (!loraName) { saveStatusLabel.textContent = t("stNeedLora"); saveStatusLabel.style.color="#ffaa00"; return; }
 
-            saveStatusLabel.textContent = "분석 중…";
+            saveStatusLabel.textContent = t("stAnalyzing");
             saveStatusLabel.style.color = "#888";
             try {
                 const result = await apiPost("/krea2analyzer/analyze", { lora_name: loraName });
@@ -340,14 +458,16 @@ app.registerExtension({
                     saveStatusLabel.style.color = "#ff4444";
                 } else {
                     updateImpact(result.block_data);
-                    saveStatusLabel.textContent = "✅ 분석 완료";
+                    saveStatusLabel.textContent = t("stAnalyzed");
                     saveStatusLabel.style.color = "#44dd88";
                 }
             } catch (e) {
                 saveStatusLabel.textContent = `❌ ${e.message}`;
                 saveStatusLabel.style.color = "#ff4444";
             }
-        }));
+        });
+        onLang(() => btnAnalyze.textContent = t("btnAnalyze"));
+        saveRow.appendChild(btnAnalyze);
 
         // ════════════════════════════════════════════════
         // 4. 블록 행 생성
@@ -394,7 +514,7 @@ app.registerExtension({
                 `width:70px;flex-shrink:0;cursor:pointer;accent-color:#7612DA;`,
                 { min:"-5", max:"5", step:"0.05", value: String(states[idx].strength) });
 
-            // 숫자 ↔ 슬라이더 양방향 동기화 (어느 쪽으로 조절해도 반영)
+            // 숫자 ↔ 슬라이더 양방향 동기화
             const applyStrength = (val, from) => {
                 let v = parseFloat(val);
                 if (isNaN(v)) v = 1.0;
@@ -406,10 +526,9 @@ app.registerExtension({
             };
             strInput.oninput  = () => applyStrength(strInput.value, "num");
             strSlider.oninput = () => applyStrength(strSlider.value, "slider");
-            // blur/Enter 시 정수 입력이어도 소수점 2자리로 정규화
             strInput.onchange = () => applyStrength(strInput.value, "reformat");
 
-            // 0.05 단위 미세조정 (부동소수 오차 방지 위해 반올림)
+            // 0.05 단위 미세조정
             const stepStrength = (delta) => {
                 const cur = parseFloat(strInput.value);
                 const base = isNaN(cur) ? (states[idx].strength || 0) : cur;
@@ -421,10 +540,9 @@ app.registerExtension({
             decBtn.title = "-0.05";
             incBtn.title = "+0.05";
 
-            // 블록별 1.00 되돌리기 버튼
             const resetBtn = mkBtn("⟲", () => applyStrength(1.0, "reset"),
                 `padding:1px 5px;font-size:11px;flex-shrink:0;`);
-            resetBtn.title = "이 블록 강도를 1.00으로 초기화";
+            onLang(() => resetBtn.title = t("resetTitle"));
 
             const barWrap = mkDiv(`flex:1;height:5px;background:#2a2a2a;border-radius:3px;overflow:hidden;`);
             const barFill = mkDiv(`height:100%;width:0%;background:#4488ff;transition:width .3s;`);
@@ -439,19 +557,19 @@ app.registerExtension({
             return row;
         };
 
-        const sectionLabel = (txt) => {
-            const d = mkDiv(`color:#888;font-size:10px;margin:6px 0 3px;border-bottom:1px solid #333;padding-bottom:2px;`);
-            d.textContent = txt;
-            return d;
-        };
+        const sectionLabel = () => mkDiv(`color:#888;font-size:10px;margin:6px 0 3px;border-bottom:1px solid #333;padding-bottom:2px;`);
 
-        wrap.appendChild(sectionLabel("■ Main Blocks (0–27)"));
+        const secMainEl = sectionLabel();
+        onLang(() => secMainEl.textContent = t("secMain"));
+        wrap.appendChild(secMainEl);
         for (let i = 0; i < 28; i++) {
             const r = mkRow(i);
             rows.push(r);
             wrap.appendChild(r.el);
         }
-        wrap.appendChild(sectionLabel("■ TxtFusion (Layerwise 0-1 / Refiner 0-1)"));
+        const secTxtEl = sectionLabel();
+        onLang(() => secTxtEl.textContent = t("secTxt"));
+        wrap.appendChild(secTxtEl);
         for (let i = 28; i < TOTAL_BLOCKS; i++) {
             const r = mkRow(i);
             rows.push(r);
@@ -461,8 +579,6 @@ app.registerExtension({
         // ════════════════════════════════════════════════
         // 5. 임팩트 업데이트 함수
         // ════════════════════════════════════════════════
-
-        // block_data 객체 또는 JSON 문자열 모두 허용
         const updateImpact = (dataOrStr) => {
             try {
                 const data = typeof dataOrStr === "string" ? JSON.parse(dataOrStr) : dataOrStr;
@@ -477,14 +593,13 @@ app.registerExtension({
                     rows[i].dot.style.background = impactColor(pct);
                     updateRowStyle(rows[i], i);
                 }
-                // 분석 요약: 핵심/보조/약함 개수 안내 (초보자용)
-                let core = 0, mid = 0, low = 0;
+                let core = 0, mid = 0, weak = 0;
                 rows.forEach(r => {
-                    const t = impactTier(r._impact ?? 0).label;
-                    if (t === "핵심") core++; else if (t === "보조") mid++; else low++;
+                    const tr = impactTier(r._impact ?? 0);
+                    if (tr === "core") core++; else if (tr === "mid") mid++; else weak++;
                 });
-                autoHint.textContent = `분석완료 → 핵심 ${core} · 보조 ${mid} · 약함 ${low}`;
-                autoHint.style.color = "#8fd14f";
+                lastCounts = { core, mid, weak };
+                applySummary();
             } catch(e) { console.warn("[Krea2Analyzer] impact update error", e); }
         };
 
@@ -494,15 +609,8 @@ app.registerExtension({
             if (origOnExecuted) origOnExecuted.call(this, msg);
             const out = msg?.output;
             if (!out) return;
-
-            // 방법1: RETURN_NAMES 기반 (analysis_json)
-            // 방법1: ui 딕셔너리 방식 (Realtime-Lora 확인된 포맷)
             if (out?.analysis_json?.[0]) { updateImpact(out.analysis_json[0]); return; }
-
-            // 방법2: 인덱스 기반 [3]
             if (out?.[3]?.[0])           { updateImpact(out[3][0]);            return; }
-
-            // 방법3: 마지막 배열 요소에서 JSON 찾기
             const vals = Object.values(out);
             for (let i = vals.length - 1; i >= 0; i--) {
                 const v = Array.isArray(vals[i]) ? vals[i][0] : vals[i];
@@ -513,8 +621,6 @@ app.registerExtension({
         };
 
         // ── DOM 위젯 등록 ────────────────────────────────
-        // host(외곽)는 ComfyUI가 노드 높이에 맞춰 늘리지만, 실제 콘텐츠(wrap)는
-        // 그 안에서 content 높이만 차지 → wrap.scrollHeight 로 참 높이를 측정.
         const host = document.createElement("div");
         host.style.cssText = "width:100%;box-sizing:border-box;";
         host.appendChild(wrap);
@@ -534,9 +640,7 @@ app.registerExtension({
         });
 
         // ── 초기 크기 보정 ────────────────────────────────
-        // DOM 콘텐츠(프리셋/버튼/저장/32행)의 실제 높이를 노드가 확보하도록
-        // computeSize를 콘텐츠 높이에 연동. 레이아웃이 잡힌 뒤 재측정한다.
-        const CONTENT_FALLBACK = 760;
+        const CONTENT_FALLBACK = 800;
         if (domWidget) {
             domWidget.computeSize = function (nodeWidth) {
                 const h = (wrap.scrollHeight || CONTENT_FALLBACK) + 8;
@@ -551,7 +655,7 @@ app.registerExtension({
             node.setDirtyCanvas(true, true);
         };
 
-        // 최소 노드 폭 강제 — 이보다 좁히면 내부 UI가 노드 밖으로 삐져나옴
+        // 최소 노드 폭 강제
         const MIN_W = 540;
         const origOnResize = node.onResize;
         node.onResize = function (size) {
@@ -561,15 +665,14 @@ app.registerExtension({
         if (Array.isArray(node.min_size)) node.min_size[0] = MIN_W;
         else node.min_size = [MIN_W, 0];
 
-        // TJ 브랜드 테마 적용
+        // TJ 브랜드 테마
         node.color   = "#7612DA";
         node.bgcolor = "#000000";
         if (node.title_text_color !== undefined) node.title_text_color = "#FFFFFF";
 
         writeConfig();
-        // 최초 배치: 폭 먼저 확정(콘텐츠 width:100% 뭉개짐 방지) 후 높이 측정
         node.setSize([Math.max(540, node.size[0] || 540), node.size[1]]);
         requestAnimationFrame(fitNode);
-        setTimeout(fitNode, 120);  // 폰트/레이아웃 정착 후 재보정
+        setTimeout(fitNode, 120);
     },
 });

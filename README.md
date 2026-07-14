@@ -126,6 +126,8 @@ Analyze Krea2 LoRAs block-by-block, toggle/scale individual blocks, and export a
 - `🔍 Analyze` 버튼 — 워크플로우 실행 없이 즉시 분석
 - `💾 Save Filtered` — 필터링된 LoRA를 **loras 폴더 하위**로 안전 저장 (path traversal 차단)
 - 블록별 강도: 숫자 입력 + 슬라이더 + `‹`/`›` 0.05 미세조정 + `⟲` 개별 리셋 (모두 동기화)
+- **초보자 모드**: 색 그라데이션(파랑→빨강) + 원클릭 자동 조절(🎯 핵심만 / ⚖️ 균형 / 🧹 약한블록 정리)
+- **한/영 UI 토글** 🌐 (브라우저 언어 자동 감지, 선택 저장) — Bilingual KO/EN interface
 - 카테고리: `✨ TJ_Node/Lora Analyzer` (신규)
 
 > **💡 Idea credit / 아이디어 출처:** 블록 단위 LoRA 분석·필터링이라는 **아이디어**는
