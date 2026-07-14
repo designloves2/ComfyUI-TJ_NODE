@@ -10,3 +10,6 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# comfy node publish artifact
+node.zip
