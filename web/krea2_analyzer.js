@@ -12,11 +12,19 @@ const BLOCK_NAMES = (() => {
     return n;
 })();
 
+// 부드러운 그라데이션: 0%(파랑) → 50%(초록/노랑) → 100%(빨강)
+// 4단계 하드밴드보다 서열이 한눈에 보인다.
 const impactColor = (pct) => {
-    if (pct >= 90) return "#ff4444";
-    if (pct >= 60) return "#ffaa22";
-    if (pct >= 30) return "#44dd88";
-    return "#4488ff";
+    const p = Math.max(0, Math.min(100, pct)) / 100;
+    const hue = 220 - 220 * p;   // 220=파랑 → 120=초록 → 60=노랑 → 0=빨강
+    return `hsl(${hue.toFixed(0)}, 78%, 55%)`;
+};
+
+// 임팩트 등급(초보자 안내용)
+const impactTier = (pct) => {
+    if (pct >= 66) return { label: "핵심", color: "#ff5555" };
+    if (pct >= 33) return { label: "보조", color: "#ffbb33" };
+    return { label: "약함", color: "#4a9eff" };
 };
 
 // ── 프리셋 저장소 ─────────────────────────────────────
@@ -98,6 +106,23 @@ app.registerExtension({
             font-family:monospace; font-size:11px; color:#ddd;
             width:100%; box-sizing:border-box;
         `);
+
+        // ════════════════════════════════════════════════
+        // 0. 초보자 안내 (사용법 3단계 + 색 범례)
+        // ════════════════════════════════════════════════
+        const guide = mkDiv(`
+            background:#12202e; border:1px solid #274156; border-radius:5px;
+            padding:6px 8px; margin-bottom:8px; line-height:1.5; color:#bcd;
+        `);
+        guide.innerHTML =
+            `<b style="color:#eaf3ff;">🔰 사용법</b>　` +
+            `① <b>🔍 Analyze</b> 눌러 분석　→　② 색으로 중요도 확인　→　③ 아래 <b>자동 조절</b> 버튼 클릭<br>` +
+            `<span style="color:#4a9eff;">■</span> 약함(빼도 됨)　` +
+            `<span style="color:#8fd14f;">■</span>　` +
+            `<span style="color:#ffbb33;">■</span> 보조　` +
+            `<span style="color:#ff5555;">■</span> 핵심(유지 권장)　` +
+            `— 진할수록(빨강) 중요한 블록`;
+        wrap.appendChild(guide);
 
         // ════════════════════════════════════════════════
         // 1. 프리셋 섹션
@@ -210,6 +235,42 @@ app.registerExtension({
                 });
                 writeConfig();
             }),
+        );
+
+        // ════════════════════════════════════════════════
+        // 2-B. 자동 조절 (초보자용, 분석 결과 기반 원클릭)
+        // ════════════════════════════════════════════════
+        const autoRow = mkDiv("display:flex;gap:4px;margin-bottom:6px;align-items:center;flex-wrap:wrap;");
+        wrap.appendChild(autoRow);
+        autoRow.appendChild(mkSpan("🎚 자동:", "color:#8fd; flex-shrink:0;"));
+
+        const autoHint = mkSpan("", "font-size:10px;color:#889;flex-shrink:0;");
+
+        // 분석됐는지 확인 (임팩트가 하나라도 0 초과)
+        const isAnalyzed = () => rows.some(r => (r._impact ?? 0) > 0);
+        // minPct 이상만 ON, 나머지 OFF
+        const applyByImpact = (minPct, name) => {
+            if (!isAnalyzed()) {
+                autoHint.textContent = "← 먼저 🔍 Analyze 를 누르세요";
+                autoHint.style.color = "#ffaa00";
+                return;
+            }
+            let on = 0;
+            rows.forEach((r, i) => {
+                const keep = (r._impact ?? 0) >= minPct;
+                setEnable(r, i, keep);
+                if (keep) on++;
+            });
+            writeConfig();
+            autoHint.textContent = `${name}: ${on}개 유지 / ${rows.length - on}개 끔`;
+            autoHint.style.color = "#8fd14f";
+        };
+
+        autoRow.append(
+            mkBtn("🎯 핵심만",      () => applyByImpact(66, "핵심만"),      "border-color:#ff5555;"),
+            mkBtn("⚖️ 균형",       () => applyByImpact(40, "균형"),        "border-color:#ffbb33;"),
+            mkBtn("🧹 약한블록 정리", () => applyByImpact(25, "약한블록 정리"), "border-color:#4a9eff;"),
+            autoHint,
         );
 
         // ════════════════════════════════════════════════
@@ -416,6 +477,14 @@ app.registerExtension({
                     rows[i].dot.style.background = impactColor(pct);
                     updateRowStyle(rows[i], i);
                 }
+                // 분석 요약: 핵심/보조/약함 개수 안내 (초보자용)
+                let core = 0, mid = 0, low = 0;
+                rows.forEach(r => {
+                    const t = impactTier(r._impact ?? 0).label;
+                    if (t === "핵심") core++; else if (t === "보조") mid++; else low++;
+                });
+                autoHint.textContent = `분석완료 → 핵심 ${core} · 보조 ${mid} · 약함 ${low}`;
+                autoHint.style.color = "#8fd14f";
             } catch(e) { console.warn("[Krea2Analyzer] impact update error", e); }
         };
 
