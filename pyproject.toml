@@ -1,0 +1,16 @@
+[project]
+name = "comfyui-tj_node"
+description = "Large Scale Wireless Workflow Architecture Toolkit for ComfyUI — wireless routing, batch/preview/save pipelines, LLM prompt workflow, and LoRA analysis nodes."
+version = "2.3.0"
+requires-python = ">=3.9"
+dependencies = [
+    "llama-cpp-python",
+]
+
+[project.urls]
+Repository = "https://github.com/designloves2/ComfyUI-TJ_NODE"
+
+[tool.comfy]
+PublisherId = "designloves2"
+DisplayName = "ComfyUI-TJ_NODE"
+Icon = ""
