@@ -146,6 +146,7 @@ app.registerExtension({
                 rows?.forEach((r,i) => {
                     r.check.checked  = states[i].enable;
                     r.strInput.value = states[i].strength.toFixed(2);
+                    if (r.strSlider) r.strSlider.value = String(states[i].strength);
                     updateRowStyle(r, i);
                 });
                 writeConfig();
@@ -191,10 +192,22 @@ app.registerExtension({
         btnBar.append(
             mkBtn("All ON",        () => { rows.forEach((r,i) => setEnable(r,i,true));  writeConfig(); }),
             mkBtn("All OFF",       () => { rows.forEach((r,i) => setEnable(r,i,false)); writeConfig(); }),
-            mkBtn("Main ON 0-27",  () => { rows.slice(0,28).forEach((r,i)   => setEnable(r,i,true));    writeConfig(); }),
-            mkBtn("TxtF OFF",      () => { rows.slice(28).forEach((r,i)     => setEnable(r,28+i,false)); writeConfig(); }),
+            mkBtn("Main 0-27 ⏻",   () => {
+                const allOn = states.slice(0,28).every(s => s.enable);
+                rows.slice(0,28).forEach((r,i) => setEnable(r,i,!allOn));
+                writeConfig();
+            }),
+            mkBtn("TxtF ⏻",        () => {
+                const allOn = states.slice(28).every(s => s.enable);
+                rows.slice(28).forEach((r,i) => setEnable(r,28+i,!allOn));
+                writeConfig();
+            }),
             mkBtn("Reset Str",     () => {
-                rows.forEach((r,i) => { states[i].strength = 1.0; r.strInput.value = "1.00"; });
+                rows.forEach((r,i) => {
+                    states[i].strength = 1.0;
+                    r.strInput.value = "1.00";
+                    if (r.strSlider) r.strSlider.value = "1";
+                });
                 writeConfig();
             }),
         );
@@ -309,16 +322,48 @@ app.registerExtension({
                 writeConfig();
             };
 
-            const name = mkSpan(BLOCK_NAMES[idx], "min-width:130px;flex-shrink:0;color:#ccc;");
+            const name = mkSpan(BLOCK_NAMES[idx], "min-width:120px;flex-shrink:0;color:#ccc;");
 
             const strInput = mkInput("number",
                 `width:54px;background:#2a2a2a;color:#eee;border:1px solid #444;
                  border-radius:3px;padding:1px 4px;font-size:11px;flex-shrink:0;`,
                 { min:"-5", max:"5", step:"0.05", value: states[idx].strength.toFixed(2) });
-            strInput.onchange = () => {
-                states[idx].strength = parseFloat(strInput.value) || 1.0;
+
+            const strSlider = mkInput("range",
+                `width:70px;flex-shrink:0;cursor:pointer;accent-color:#7612DA;`,
+                { min:"-5", max:"5", step:"0.05", value: String(states[idx].strength) });
+
+            // 숫자 ↔ 슬라이더 양방향 동기화 (어느 쪽으로 조절해도 반영)
+            const applyStrength = (val, from) => {
+                let v = parseFloat(val);
+                if (isNaN(v)) v = 1.0;
+                v = Math.min(5, Math.max(-5, v));
+                states[idx].strength = v;
+                if (from !== "num")    strInput.value  = v.toFixed(2);
+                if (from !== "slider") strSlider.value = String(v);
                 writeConfig();
             };
+            strInput.oninput  = () => applyStrength(strInput.value, "num");
+            strSlider.oninput = () => applyStrength(strSlider.value, "slider");
+            // blur/Enter 시 정수 입력이어도 소수점 2자리로 정규화
+            strInput.onchange = () => applyStrength(strInput.value, "reformat");
+
+            // 0.05 단위 미세조정 (부동소수 오차 방지 위해 반올림)
+            const stepStrength = (delta) => {
+                const cur = parseFloat(strInput.value);
+                const base = isNaN(cur) ? (states[idx].strength || 0) : cur;
+                applyStrength(Math.round((base + delta) * 100) / 100, "reformat");
+            };
+            const btnStyle = `padding:1px 5px;font-size:12px;line-height:1;flex-shrink:0;`;
+            const decBtn = mkBtn("‹", () => stepStrength(-0.05), btnStyle);
+            const incBtn = mkBtn("›", () => stepStrength(0.05), btnStyle);
+            decBtn.title = "-0.05";
+            incBtn.title = "+0.05";
+
+            // 블록별 1.00 되돌리기 버튼
+            const resetBtn = mkBtn("⟲", () => applyStrength(1.0, "reset"),
+                `padding:1px 5px;font-size:11px;flex-shrink:0;`);
+            resetBtn.title = "이 블록 강도를 1.00으로 초기화";
 
             const barWrap = mkDiv(`flex:1;height:5px;background:#2a2a2a;border-radius:3px;overflow:hidden;`);
             const barFill = mkDiv(`height:100%;width:0%;background:#4488ff;transition:width .3s;`);
@@ -326,9 +371,9 @@ app.registerExtension({
 
             const impLabel = mkSpan("—", "color:#666;min-width:36px;text-align:right;font-size:10px;");
 
-            el.append(dot, check, name, strInput, barWrap, impLabel);
+            el.append(dot, check, name, strInput, decBtn, strSlider, incBtn, resetBtn, barWrap, impLabel);
 
-            const row = { el, dot, check, strInput, barFill, impLabel, _impact: 0 };
+            const row = { el, dot, check, strInput, strSlider, barFill, impLabel, _impact: 0 };
             updateRowStyle(row, idx);
             return row;
         };
@@ -399,7 +444,12 @@ app.registerExtension({
         };
 
         // ── DOM 위젯 등록 ────────────────────────────────
-        node.addDOMWidget("krea2_block_ui", "custom", wrap, {
+        // host(외곽)는 ComfyUI가 노드 높이에 맞춰 늘리지만, 실제 콘텐츠(wrap)는
+        // 그 안에서 content 높이만 차지 → wrap.scrollHeight 로 참 높이를 측정.
+        const host = document.createElement("div");
+        host.style.cssText = "width:100%;box-sizing:border-box;";
+        host.appendChild(wrap);
+        const domWidget = node.addDOMWidget("krea2_block_ui", "custom", host, {
             getValue() { return cfgWidget.value; },
             setValue(v) {
                 cfgWidget.value = v;
@@ -407,13 +457,50 @@ app.registerExtension({
                 rows.forEach((r, i) => {
                     r.check.checked  = states[i].enable;
                     r.strInput.value = states[i].strength.toFixed(2);
+                    if (r.strSlider) r.strSlider.value = String(states[i].strength);
                     updateRowStyle(r, i);
                 });
             },
             serialize: false,
         });
 
+        // ── 초기 크기 보정 ────────────────────────────────
+        // DOM 콘텐츠(프리셋/버튼/저장/32행)의 실제 높이를 노드가 확보하도록
+        // computeSize를 콘텐츠 높이에 연동. 레이아웃이 잡힌 뒤 재측정한다.
+        const CONTENT_FALLBACK = 760;
+        if (domWidget) {
+            domWidget.computeSize = function (nodeWidth) {
+                const h = (wrap.scrollHeight || CONTENT_FALLBACK) + 8;
+                return [nodeWidth, h];
+            };
+        }
+
+        const fitNode = () => {
+            const w = Math.max(540, node.size[0] || 540);
+            const target = node.computeSize()[1];
+            node.setSize([w, target]);
+            node.setDirtyCanvas(true, true);
+        };
+
+        // 최소 노드 폭 강제 — 이보다 좁히면 내부 UI가 노드 밖으로 삐져나옴
+        const MIN_W = 540;
+        const origOnResize = node.onResize;
+        node.onResize = function (size) {
+            if (size[0] < MIN_W) size[0] = MIN_W;
+            origOnResize?.apply(this, arguments);
+        };
+        if (Array.isArray(node.min_size)) node.min_size[0] = MIN_W;
+        else node.min_size = [MIN_W, 0];
+
+        // TJ 브랜드 테마 적용
+        node.color   = "#7612DA";
+        node.bgcolor = "#000000";
+        if (node.title_text_color !== undefined) node.title_text_color = "#FFFFFF";
+
         writeConfig();
-        node.setSize([500, node.size[1]]);
+        // 최초 배치: 폭 먼저 확정(콘텐츠 width:100% 뭉개짐 방지) 후 높이 측정
+        node.setSize([Math.max(540, node.size[0] || 540), node.size[1]]);
+        requestAnimationFrame(fitNode);
+        setTimeout(fitNode, 120);  // 폰트/레이아웃 정착 후 재보정
     },
 });

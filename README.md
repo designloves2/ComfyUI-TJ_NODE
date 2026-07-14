@@ -125,7 +125,18 @@ Analyze Krea2 LoRAs block-by-block, toggle/scale individual blocks, and export a
 - 프리셋 저장/불러오기/삭제 (localStorage)
 - `🔍 Analyze` 버튼 — 워크플로우 실행 없이 즉시 분석
 - `💾 Save Filtered` — 필터링된 LoRA를 **loras 폴더 하위**로 안전 저장 (path traversal 차단)
+- 블록별 강도: 숫자 입력 + 슬라이더 + `‹`/`›` 0.05 미세조정 + `⟲` 개별 리셋 (모두 동기화)
 - 카테고리: `✨ TJ_Node/Lora Analyzer` (신규)
+
+> **💡 Idea credit / 아이디어 출처:** 블록 단위 LoRA 분석·필터링이라는 **아이디어**는
+> [shootthesound/comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora)
+> 에서 영감을 받았습니다. 해당 프로젝트에 감사드립니다. 🙏
+> 본 노드는 **Krea2 LoRA 파일을 직접 분석해 처음부터 구현**한 것으로, 원 프로젝트의
+> **코드를 복사하지 않았습니다** (Krea2 전용 32-블록 구조 + JS DOM UI + 전용 API).
+> The **idea** of block-wise LoRA analysis/filtering was inspired by
+> [comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora) —
+> thank you. This node was **built from scratch** by analyzing Krea2 LoRA files
+> directly and does **not** copy that project's code.
 
 ---
 
@@ -217,6 +228,13 @@ Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
 - RebelsPromptEnhancer node
   https://github.com/designloves2/RebelsPromptEnhancer<br>
   https://www.youtube.com/@realrebelai<br>
+
+- comfyUI-Realtime-Lora — shootthesound
+  https://github.com/shootthesound/comfyUI-Realtime-Lora<br>
+  Krea2 LoRA Analyzer (TJ)의 **블록 단위 분석·필터링 아이디어**에 영감을 준 프로젝트입니다.
+  코드는 복사하지 않았으며, Krea2 전용으로 직접 분석·구현했습니다. 감사합니다. 🙏<br>
+  Inspired the **idea** of block-wise LoRA analysis in Krea2 LoRA Analyzer (TJ).
+  No code was copied — built from scratch for Krea2. Thank you.<br>
 
   
 

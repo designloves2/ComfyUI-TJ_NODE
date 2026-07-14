@@ -14,12 +14,17 @@
   * 블록별 ON/OFF + strength 조절 후 필터링된 LoRA 저장
   * 프리셋 저장/불러오기/삭제 (localStorage)
   * `🔍 Analyze` 버튼 — 워크플로우 실행 없이 API 직접 분석
+  * 블록별 강도: 숫자 + 슬라이더 + `‹`/`›` 0.05 미세조정 + `⟲` 개별 리셋 (동기화)
+  * Main/TxtF 토글 버튼, 최소 노드 폭 강제, TJ 브랜드 테마
   * 신규 CATEGORY: ` ✨ TJ_Node/Lora Analyzer`
   * 독립 파일 구조:
 
     * `nodes/lora/krea2_lora_analyzer.py`
     * `nodes/lora/__init__.py` (전용 API 라우트)
     * `web/krea2_analyzer.js`
+  * **아이디어 출처(감사):** 블록 단위 LoRA 분석·필터링 아이디어는
+    [comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora)
+    에서 영감을 받음. **코드 미카피** — Krea2 LoRA 파일을 직접 분석해 처음부터 구현. 🙏
 
 * `Universal Calculator (TJ)` 신규 노드 추가
 
