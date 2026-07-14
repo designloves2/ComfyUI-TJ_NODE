@@ -19,12 +19,12 @@ const STR = {
         langBtn: "🌐 English",
         guideHTML:
             `<b style="color:#eaf3ff;">🔰 사용법</b>　` +
-            `① <b>🔍 분석</b> 눌러 분석　→　② 색으로 중요도 확인　→　③ 아래 <b>자동 조절</b> 버튼 클릭<br>` +
+            `① <b>🔍 분석</b> 눌러 분석　→　② 색으로 중요도 확인　→　③ 강도 조절 시 막대가 실시간 반영<br>` +
             `<span style="color:#4a9eff;">■</span> 약함(빼도 됨)　` +
             `<span style="color:#8fd14f;">■</span>　` +
             `<span style="color:#ffbb33;">■</span> 보조　` +
             `<span style="color:#ff5555;">■</span> 핵심(유지 권장)　` +
-            `— 진할수록(빨강) 중요한 블록`,
+            `— 막대 = 현재 효과 강도`,
         presetLabel: "프리셋:",
         presetNamePh: "프리셋 이름…",
         selectPh: "— 선택 —",
@@ -38,8 +38,13 @@ const STR = {
         hintAnalyzeFirst: "← 먼저 🔍 분석 을 누르세요",
         hintKept: (name, on, off) => `${name}: ${on}개 유지 / ${off}개 끔`,
         summaryAnalyzed: (c, m, l) => `분석완료 → 핵심 ${c} · 보조 ${m} · 약함 ${l}`,
+        cmpLabel: "📊 효과:",
+        btnCompareOn: "🔍 원본 대비: 켬",
+        btnCompareOff: "🔍 원본 대비: 끔",
+        cmpHintOn: "연한 막대 = 원본 효과, 진한 막대 = 현재 효과",
+        cmpHintOff: "",
         saveLabel: "저장:",
-        savePathPh: "filtered/my_lora.safetensors  (loras 폴더 기준)",
+        savePathPh: "filtered/my_lora.safetensors  (models/loras 기준)",
         btnSaveFiltered: "💾 필터 저장",
         btnAnalyze: "🔍 분석",
         stNeedLora: "⚠ LoRA 선택 필요",
@@ -56,12 +61,12 @@ const STR = {
         langBtn: "🌐 한국어",
         guideHTML:
             `<b style="color:#eaf3ff;">🔰 How to</b>　` +
-            `① Click <b>🔍 Analyze</b>　→　② Read importance by color　→　③ Click an <b>Auto</b> button below<br>` +
+            `① Click <b>🔍 Analyze</b>　→　② Read importance by color　→　③ Bars update live as you change strength<br>` +
             `<span style="color:#4a9eff;">■</span> Weak (removable)　` +
             `<span style="color:#8fd14f;">■</span>　` +
             `<span style="color:#ffbb33;">■</span> Mid　` +
             `<span style="color:#ff5555;">■</span> Core (keep)　` +
-            `— redder = more important`,
+            `— bar = current effect strength`,
         presetLabel: "Preset:",
         presetNamePh: "preset name…",
         selectPh: "— select —",
@@ -75,8 +80,13 @@ const STR = {
         hintAnalyzeFirst: "← Press 🔍 Analyze first",
         hintKept: (name, on, off) => `${name}: kept ${on} / off ${off}`,
         summaryAnalyzed: (c, m, l) => `Analyzed → Core ${c} · Mid ${m} · Weak ${l}`,
+        cmpLabel: "📊 Effect:",
+        btnCompareOn: "🔍 vs Original: ON",
+        btnCompareOff: "🔍 vs Original: OFF",
+        cmpHintOn: "faint bar = original, solid bar = current effect",
+        cmpHintOff: "",
         saveLabel: "Save:",
-        savePathPh: "filtered/my_lora.safetensors  (relative to loras)",
+        savePathPh: "filtered/my_lora.safetensors  (relative to models/loras)",
         btnSaveFiltered: "💾 Save Filtered",
         btnAnalyze: "🔍 Analyze",
         stNeedLora: "⚠ Select a LoRA",
@@ -98,7 +108,7 @@ const impactColor = (pct) => {
     return `hsl(${hue.toFixed(0)}, 78%, 55%)`;
 };
 
-// 임팩트 등급 (core / mid / weak)
+// 임팩트 등급 (core / mid / weak) — 원본 분석값 기준
 const impactTier = (pct) => {
     if (pct >= 66) return "core";
     if (pct >= 33) return "mid";
@@ -149,7 +159,6 @@ app.registerExtension({
         const cfgWidget = node.widgets?.find(w => w.name === "block_config");
         if (!cfgWidget) return;
 
-        // block_config 위젯 높이 0으로 숨기기
         cfgWidget.computeSize = () => [0, -4];
 
         // ── 언어 상태 ─────────────────────────────────
@@ -173,6 +182,7 @@ app.registerExtension({
 
         // ── 상태 ──────────────────────────────────────
         const states = Array.from({ length: TOTAL_BLOCKS }, () => ({ enable: true, strength: 1.0 }));
+        let compareOn = false;   // 원본 대비(연한 막대) 표시 여부
 
         const readConfig = () => {
             try {
@@ -211,7 +221,7 @@ app.registerExtension({
         topBar.appendChild(langBtn);
         wrap.appendChild(topBar);
 
-        // ── 초보자 안내 (사용법 + 색 범례) ─────────────
+        // ── 초보자 안내 ───────────────────────────────
         const guide = mkDiv(`
             background:#12202e; border:1px solid #274156; border-radius:5px;
             padding:6px 8px; margin-bottom:8px; line-height:1.5; color:#bcd;
@@ -284,11 +294,7 @@ app.registerExtension({
             const presets = getPresets();
             const obj = {};
             for (let i = 0; i < TOTAL_BLOCKS; i++) obj[i] = { ...states[i] };
-            presets[name] = {
-                name,
-                created:      new Date().toISOString(),
-                block_config: JSON.stringify(obj),
-            };
+            presets[name] = { name, created: new Date().toISOString(), block_config: JSON.stringify(obj) };
             savePresets(presets);
             refreshPresetSelect();
             presetSelect.value = name;
@@ -314,7 +320,7 @@ app.registerExtension({
         const btnBar = mkDiv("display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;");
         wrap.appendChild(btnBar);
 
-        const rows = [];  // forward ref
+        const rows = [];
 
         btnBar.append(
             mkBtn("All ON",        () => { rows.forEach((r,i) => setEnable(r,i,true));  writeConfig(); }),
@@ -334,13 +340,14 @@ app.registerExtension({
                     states[i].strength = 1.0;
                     r.strInput.value = "1.00";
                     if (r.strSlider) r.strSlider.value = "1";
+                    updateRowStyle(r, i);
                 });
                 writeConfig();
             }),
         );
 
         // ════════════════════════════════════════════════
-        // 2-B. 자동 조절 (초보자용, 분석 결과 기반 원클릭)
+        // 2-B. 자동 조절 (분석 결과 기반 원클릭)
         // ════════════════════════════════════════════════
         const autoRow = mkDiv("display:flex;gap:4px;margin-bottom:6px;align-items:center;flex-wrap:wrap;");
         wrap.appendChild(autoRow);
@@ -350,7 +357,6 @@ app.registerExtension({
 
         const autoHint = mkSpan("", "font-size:10px;color:#889;flex-shrink:0;");
 
-        // 분석 요약 상태 (언어 전환 시 재렌더 위해 보관)
         let lastCounts = null;
         const applySummary = () => {
             if (lastCounts) {
@@ -389,6 +395,25 @@ app.registerExtension({
         autoRow.append(bCore, bBal, bTrim, autoHint);
 
         // ════════════════════════════════════════════════
+        // 2-C. 효과 비교 (원본 대비 겹쳐보기)
+        // ════════════════════════════════════════════════
+        const cmpRow = mkDiv("display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap;");
+        wrap.appendChild(cmpRow);
+        const cmpLbl = mkSpan("", "color:#e0c040;flex-shrink:0;");
+        onLang(() => cmpLbl.textContent = t("cmpLabel"));
+        cmpRow.appendChild(cmpLbl);
+
+        const cmpHint = mkSpan("", "font-size:10px;color:#889;flex-shrink:0;");
+        const bCompare = mkBtn("", () => {
+            compareOn = !compareOn;
+            bCompare.style.borderColor = compareOn ? "#e0c040" : "#444";
+            cmpHint.textContent = compareOn ? t("cmpHintOn") : t("cmpHintOff");
+            refreshAllBars();
+        }, "");
+        onLang(() => bCompare.textContent = compareOn ? t("btnCompareOn") : t("btnCompareOff"));
+        cmpRow.append(bCompare, cmpHint);
+
+        // ════════════════════════════════════════════════
         // 3. 저장 섹션
         // ════════════════════════════════════════════════
         const saveRow = mkDiv("display:flex;gap:4px;margin-bottom:8px;align-items:center;flex-wrap:wrap;");
@@ -423,9 +448,7 @@ app.registerExtension({
 
             try {
                 const result = await apiPost("/krea2analyzer/save_filtered", {
-                    lora_name:    loraName,
-                    block_config: cfg,
-                    save_path:    savePath,
+                    lora_name: loraName, block_config: cfg, save_path: savePath,
                 });
                 if (result.error) {
                     saveStatusLabel.textContent = `❌ ${result.error}`;
@@ -443,7 +466,6 @@ app.registerExtension({
         onLang(() => btnSaveFiltered.textContent = t("btnSaveFiltered"));
         saveRow.appendChild(btnSaveFiltered);
 
-        // ── 분석 버튼 (워크플로우 없이 직접 분석) ─────
         const btnAnalyze = mkBtn("", async () => {
             const loraWidget = node.widgets?.find(w => w.name === "lora_name");
             const loraName   = loraWidget?.value;
@@ -469,12 +491,31 @@ app.registerExtension({
         onLang(() => btnAnalyze.textContent = t("btnAnalyze"));
         saveRow.appendChild(btnAnalyze);
 
-        // 상태 메시지(저장 경로 등)는 버튼들 아래 전체 폭으로 표시
         saveRow.appendChild(saveStatusLabel);
 
         // ════════════════════════════════════════════════
-        // 4. 블록 행 생성
+        // 4. 막대 렌더링 (원본 임팩트 → 현재 효과)
         // ════════════════════════════════════════════════
+        const clampPct = (x) => Math.max(0, Math.min(100, x));
+
+        // 현재 효과 = 켜짐 ? 원본임팩트 × 강도 : 0
+        const updateBarRow = (row, idx) => {
+            const base = row._impact ?? 0;
+            const eff  = states[idx].enable ? base * (states[idx].strength ?? 1) : 0;
+            row.barFill.style.width      = clampPct(eff) + "%";
+            row.barFill.style.background = impactColor(eff);
+            row.dot.style.background     = impactColor(eff);
+            row.barGhost.style.width     = compareOn ? clampPct(base) + "%" : "0%";
+            if (base > 0) {
+                row.impLabel.textContent = compareOn
+                    ? `${base.toFixed(0)}→${eff.toFixed(0)}`
+                    : `${eff.toFixed(1)}%`;
+            } else {
+                row.impLabel.textContent = "—";
+            }
+        };
+        const refreshAllBars = () => rows.forEach((r, i) => updateBarRow(r, i));
+
         const setEnable = (row, idx, val) => {
             states[idx].enable = val;
             row.check.checked  = val;
@@ -482,13 +523,13 @@ app.registerExtension({
         };
 
         const updateRowStyle = (row, idx) => {
-            const on     = states[idx].enable;
-            const impact = row._impact ?? 0;
-            row.el.style.opacity         = on ? "1" : "0.35";
-            row.dot.style.background     = impactColor(impact);
-            row.barFill.style.background = impactColor(impact);
+            row.el.style.opacity = states[idx].enable ? "1" : "0.35";
+            updateBarRow(row, idx);
         };
 
+        // ════════════════════════════════════════════════
+        // 5. 블록 행 생성
+        // ════════════════════════════════════════════════
         const mkRow = (idx) => {
             const el = mkDiv(`
                 display:flex;align-items:center;gap:5px;
@@ -517,7 +558,7 @@ app.registerExtension({
                 `width:70px;flex-shrink:0;cursor:pointer;accent-color:#7612DA;`,
                 { min:"-5", max:"5", step:"0.05", value: String(states[idx].strength) });
 
-            // 숫자 ↔ 슬라이더 양방향 동기화
+            // 숫자 ↔ 슬라이더 동기화 + 막대 실시간 갱신
             const applyStrength = (val, from) => {
                 let v = parseFloat(val);
                 if (isNaN(v)) v = 1.0;
@@ -525,18 +566,25 @@ app.registerExtension({
                 states[idx].strength = v;
                 if (from !== "num")    strInput.value  = v.toFixed(2);
                 if (from !== "slider") strSlider.value = String(v);
+                updateBarRow(row, idx);   // 강도 → 효과 막대 실시간 반영
                 writeConfig();
             };
             strInput.oninput  = () => applyStrength(strInput.value, "num");
             strSlider.oninput = () => applyStrength(strSlider.value, "slider");
             strInput.onchange = () => applyStrength(strInput.value, "reformat");
 
-            // 0.05 단위 미세조정
             const stepStrength = (delta) => {
                 const cur = parseFloat(strInput.value);
                 const base = isNaN(cur) ? (states[idx].strength || 0) : cur;
                 applyStrength(Math.round((base + delta) * 100) / 100, "reformat");
             };
+            // 슬라이더 위에서 마우스 휠: 업=+0.05, 다운=-0.05 (캔버스 줌/스크롤 방지)
+            strSlider.addEventListener("wheel", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                stepStrength(e.deltaY < 0 ? 0.05 : -0.05);
+            }, { passive: false });
+
             const btnStyle = `padding:1px 5px;font-size:12px;line-height:1;flex-shrink:0;`;
             const decBtn = mkBtn("‹", () => stepStrength(-0.05), btnStyle);
             const incBtn = mkBtn("›", () => stepStrength(0.05), btnStyle);
@@ -547,15 +595,17 @@ app.registerExtension({
                 `padding:1px 5px;font-size:11px;flex-shrink:0;`);
             onLang(() => resetBtn.title = t("resetTitle"));
 
-            const barWrap = mkDiv(`flex:1;height:5px;background:#2a2a2a;border-radius:3px;overflow:hidden;`);
-            const barFill = mkDiv(`height:100%;width:0%;background:#4488ff;transition:width .3s;`);
-            barWrap.appendChild(barFill);
+            // 막대: 연한(원본) + 진한(현재 효과) 겹침
+            const barWrap  = mkDiv(`position:relative;flex:1;height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden;`);
+            const barGhost = mkDiv(`position:absolute;left:0;top:0;height:100%;width:0%;background:rgba(255,255,255,0.16);`);
+            const barFill  = mkDiv(`position:absolute;left:0;top:0;height:100%;width:0%;background:#4488ff;transition:width .12s;`);
+            barWrap.append(barGhost, barFill);
 
-            const impLabel = mkSpan("—", "color:#666;min-width:36px;text-align:right;font-size:10px;");
+            const impLabel = mkSpan("—", "color:#888;min-width:52px;text-align:right;font-size:10px;");
 
             el.append(dot, check, name, strInput, decBtn, strSlider, incBtn, resetBtn, barWrap, impLabel);
 
-            const row = { el, dot, check, strInput, strSlider, barFill, impLabel, _impact: 0 };
+            const row = { el, dot, check, strInput, strSlider, barFill, barGhost, impLabel, _impact: 0 };
             updateRowStyle(row, idx);
             return row;
         };
@@ -565,37 +615,24 @@ app.registerExtension({
         const secMainEl = sectionLabel();
         onLang(() => secMainEl.textContent = t("secMain"));
         wrap.appendChild(secMainEl);
-        for (let i = 0; i < 28; i++) {
-            const r = mkRow(i);
-            rows.push(r);
-            wrap.appendChild(r.el);
-        }
+        for (let i = 0; i < 28; i++) { const r = mkRow(i); rows.push(r); wrap.appendChild(r.el); }
         const secTxtEl = sectionLabel();
         onLang(() => secTxtEl.textContent = t("secTxt"));
         wrap.appendChild(secTxtEl);
-        for (let i = 28; i < TOTAL_BLOCKS; i++) {
-            const r = mkRow(i);
-            rows.push(r);
-            wrap.appendChild(r.el);
-        }
+        for (let i = 28; i < TOTAL_BLOCKS; i++) { const r = mkRow(i); rows.push(r); wrap.appendChild(r.el); }
 
         // ════════════════════════════════════════════════
-        // 5. 임팩트 업데이트 함수
+        // 6. 임팩트 업데이트 (분석 결과 반영)
         // ════════════════════════════════════════════════
         const updateImpact = (dataOrStr) => {
             try {
                 const data = typeof dataOrStr === "string" ? JSON.parse(dataOrStr) : dataOrStr;
                 for (let i = 0; i < TOTAL_BLOCKS; i++) {
-                    const d   = data[String(i)] ?? data[i];
+                    const d = data[String(i)] ?? data[i];
                     if (!d) continue;
-                    const pct              = d.impact ?? 0;
-                    rows[i]._impact        = pct;
-                    rows[i].barFill.style.width  = pct + "%";
-                    rows[i].barFill.style.background = impactColor(pct);
-                    rows[i].impLabel.textContent = pct.toFixed(1) + "%";
-                    rows[i].dot.style.background = impactColor(pct);
-                    updateRowStyle(rows[i], i);
+                    rows[i]._impact = d.impact ?? 0;   // 원본 분석 임팩트 저장
                 }
+                refreshAllBars();
                 let core = 0, mid = 0, weak = 0;
                 rows.forEach(r => {
                     const tr = impactTier(r._impact ?? 0);
@@ -643,22 +680,19 @@ app.registerExtension({
         });
 
         // ── 초기 크기 보정 ────────────────────────────────
-        const CONTENT_FALLBACK = 800;
+        const CONTENT_FALLBACK = 820;
         if (domWidget) {
             domWidget.computeSize = function (nodeWidth) {
                 const h = (wrap.scrollHeight || CONTENT_FALLBACK) + 8;
                 return [nodeWidth, h];
             };
         }
-
         const fitNode = () => {
             const w = Math.max(540, node.size[0] || 540);
-            const target = node.computeSize()[1];
-            node.setSize([w, target]);
+            node.setSize([w, node.computeSize()[1]]);
             node.setDirtyCanvas(true, true);
         };
 
-        // 최소 노드 폭 강제
         const MIN_W = 540;
         const origOnResize = node.onResize;
         node.onResize = function (size) {
@@ -668,14 +702,25 @@ app.registerExtension({
         if (Array.isArray(node.min_size)) node.min_size[0] = MIN_W;
         else node.min_size = [MIN_W, 0];
 
-        // TJ 브랜드 테마
         node.color   = "#7612DA";
         node.bgcolor = "#000000";
         if (node.title_text_color !== undefined) node.title_text_color = "#FFFFFF";
 
         writeConfig();
+        refreshAllBars();
         node.setSize([Math.max(540, node.size[0] || 540), node.size[1]]);
         requestAnimationFrame(fitNode);
         setTimeout(fitNode, 120);
+
+        // 콘텐츠 실제 높이가 바뀔 때마다 노드 높이를 자동으로 맞춤
+        // (하단 여백/이탈 방지 — 분석·언어전환·리사이즈 등 모든 변화 대응)
+        if (typeof ResizeObserver !== "undefined") {
+            let raf = null;
+            const ro = new ResizeObserver(() => {
+                if (raf) cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(() => { try { fitNode(); } catch (_) {} });
+            });
+            ro.observe(wrap);
+        }
     },
 });
