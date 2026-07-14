@@ -45,7 +45,7 @@ const STR = {
         stNeedLora: "⚠ LoRA 선택 필요",
         stNeedPath: "⚠ 경로 입력 필요",
         stSaving: "저장 중…",
-        stSaved: (k, b) => `✅ 저장완료 (${k}키 / ${b}블록)`,
+        stSaved: (k, b, p) => `✅ 저장됨 → ${p}  (${k}키 / ${b}블록)`,
         stAnalyzing: "분석 중…",
         stAnalyzed: "✅ 분석 완료",
         secMain: "■ 메인 블록 (0–27)",
@@ -82,7 +82,7 @@ const STR = {
         stNeedLora: "⚠ Select a LoRA",
         stNeedPath: "⚠ Enter a path",
         stSaving: "Saving…",
-        stSaved: (k, b) => `✅ Saved (${k} keys / ${b} blocks)`,
+        stSaved: (k, b, p) => `✅ Saved → ${p}  (${k} keys / ${b} blocks)`,
         stAnalyzing: "Analyzing…",
         stAnalyzed: "✅ Analysis done",
         secMain: "■ Main Blocks (0–27)",
@@ -405,8 +405,7 @@ app.registerExtension({
         onLang(() => savePathInput.placeholder = t("savePathPh"));
         saveRow.appendChild(savePathInput);
 
-        const saveStatusLabel = mkSpan("", "font-size:10px;color:#888;flex-shrink:0;");
-        saveRow.appendChild(saveStatusLabel);
+        const saveStatusLabel = mkSpan("", "font-size:10px;color:#888;flex-basis:100%;word-break:break-all;");
 
         const btnSaveFiltered = mkBtn("", async () => {
             const loraWidget = node.widgets?.find(w => w.name === "lora_name");
@@ -432,7 +431,8 @@ app.registerExtension({
                     saveStatusLabel.textContent = `❌ ${result.error}`;
                     saveStatusLabel.style.color = "#ff4444";
                 } else {
-                    saveStatusLabel.textContent = t("stSaved", result.filtered_keys, result.enabled_blocks);
+                    console.log("[Krea2Analyzer] saved:", result.saved_path);
+                    saveStatusLabel.textContent = t("stSaved", result.filtered_keys, result.enabled_blocks, result.saved_path);
                     saveStatusLabel.style.color = "#44dd88";
                 }
             } catch (e) {
@@ -468,6 +468,9 @@ app.registerExtension({
         });
         onLang(() => btnAnalyze.textContent = t("btnAnalyze"));
         saveRow.appendChild(btnAnalyze);
+
+        // 상태 메시지(저장 경로 등)는 버튼들 아래 전체 폭으로 표시
+        saveRow.appendChild(saveStatusLabel);
 
         // ════════════════════════════════════════════════
         // 4. 블록 행 생성

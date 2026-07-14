@@ -21,17 +21,32 @@ from .krea2_lora_analyzer import (
 #   path traversal / 절대경로 / 다른 드라이브는 차단한다.
 # ─────────────────────────────────────────────
 
+def _default_loras_base():
+    """현재 ComfyUI 설치 폴더의 models/loras 절대경로. (extra_model_paths 무시)"""
+    models_dir = getattr(folder_paths, "models_dir", None)
+    if models_dir:
+        return os.path.realpath(os.path.join(models_dir, "loras"))
+    # 오래된 버전 폴백: 기본 loras 루트 첫 항목
+    roots = folder_paths.get_folder_paths("loras") or []
+    return os.path.realpath(roots[0]) if roots else None
+
+
 def _resolve_lora_save_path(save_path: str):
-    """정상 시 (abs_path, None), 문제 시 (None, error_msg)."""
+    """정상 시 (abs_path, None), 문제 시 (None, error_msg).
+
+    보안/예측성: extra_model_paths 로 연결된 외부 드라이브가 아니라
+    '지금 실행 중인 ComfyUI 설치 폴더의 models/loras' 를 항상 기준으로 사용.
+    그 안에서만 서브폴더 생성 + 파일 저장을 허용한다.
+    """
     if not save_path or "\x00" in save_path:
         return None, "save_path is required"
 
-    roots = folder_paths.get_folder_paths("loras")
-    if not roots:
+    base = _default_loras_base()
+    if not base:
         return None, "No loras directory configured"
-    base = os.path.realpath(roots[0])
+    os.makedirs(base, exist_ok=True)
 
-    # loras 기준 상대경로로 강제: 앞쪽 슬래시/역슬래시 제거
+    # 기준(models/loras) 상대경로로 강제: 앞쪽 슬래시/역슬래시 제거
     rel = save_path.strip().replace("\\", "/").lstrip("/")
     if not rel:
         return None, "save_path is required"
@@ -40,10 +55,10 @@ def _resolve_lora_save_path(save_path: str):
     # commonpath 로 prefix confusion 없이 샌드박스 검증
     try:
         if os.path.commonpath([base, target]) != base:
-            return None, "Path traversal blocked (must be inside loras folder)"
+            return None, "Path traversal blocked (must be inside models/loras)"
     except ValueError:
         # 다른 드라이브 등 — 공통 경로 없음
-        return None, "Path traversal blocked (must be inside loras folder)"
+        return None, "Path traversal blocked (must be inside models/loras)"
 
     if not target.lower().endswith(".safetensors"):
         target += ".safetensors"
