@@ -3,6 +3,46 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.3.0] - 2026-07-14
+
+### [Added]
+
+* `Krea2 LoRA Analyzer (TJ)` 신규 노드 추가
+
+  * Krea2 LoRA(`.safetensors`)를 32개 블록 단위로 분석 (Main 28 + TxtFusion Layerwise 2 + Refiner 2)
+  * 블록별 기여도(impact) 시각화 — 임팩트 바 + 색상(파랑→빨강)
+  * 블록별 ON/OFF + strength 조절 후 필터링된 LoRA 저장
+  * 프리셋 저장/불러오기/삭제 (localStorage)
+  * `🔍 Analyze` 버튼 — 워크플로우 실행 없이 API 직접 분석
+  * 신규 CATEGORY: ` ✨ TJ_Node/Lora Analyzer`
+  * 독립 파일 구조:
+
+    * `nodes/lora/krea2_lora_analyzer.py`
+    * `nodes/lora/__init__.py` (전용 API 라우트)
+    * `web/krea2_analyzer.js`
+
+* `Universal Calculator (TJ)` 신규 노드 추가
+
+  * 해상도(비율/메가픽셀) + 시간/프레임 통합 계산기
+  * `0 = 빈칸(자동)` 규칙 — 원하는 칸만 입력하면 나머지 자동 계산
+  * 비율 정수 표시(GCD 약분, 예: `2:3`) + 실시간 요약 패널
+  * CATEGORY: ` ✨ TJ_Node/Utility`
+
+### [Changed]
+
+* `Prompt Enhancer (TJ)` / `Prompt Studio (TJ)`
+
+  * Qwen3.5 계열의 "Thinking Process" 노출 대응 — assistant prefill로 non-thinking 출력 유도
+  * `_strip_thinking_process_block()` 후처리 추가
+
+### [Security]
+
+* `Krea2 LoRA Analyzer` save 라우트 하드닝
+
+  * 클라이언트 `save_path`를 loras 폴더 하위로 샌드박스 (commonpath 검증)
+  * path traversal / 절대경로 / 타 드라이브 차단, `.safetensors` 확장자 강제
+
+---
 ## [2.0.2] - 2026-06-11
 
 ### [Added]

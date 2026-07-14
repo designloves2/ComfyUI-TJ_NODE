@@ -40,6 +40,7 @@ from .nodes.utility import (
     TJ_IndexLoRALoader,
     TJ_LEDDisplay,
     TJ_UniversalCalculator,
+    TJ_VideoGridComparer,
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
@@ -61,6 +62,9 @@ from .nodes.llm import (
     TJ_OllamaLLMLoader,
     TJ_LLMContentQualityController,
 )
+
+# ── LoRA ──────────────────────────────────────────────────────────────────
+from .nodes.lora import Krea2LoRAAnalyzer
 
 # ── Generator ─────────────────────────────────────────────────────────────
 from .nodes.generator import TJ_ZImageTurbo, TJ_Flux2Klein, TJ_ZITControlNet
@@ -103,6 +107,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_GoStop":         TJ_GoStop,
     "TJ_LEDDisplay":     TJ_LEDDisplay,
     "TJ_UniversalCalculator": TJ_UniversalCalculator,
+    "TJ_VideoGridComparer": TJ_VideoGridComparer,
 
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
@@ -118,6 +123,9 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SceneMakerResultPipe": TJ_SceneMakerResultPipe,
     "TJ_OllamaLLMLoader":   TJ_OllamaLLMLoader,
     "TJ_LLMContentQualityController": TJ_LLMContentQualityController,
+
+    # LoRA
+    "Krea2LoRAAnalyzer": Krea2LoRAAnalyzer,
 
     # Generator
     "TJ_ZImageTurbo":   TJ_ZImageTurbo,
@@ -161,6 +169,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_GoStop":         "Go & Stop (TJ)",
     "TJ_LEDDisplay":     "LED Display (TJ)",
     "TJ_UniversalCalculator": "Universal Calculator (TJ)",
+    "TJ_VideoGridComparer": "Video Grid Comparer (TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
@@ -176,6 +185,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SceneMakerResultPipe": "Scene Maker Result - pipe(TJ)",
     "TJ_OllamaLLMLoader":   "Ollama LLM Loader (TJ)",
     "TJ_LLMContentQualityController": "LLM Content Quality Controller (TJ)",
+
+    # LoRA
+    "Krea2LoRAAnalyzer": "Krea2 LoRA Analyzer (TJ)",
 
     # Generator
     "TJ_ZImageTurbo":   "Z-Image Turbo (TJ)",

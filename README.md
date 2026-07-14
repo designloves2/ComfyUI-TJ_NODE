@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.2.0
+# ✨ TJ_NODE v2.3.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -108,6 +108,44 @@ Wireless routing is used between sections.
 ---
 
 #스크린샷 : SECTION ARCHITECTURE
+
+---
+
+# 🚀 What's New in v2.3.0
+
+## ✨ New: Krea2 LoRA Analyzer (TJ)
+
+Krea2 모델용 LoRA를 **블록 단위(32 blocks)** 로 분석하고, 불필요한 블록을 비활성화하거나 강도를 조절한 뒤 **필터링된 LoRA를 저장**하는 신규 노드입니다.
+
+Analyze Krea2 LoRAs block-by-block, toggle/scale individual blocks, and export a filtered LoRA.
+
+- 블록 구조: Main 28 + TxtFusion Layerwise 2 + Refiner 2 = **32 blocks**
+- 블록별 기여도(impact) 시각화 — 임팩트 바 + 색상 (파랑 → 빨강)
+- 블록 ON/OFF + strength(-5~5) 개별 조절
+- 프리셋 저장/불러오기/삭제 (localStorage)
+- `🔍 Analyze` 버튼 — 워크플로우 실행 없이 즉시 분석
+- `💾 Save Filtered` — 필터링된 LoRA를 **loras 폴더 하위**로 안전 저장 (path traversal 차단)
+- 카테고리: `✨ TJ_Node/Lora Analyzer` (신규)
+
+---
+
+## ✨ New: Universal Calculator (TJ)
+
+해상도(비율/메가픽셀)와 시간/프레임을 한 노드에서 양방향 계산하는 유틸리티 노드입니다.
+
+Bidirectional resolution (aspect/megapixel) + time/frame calculator in one node.
+
+- **`0 = 빈칸(자동)`** — 원하는 칸만 입력하면 나머지가 자동 계산 (예: `W 1080` + `2:3` → `H 1620`)
+- 비율 정수 표시 (GCD 약분, 예: `1080 × 1620 (2:3)`)
+- 시간/프레임도 동일 방식: `fps` 기준으로 seconds ↔ frame_count 자동 변환
+- 실시간 요약 패널 (해상도 / 시간)
+- 카테고리: `✨ TJ_Node/Utility`
+
+---
+
+## 🔧 LLM 개선 v2.3.0
+
+- `Prompt Enhancer (TJ)` / `Prompt Studio (TJ)`: Qwen3.5 계열의 "Thinking Process" 노출 대응 — assistant prefill로 최종 프롬프트만 출력하도록 유도, `_strip_thinking_process_block()` 후처리 추가
 
 ---
 
@@ -2128,6 +2166,7 @@ CATEGORY = " ✨ TJ_Node/Eclipse"
 CATEGORY = " ✨ TJ_Node/LLM"
 CATEGORY = " ✨ TJ_Node/Generator"
 CATEGORY = " ✨ TJ_Node/Video"
+CATEGORY = " ✨ TJ_Node/Lora Analyzer"   # NEW: Krea2 LoRA Analyzer
 ```
 
 ---

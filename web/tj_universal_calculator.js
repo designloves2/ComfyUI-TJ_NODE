@@ -7,13 +7,21 @@ function roundToMultiple(value, multiple) {
     return Math.round(value / multiple) * multiple;
 }
 
-function getW(node, name) {
-    return node.widgets.find(w => w.name === name);
+function gcd(a, b) {
+    a = Math.abs(Math.round(a));
+    b = Math.abs(Math.round(b));
+    while (b) { [a, b] = [b, a % b]; }
+    return a || 1;
 }
 
-function setWidgetValue(widget, value) {
-    // callback 재귀 방지: 값만 조용히 갱신
-    widget.value = value;
+function ratioStr(w, h) {
+    if (w <= 0 || h <= 0) return "-";
+    const g = gcd(w, h);
+    return `${Math.round(w / g)}:${Math.round(h / g)}`;
+}
+
+function getW(node, name) {
+    return node.widgets.find(w => w.name === name);
 }
 
 function toggleWidget(node, widget, show) {
@@ -52,7 +60,26 @@ app.registerExtension({
             const seconds = getW(node, "seconds");
             const frameCount = getW(node, "frame_count");
 
-            let syncing = false;
+            // 상태: syncing(재귀 방지), ready(로드 중 값 스크램블 방지)
+            const S = { syncing: false, ready: false };
+
+            // ---- 값을 어떤 경로로 바꾸든 가로채서 재계산 ----
+            function trap(widget, handler) {
+                if (!widget || widget.__tjTrapped) return;
+                widget.__tjTrapped = true;
+                let backing = widget.value;
+                Object.defineProperty(widget, "value", {
+                    get() { return backing; },
+                    set(v) {
+                        const changed = backing !== v;
+                        backing = v;
+                        if (changed && S.ready && !S.syncing) handler();
+                    },
+                    configurable: true,
+                    enumerable: true,
+                });
+            }
+            function setVal(widget, v) { widget.value = v; }  // syncing 중엔 handler 안 돎
 
             function currentDivisor() {
                 return parseInt(divisor.value, 10) || 8;
@@ -66,134 +93,120 @@ app.registerExtension({
                 node.setDirtyCanvas(true, true);
             }
 
-            function recalcFromWidth() {
-                if (syncing) return;
-                syncing = true;
+            // ---- 해상도: 0 = 빈칸(자동), 채워진 칸 기준으로 나머지 계산 ----
+            // edited: "width" | "height" | "master"(비율/모드 변경)
+            function recalcResolution(edited) {
+                if (S.syncing) return;
+                S.syncing = true;
                 const div = currentDivisor();
-                if (resMode.value === "aspect_ratio") {
-                    const ratio = aspectW.value / aspectH.value;
-                    setWidgetValue(height, Math.max(div, roundToMultiple(width.value / ratio, div)));
-                } else {
-                    const targetPixels = megapixels.value * 1_000_000;
-                    setWidgetValue(height, Math.max(div, roundToMultiple(targetPixels / width.value, div)));
-                }
-                syncing = false;
-                node.setDirtyCanvas(true, true);
-            }
+                let w = Math.max(0, width.value);
+                let h = Math.max(0, height.value);
 
-            function recalcFromHeight() {
-                if (syncing) return;
-                syncing = true;
-                const div = currentDivisor();
                 if (resMode.value === "aspect_ratio") {
-                    const ratio = aspectW.value / aspectH.value;
-                    setWidgetValue(width, Math.max(div, roundToMultiple(height.value * ratio, div)));
-                } else {
-                    const targetPixels = megapixels.value * 1_000_000;
-                    setWidgetValue(width, Math.max(div, roundToMultiple(targetPixels / height.value, div)));
+                    const aw = Math.max(1, aspectW.value);
+                    const ah = Math.max(1, aspectH.value);
+                    if (edited === "width") {
+                        if (w > 0) h = roundToMultiple(w * ah / aw, div);
+                    } else if (edited === "height") {
+                        if (h > 0) w = roundToMultiple(h * aw / ah, div);
+                    } else { // master: 비율/모드 변경 → 채워진 칸 기준
+                        if (w > 0) h = roundToMultiple(w * ah / aw, div);
+                        else if (h > 0) w = roundToMultiple(h * aw / ah, div);
+                    }
+                } else { // megapixel
+                    const target = megapixels.value * 1_000_000;
+                    if (edited === "width") {
+                        if (w > 0) h = roundToMultiple(target / w, div);
+                    } else if (edited === "height") {
+                        if (h > 0) w = roundToMultiple(target / h, div);
+                    } else {
+                        if (w > 0 && h > 0) {
+                            const ratio = w / h;
+                            const newH = Math.sqrt(target / ratio);
+                            w = roundToMultiple(newH * ratio, div);
+                            h = roundToMultiple(newH, div);
+                        } else if (w > 0) {
+                            h = roundToMultiple(target / w, div);
+                        } else if (h > 0) {
+                            w = roundToMultiple(target / h, div);
+                        }
+                    }
                 }
-                syncing = false;
-                node.setDirtyCanvas(true, true);
-            }
 
-            function recalcFromAspectOrMp() {
-                if (syncing) return;
-                syncing = true;
-                const div = currentDivisor();
-                // 기존 width를 기준(anchor)으로 height 재계산
-                if (resMode.value === "aspect_ratio") {
-                    const ratio = aspectW.value / aspectH.value;
-                    setWidgetValue(height, Math.max(div, roundToMultiple(width.value / ratio, div)));
-                } else {
-                    const targetPixels = megapixels.value * 1_000_000;
-                    const ratio = width.value / height.value;
-                    const newH = Math.sqrt(targetPixels / ratio);
-                    const newW = newH * ratio;
-                    setWidgetValue(width, Math.max(div, roundToMultiple(newW, div)));
-                    setWidgetValue(height, Math.max(div, roundToMultiple(newH, div)));
-                }
-                syncing = false;
+                if (w > 0) w = Math.max(div, roundToMultiple(w, div));
+                if (h > 0) h = Math.max(div, roundToMultiple(h, div));
+                setVal(width, w);
+                setVal(height, h);
+                S.syncing = false;
                 node.setDirtyCanvas(true, true);
             }
 
             function recalcDivisorOnly() {
-                if (syncing) return;
-                syncing = true;
+                if (S.syncing) return;
+                S.syncing = true;
                 const div = currentDivisor();
-                setWidgetValue(width, Math.max(div, roundToMultiple(width.value, div)));
-                setWidgetValue(height, Math.max(div, roundToMultiple(height.value, div)));
-                syncing = false;
+                if (width.value > 0) setVal(width, Math.max(div, roundToMultiple(width.value, div)));
+                if (height.value > 0) setVal(height, Math.max(div, roundToMultiple(height.value, div)));
+                S.syncing = false;
                 node.setDirtyCanvas(true, true);
             }
 
-            // ---- 시간/프레임: 셋 중 뭘 바꾸든 나머지가 즉시 동기화 ----
-            function recalcFramesFromSeconds() {
-                if (syncing) return;
-                syncing = true;
-                setWidgetValue(frameCount, Math.round(seconds.value * fps.value));
-                syncing = false;
+            // ---- 시간/프레임: 0 = 빈칸(자동), fps 기준 ----
+            // edited: "seconds" | "frames" | "master"(fps 변경)
+            function recalcTime(edited) {
+                if (S.syncing) return;
+                S.syncing = true;
+                const f = fps.value;
+                let s = Math.max(0, seconds.value);
+                let n = Math.max(0, frameCount.value);
+
+                if (f > 0) {
+                    if (edited === "seconds") {
+                        if (s > 0) n = Math.round(s * f);
+                    } else if (edited === "frames") {
+                        if (n > 0) s = Math.round((n / f) * 10000) / 10000;
+                    } else { // fps 변경 → 채워진 칸 기준(초 우선)
+                        if (s > 0) n = Math.round(s * f);
+                        else if (n > 0) s = Math.round((n / f) * 10000) / 10000;
+                    }
+                }
+                setVal(seconds, s);
+                setVal(frameCount, n);
+                S.syncing = false;
                 node.setDirtyCanvas(true, true);
             }
 
-            function recalcSecondsFromFrames() {
-                if (syncing) return;
-                syncing = true;
-                setWidgetValue(seconds, fps.value > 0 ? Math.round((frameCount.value / fps.value) * 10000) / 10000 : 0);
-                syncing = false;
-                node.setDirtyCanvas(true, true);
-            }
-
-            function recalcFromFps() {
-                if (syncing) return;
-                syncing = true;
-                // 프레임수 고정, 초를 fps 기준으로 갱신 (재생시간 개념 유지)
-                setWidgetValue(seconds, fps.value > 0 ? Math.round((frameCount.value / fps.value) * 10000) / 10000 : 0);
-                syncing = false;
-                node.setDirtyCanvas(true, true);
-            }
-
-            const origWidthCb = width.callback;
-            width.callback = (...a) => { origWidthCb?.(...a); recalcFromWidth(); };
-
-            const origHeightCb = height.callback;
-            height.callback = (...a) => { origHeightCb?.(...a); recalcFromHeight(); };
-
-            const origAspectWCb = aspectW.callback;
-            aspectW.callback = (...a) => { origAspectWCb?.(...a); recalcFromAspectOrMp(); };
-
-            const origAspectHCb = aspectH.callback;
-            aspectH.callback = (...a) => { origAspectHCb?.(...a); recalcFromAspectOrMp(); };
-
-            const origMpCb = megapixels.callback;
-            megapixels.callback = (...a) => { origMpCb?.(...a); recalcFromAspectOrMp(); };
-
-            const origDivCb = divisor.callback;
-            divisor.callback = (...a) => { origDivCb?.(...a); recalcDivisorOnly(); };
-
-            const origResModeCb = resMode.callback;
-            resMode.callback = (...a) => { origResModeCb?.(...a); updateModeVisibility(); recalcFromAspectOrMp(); };
-
-            const origFpsCb = fps.callback;
-            fps.callback = (...a) => { origFpsCb?.(...a); recalcFromFps(); };
-
-            const origSecondsCb = seconds.callback;
-            seconds.callback = (...a) => { origSecondsCb?.(...a); recalcFramesFromSeconds(); };
-
-            const origFrameCb = frameCount.callback;
-            frameCount.callback = (...a) => { origFrameCb?.(...a); recalcSecondsFromFrames(); };
+            trap(width, () => recalcResolution("width"));
+            trap(height, () => recalcResolution("height"));
+            trap(aspectW, () => recalcResolution("master"));
+            trap(aspectH, () => recalcResolution("master"));
+            trap(megapixels, () => recalcResolution("master"));
+            trap(divisor, () => recalcDivisorOnly());
+            trap(resMode, () => { updateModeVisibility(); recalcResolution("master"); });
+            trap(fps, () => recalcTime("master"));
+            trap(seconds, () => recalcTime("seconds"));
+            trap(frameCount, () => recalcTime("frames"));
 
             updateModeVisibility();
 
-            // ---- 예쁜 요약 패널 (실시간 표시용, 출력에는 영향 없음) ----
+            // 로드/configure 로 값이 세팅되는 동안엔 재계산 억제, 그 다음 프레임부터 활성화
+            requestAnimationFrame(() => { S.ready = true; });
+
+            // ---- 요약 패널 (실시간 표시용, 출력에는 영향 없음) ----
             node.addCustomWidget({
                 name: "tj_res_summary",
                 type: "TJ_SUMMARY",
                 value: "",
                 draw(ctx, node2, widgetWidth, y) {
                     const h = 30;
-                    const ratio = (width.value / height.value).toFixed(3);
-                    const mp = ((width.value * height.value) / 1_000_000).toFixed(2);
-                    const text = `📐 ${width.value} × ${height.value}  (${mp}MP, ratio ${ratio})`;
+                    const w = width.value, ht = height.value;
+                    let text;
+                    if (w > 0 && ht > 0) {
+                        const mp = ((w * ht) / 1_000_000).toFixed(2);
+                        text = `📐 ${w} × ${ht}  (${ratioStr(w, ht)}, ${mp}MP)`;
+                    } else {
+                        text = `📐 — W 또는 H 입력 대기`;
+                    }
                     ctx.save();
                     ctx.fillStyle = "rgba(80, 160, 220, 0.18)";
                     ctx.beginPath();
@@ -220,7 +233,13 @@ app.registerExtension({
                 value: "",
                 draw(ctx, node2, widgetWidth, y) {
                     const h = 30;
-                    const text = `⏱ ${frameCount.value} frames @ ${fps.value}fps  =  ${seconds.value.toFixed(3)}s`;
+                    const n = frameCount.value, s = seconds.value;
+                    let text;
+                    if (n > 0 && s > 0) {
+                        text = `⏱ ${n} frames @ ${fps.value}fps  =  ${s.toFixed(3)}s`;
+                    } else {
+                        text = `⏱ — seconds 또는 frames 입력 대기`;
+                    }
                     ctx.save();
                     ctx.fillStyle = "rgba(220, 160, 80, 0.18)";
                     ctx.beginPath();
