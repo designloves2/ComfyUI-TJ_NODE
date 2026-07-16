@@ -3,6 +3,26 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.5.4] - 2026-07-16
+
+### [Added]
+
+* `Enhanced KSampler (TJ)` — `adv_text_scale` 추가 (Krea2 전용)
+
+  * 원본 `Krea2T Enhancer Advanced` 의 `text_scale` 이식 — `txtmlp` 출력 전체 배율
+  * `enhance_strength`(특정 청크 재가중)와 **독립 동작** → strength=0 이어도 단독 적용 가능
+  * 범위 0.25~4.0 (기본 1.0)
+
+### [Changed]
+
+* `enhance_enabled` 를 `enhance_arch` **위로 이동**, OFF 시 enhance 관련 항목 **전부 숨김**
+
+### [Fixed]
+
+* `adv_late_layer_scale` 등 Klein 전용 노브가 krea2/zimage 에서도 계속 노출되던 문제
+  — 최신 ComfyUI 프론트에서 `type="hidden"` 만으론 안 숨겨져 `hidden` 속성도 함께 세팅
+
+---
 ## [2.5.3] - 2026-07-16
 
 ### [Fixed]

@@ -8,8 +8,9 @@ const NODE_CLASS = "TJ_EnhancedKSampler";
 
 // 아키텍처별로 "보여줄" 고급 위젯
 const ARCH_WIDGETS = {
-    // Krea2 는 MODEL 패치(txtfusion 청크 증폭) — conditioning 노브를 쓰지 않는다
-    krea2: [],
+    // Krea2 는 MODEL 패치(txtfusion 청크 증폭) — conditioning 노브는 안 쓰고
+    // text_scale(txtmlp 출력 배율)만 사용
+    krea2: ["adv_text_scale"],
     // Klein 은 CONDITIONING 연산 + Qwen3 3-레이어 슬라이스
     klein: [
         "adv_active_scale", "adv_per_token_whiten", "adv_norm_equalize",
@@ -20,6 +21,7 @@ const ARCH_WIDGETS = {
 };
 
 const ALL_ADV = [
+    "adv_text_scale",
     "adv_active_scale", "adv_per_token_whiten", "adv_norm_equalize",
     "adv_early_layer_scale", "adv_mid_layer_scale", "adv_late_layer_scale",
 ];
@@ -33,9 +35,12 @@ function toggleWidget(widget, show) {
     if (show) {
         widget.type = widget.__tjOrigType;
         widget.computeSize = widget.__tjOrigComputeSize;
+        widget.hidden = false;
     } else {
         widget.type = "hidden";
         widget.computeSize = () => [0, -4];
+        // 최신 ComfyUI 프론트는 type 만으론 안 숨겨지는 경우가 있어 hidden 도 함께 세팅
+        widget.hidden = true;
     }
 }
 
@@ -55,12 +60,14 @@ app.registerExtension({
         const refresh = () => {
             const on = enabledW ? !!enabledW.value : true;
             const arch = String(archW.value || "krea2");
+            // OFF 면 enhance 관련 전부 숨김 (enhance_enabled 토글만 남음)
             const wanted = new Set(on ? (ARCH_WIDGETS[arch] || []) : []);
 
-            // enhance 관련 기본 노브는 ON 일 때만
+            toggleWidget(archW, on);
             toggleWidget(strengthW, on);
             toggleWidget(debugW, on);
             // 고급 노브는 ON + 해당 아키텍처에서 쓰는 것만
+            //  (예: 레이어 슬라이스는 Klein 전용 — krea2/zimage 에선 숨김)
             for (const name of ALL_ADV) toggleWidget(get(name), wanted.has(name));
 
             // 노드 크기는 건드리지 않는다 — 사용자가 latent preview 영역을

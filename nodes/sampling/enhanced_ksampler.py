@@ -169,7 +169,8 @@ def _krea2_wrapper(executor, x, timesteps, context, attention_mask=None, transfo
         return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
 
     strength = _bounded_float(cfg.get("strength", 1.0), 1.0, 0.0, 2.0)
-    if strength == 0.0:
+    text_scale = _bounded_float(cfg.get("text_scale", 1.0), 1.0, 0.25, 4.0)
+    if strength == 0.0 and text_scale == 1.0:
         return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
 
     txtfusion = dm.txtfusion
@@ -190,19 +191,39 @@ def _krea2_wrapper(executor, x, timesteps, context, attention_mask=None, transfo
             if hasattr(txtfusion, "_tj_original_forward"):
                 delattr(txtfusion, "_tj_original_forward")
 
+    txtmlp_module, original_txtmlp_forward = None, None
     try:
         cfg["_active"] = True
-        txtfusion.forward = enhanced_forward
+        # text_scale 은 strength 와 독립 — strength=0 이어도 단독 적용 가능
+        txtmlp_module, original_txtmlp_forward = _install_txtmlp_scale(dm.txtmlp, text_scale)
+        if strength != 0.0:
+            txtfusion.forward = enhanced_forward
         return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
     finally:
         cfg["_active"] = False
         txtfusion.forward = original_forward
+        if txtmlp_module is not None and original_txtmlp_forward is not None:
+            txtmlp_module.forward = original_txtmlp_forward
 
 
-def _apply_krea2_enhance(model, strength: float, debug: bool):
+def _install_txtmlp_scale(txtmlp_module, scale: float):
+    """Krea2 전용: txtmlp 출력 전체를 배율. strength(청크 증폭)와 독립적으로 동작."""
+    if scale == 1.0:
+        return None, None
+    original_forward = txtmlp_module.forward
+
+    def scaled_forward(y):
+        return original_forward(y) * float(scale)
+
+    txtmlp_module.forward = scaled_forward
+    return txtmlp_module, original_forward
+
+
+def _apply_krea2_enhance(model, strength: float, text_scale: float, debug: bool):
     patched = model.clone()
     to = patched.model_options.setdefault("transformer_options", {})
-    to[WRAPPER_KEY] = {"enabled": True, "strength": strength, "debug": debug}
+    to[WRAPPER_KEY] = {"enabled": True, "strength": strength,
+                       "text_scale": text_scale, "debug": debug}
     if hasattr(patched, "remove_wrappers_with_key"):
         patched.remove_wrappers_with_key(comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL, WRAPPER_KEY)
     patched.add_wrapper_with_key(
@@ -311,18 +332,18 @@ class TJ_EnhancedKSampler:
                 "latent_image": ("LATENT",),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 # ── Enhance ──
+                "enhance_enabled": ("BOOLEAN", {
+                    "default": True,
+                    "label_on": "Enhance ON",
+                    "label_off": "Enhance OFF (plain KSampler)",
+                    "tooltip": "Master switch. When off, every enhance option below is hidden and this "
+                               "behaves exactly like a standard KSampler.",
+                }),
                 "enhance_arch": (["krea2", "klein", "zimage"], {
                     "default": "krea2",
                     "tooltip": "Which architecture's enhancer to use. Must match the loaded model — "
                                "Krea2 patches the model's text-fusion adapter, while Klein and Z-Image "
                                "operate on the positive conditioning. A mismatch is detected and skipped.",
-                }),
-                "enhance_enabled": ("BOOLEAN", {
-                    "default": True,
-                    "label_on": "Enhance ON",
-                    "label_off": "Enhance OFF (plain KSampler)",
-                    "tooltip": "Turn the enhancer on or off. When off this behaves exactly like a "
-                               "standard KSampler.",
                 }),
                 "enhance_strength": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05,
@@ -336,6 +357,14 @@ class TJ_EnhancedKSampler:
                 }),
             },
             "optional": {
+                # ── Krea2 전용 ──
+                "adv_text_scale": ("FLOAT", {
+                    "default": 1.0, "min": 0.25, "max": 4.0, "step": 0.05,
+                    "tooltip": "[Krea2 only] Scale the whole text-MLP output, independently of "
+                               "Enhance strength (which only re-weights specific text chunks). "
+                               "1.0 = unchanged. Raise it to push overall text influence up, lower it "
+                               "to let the base model speak more. Works even at strength 0.",
+                }),
                 # ── Klein / Z-Image conditioning 연산 ──
                 "adv_active_scale": ("FLOAT", {
                     "default": 1.0, "min": 0.0, "max": 10.0, "step": 0.05,
@@ -380,17 +409,22 @@ class TJ_EnhancedKSampler:
     CATEGORY = TJ_SAMPLING_CATEGORY
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative,
-               latent_image, denoise=1.0, enhance_arch="krea2", enhance_enabled=True,
-               enhance_strength=1.0, enhance_debug=False, adv_active_scale=1.0,
-               adv_per_token_whiten=0.0, adv_norm_equalize=0.0, adv_early_layer_scale=1.0,
-               adv_mid_layer_scale=1.0, adv_late_layer_scale=1.0):
+               latent_image, denoise=1.0, enhance_enabled=True, enhance_arch="krea2",
+               enhance_strength=1.0, enhance_debug=False, adv_text_scale=1.0,
+               adv_active_scale=1.0, adv_per_token_whiten=0.0, adv_norm_equalize=0.0,
+               adv_early_layer_scale=1.0, adv_mid_layer_scale=1.0, adv_late_layer_scale=1.0):
 
         strength = _bounded_float(enhance_strength, 1.0, 0.0, 2.0)
+        text_scale = _bounded_float(adv_text_scale, 1.0, 0.25, 4.0)
         detected = _detect_arch(model)
         applied = "off"
 
-        if not enhance_enabled or strength == 0.0:
-            applied = "off (disabled)" if not enhance_enabled else "off (strength=0)"
+        # Krea2 의 text_scale 은 strength 와 독립이라, strength=0 이어도 켜져 있으면 적용
+        krea2_noop = (strength == 0.0 and text_scale == 1.0)
+        all_off = (strength == 0.0) if enhance_arch != "krea2" else krea2_noop
+
+        if not enhance_enabled or all_off:
+            applied = "off (disabled)" if not enhance_enabled else "off (neutral settings)"
 
         elif detected != enhance_arch:
             # 선택한 아키텍처와 실제 모델이 다르면 조용히 틀리지 않게 알리고 생략
@@ -399,8 +433,8 @@ class TJ_EnhancedKSampler:
                   f"looks like '{detected}' — enhancement skipped (plain KSampler).")
 
         elif enhance_arch == "krea2":
-            model = _apply_krea2_enhance(model, strength, enhance_debug)
-            applied = "krea2 (model txtfusion)"
+            model = _apply_krea2_enhance(model, strength, text_scale, enhance_debug)
+            applied = f"krea2 (txtfusion x{strength:.2f}, text_scale x{text_scale:.2f})"
 
         elif enhance_arch in ("klein", "zimage"):
             # strength(0~2) → 기본 프로파일. 고급 노브가 기본값이 아니면 그걸 우선 사용.
