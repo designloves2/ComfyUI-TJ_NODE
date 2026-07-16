@@ -56,6 +56,9 @@ const STR = {
         secMain: "■ 메인 블록 (0–27)",
         secTxt: "■ TxtFusion (Layerwise 0-1 / Refiner 0-1)",
         resetTitle: "이 블록 강도를 1.00으로 초기화",
+        uoLabel: "원본값 사용",
+        uoOn: "원본값 사용 (블록설정 무시)",
+        uoOff: "내 블록설정 적용",
     },
     en: {
         langBtn: "🌐 한국어",
@@ -98,6 +101,9 @@ const STR = {
         secMain: "■ Main Blocks (0–27)",
         secTxt: "■ TxtFusion (Layerwise 0-1 / Refiner 0-1)",
         resetTitle: "Reset this block to 1.00",
+        uoLabel: "use original",
+        uoOn: "Use ORIGINAL (ignore blocks)",
+        uoOff: "Use my block config",
     },
 };
 
@@ -179,6 +185,20 @@ app.registerExtension({
             node.setDirtyCanvas(true, true);
             requestAnimationFrame(() => { try { fitNode(); } catch (_) {} });
         };
+
+        // ── use_original 위젯 라벨 i18n ────────────────
+        // Python 쪽 기본 라벨은 영문(글로벌). 여기서 현재 언어로 덮어쓴다.
+        const uoWidget = node.widgets?.find(w => w.name === "use_original");
+        if (uoWidget) {
+            onLang(() => {
+                uoWidget.label = t("uoLabel");
+                if (uoWidget.options) {
+                    uoWidget.options.on  = t("uoOn");
+                    uoWidget.options.off = t("uoOff");
+                }
+                node.setDirtyCanvas(true, true);
+            });
+        }
 
         // ── 상태 ──────────────────────────────────────
         const states = Array.from({ length: TOTAL_BLOCKS }, () => ({ enable: true, strength: 1.0 }));

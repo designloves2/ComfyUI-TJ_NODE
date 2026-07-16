@@ -224,9 +224,10 @@ class Krea2LoRAAnalyzer:
                 "model":           ("MODEL",),
                 "lora_name":       (folder_paths.get_filename_list("loras"),),
                 "global_strength": ("FLOAT", {"default": 1.0, "min": -5.0, "max": 5.0, "step": 0.01}),
+                # 라벨 기본값은 영문(글로벌). JS(i18n)가 언어에 맞춰 덮어쓴다.
                 "use_original":    ("BOOLEAN", {"default": False,
-                                    "label_on": "원본값 사용 (블록설정 무시)",
-                                    "label_off": "내 블록설정 적용"}),
+                                    "label_on": "Use ORIGINAL (ignore blocks)",
+                                    "label_off": "Use my block config"}),
                 "block_config":    ("STRING", {"default": "{}", "multiline": True}),
             },
             "optional": {
