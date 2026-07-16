@@ -311,19 +311,66 @@ class TJ_EnhancedKSampler:
                 "latent_image": ("LATENT",),
                 "denoise": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01}),
                 # ── Enhance ──
-                "enhance_arch": (["auto", "krea2", "klein", "zimage", "off"], {"default": "auto"}),
-                "enhance_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05}),
-                "enhance_debug": ("BOOLEAN", {"default": False}),
+                "enhance_arch": (["krea2", "klein", "zimage"], {
+                    "default": "krea2",
+                    "tooltip": "Which architecture's enhancer to use. Must match the loaded model — "
+                               "Krea2 patches the model's text-fusion adapter, while Klein and Z-Image "
+                               "operate on the positive conditioning. A mismatch is detected and skipped.",
+                }),
+                "enhance_enabled": ("BOOLEAN", {
+                    "default": True,
+                    "label_on": "Enhance ON",
+                    "label_off": "Enhance OFF (plain KSampler)",
+                    "tooltip": "Turn the enhancer on or off. When off this behaves exactly like a "
+                               "standard KSampler.",
+                }),
+                "enhance_strength": ("FLOAT", {
+                    "default": 1.0, "min": 0.0, "max": 2.0, "step": 0.05,
+                    "tooltip": "Overall enhancement amount. 0 = no effect, 1.0 = default, 2.0 = maximum. "
+                               "Drives the built-in per-architecture profile; any Advanced knob you "
+                               "change below overrides that profile for this run.",
+                }),
+                "enhance_debug": ("BOOLEAN", {
+                    "default": False,
+                    "tooltip": "Print detection, applied architecture and tensor deltas to the console.",
+                }),
             },
             "optional": {
-                # ── 고급 (Klein / Z-Image conditioning 연산) ──
-                "adv_active_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 10.0, "step": 0.05}),
-                "adv_per_token_whiten": ("FLOAT", {"default": 0.0, "min": -1.0, "max": 5.0, "step": 0.05}),
-                "adv_norm_equalize": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05}),
-                # ── 고급 (Klein 전용: Qwen3 레이어 슬라이스) ──
-                "adv_early_layer_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05}),
-                "adv_mid_layer_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05}),
-                "adv_late_layer_scale": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05}),
+                # ── Klein / Z-Image conditioning 연산 ──
+                "adv_active_scale": ("FLOAT", {
+                    "default": 1.0, "min": 0.0, "max": 10.0, "step": 0.05,
+                    "tooltip": "[Klein / Z-Image] Multiplier on every active-token embedding. "
+                               "1.0 = unchanged. The model was trained on the text encoder's natural "
+                               "distribution, so values far from 1.0 push it off-distribution.",
+                }),
+                "adv_per_token_whiten": ("FLOAT", {
+                    "default": 0.0, "min": -1.0, "max": 5.0, "step": 0.05,
+                    "tooltip": "[Klein / Z-Image] Amplify each token's deviation from the sequence mean: "
+                               "(x - mean) * (1 + w) + mean. Above 0 widens the spread (more contrast "
+                               "between tokens), below 0 compresses it. 0 = off.",
+                }),
+                "adv_norm_equalize": ("FLOAT", {
+                    "default": 0.0, "min": 0.0, "max": 1.0, "step": 0.05,
+                    "tooltip": "[Klein / Z-Image] Blend each token toward the sequence's mean L2 norm. "
+                               "Flattens magnitude variance, countering the text encoder's natural "
+                               "emphasis. 0 = off, 1.0 = fully equalized.",
+                }),
+                # ── Klein 전용: Qwen3 레이어 슬라이스 ──
+                "adv_early_layer_scale": ("FLOAT", {
+                    "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05,
+                    "tooltip": "[Klein only] Scale the first Qwen3 layer slice (low-level / structural "
+                               "features). Klein conditioning stacks 3 layers along the embed dim.",
+                }),
+                "adv_mid_layer_scale": ("FLOAT", {
+                    "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05,
+                    "tooltip": "[Klein only] Scale the middle Qwen3 layer slice (intermediate semantic "
+                               "features).",
+                }),
+                "adv_late_layer_scale": ("FLOAT", {
+                    "default": 1.0, "min": 0.0, "max": 5.0, "step": 0.05,
+                    "tooltip": "[Klein only] Scale the last Qwen3 layer slice (high-level semantics). "
+                               "Raising this is usually what strengthens prompt adherence.",
+                }),
             },
         }
 
@@ -333,47 +380,47 @@ class TJ_EnhancedKSampler:
     CATEGORY = TJ_SAMPLING_CATEGORY
 
     def sample(self, model, seed, steps, cfg, sampler_name, scheduler, positive, negative,
-               latent_image, denoise=1.0, enhance_arch="auto", enhance_strength=1.0,
-               enhance_debug=False, adv_active_scale=1.0, adv_per_token_whiten=0.0,
-               adv_norm_equalize=0.0, adv_early_layer_scale=1.0, adv_mid_layer_scale=1.0,
-               adv_late_layer_scale=1.0):
+               latent_image, denoise=1.0, enhance_arch="krea2", enhance_enabled=True,
+               enhance_strength=1.0, enhance_debug=False, adv_active_scale=1.0,
+               adv_per_token_whiten=0.0, adv_norm_equalize=0.0, adv_early_layer_scale=1.0,
+               adv_mid_layer_scale=1.0, adv_late_layer_scale=1.0):
 
         strength = _bounded_float(enhance_strength, 1.0, 0.0, 2.0)
         detected = _detect_arch(model)
-        arch = detected if enhance_arch == "auto" else enhance_arch
+        applied = "off"
 
-        info_arch = arch
-        applied = "none"
+        if not enhance_enabled or strength == 0.0:
+            applied = "off (disabled)" if not enhance_enabled else "off (strength=0)"
 
-        if enhance_arch == "off" or strength == 0.0:
-            arch = "off"
+        elif detected != enhance_arch:
+            # 선택한 아키텍처와 실제 모델이 다르면 조용히 틀리지 않게 알리고 생략
+            applied = f"skipped (model is '{detected}', not '{enhance_arch}')"
+            print(f"[TJ Enhanced KSampler] ⚠ enhance_arch='{enhance_arch}' but the loaded model "
+                  f"looks like '{detected}' — enhancement skipped (plain KSampler).")
 
-        if arch == "krea2":
-            if detected != "krea2" and enhance_arch != "auto":
-                print("[TJ Enhanced KSampler] ⚠ krea2 를 선택했지만 모델이 Krea2 가 아닙니다 — 증폭 생략")
-            else:
-                model = _apply_krea2_enhance(model, strength, enhance_debug)
-                applied = "krea2 (model txtfusion)"
+        elif enhance_arch == "krea2":
+            model = _apply_krea2_enhance(model, strength, enhance_debug)
+            applied = "krea2 (model txtfusion)"
 
-        elif arch in ("klein", "zimage"):
+        elif enhance_arch in ("klein", "zimage"):
             # strength(0~2) → 기본 프로파일. 고급 노브가 기본값이 아니면 그걸 우선 사용.
-            act = adv_active_scale if adv_active_scale != 1.0 else 1.0
+            act = adv_active_scale
             whiten = adv_per_token_whiten if adv_per_token_whiten != 0.0 else (0.25 * strength)
             norm_eq = adv_norm_equalize
             layers = None
-            if arch == "klein":
+            if enhance_arch == "klein":
                 layers = (adv_early_layer_scale, adv_mid_layer_scale, adv_late_layer_scale)
                 if all(s == 1.0 for s in layers):
                     # 기본 프로파일: 후반(의미) 레이어를 강조
                     layers = (1.0, 1.0 + 0.25 * strength, 1.0 + 0.5 * strength)
             positive = _enhance_conditioning(
                 positive, act, whiten, norm_eq, layer_scales=layers,
-                debug=enhance_debug, tag=f"{arch}/positive",
+                debug=enhance_debug, tag=f"{enhance_arch}/positive",
             )
-            applied = f"{arch} (conditioning)"
+            applied = f"{enhance_arch} (conditioning)"
 
-        info = (f"arch: detected={detected} used={info_arch} | applied={applied} | "
-                f"strength={strength:.2f}")
+        info = (f"model detected: {detected} | selected: {enhance_arch} | "
+                f"applied: {applied} | strength: {strength:.2f}")
         if enhance_debug:
             print(f"[TJ Enhanced KSampler] {info}")
 

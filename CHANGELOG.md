@@ -3,6 +3,20 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.5.1] - 2026-07-16
+
+### [Changed]
+
+* `Enhanced KSampler (TJ)` UI 정리
+
+  * `enhance_arch` 에서 `auto` / `off` 제거 → `krea2 / klein / zimage` 명시 선택
+  * `enhance_arch` 바로 아래 **`enhance_enabled` 토글** 추가 (OFF = 표준 KSampler)
+  * **선택한 아키텍처에 필요한 옵션만 표시** (JS 동적 표시) — Krea2 는 conditioning
+    노브를 쓰지 않고, Z-Image 는 레이어 슬라이스가 없어 해당 노브 숨김
+  * 모든 설정에 **영문 툴팁** 추가 (무엇을 조절하는지 설명)
+  * 선택한 아키텍처와 실제 모델이 다르면 경고 후 증폭 생략(표준 KSampler)
+
+---
 ## [2.5.0] - 2026-07-16
 
 ### [Added]
