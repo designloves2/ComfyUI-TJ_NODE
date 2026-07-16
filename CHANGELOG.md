@@ -3,6 +3,21 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.3.5] - 2026-07-16
+
+### [Changed]
+
+* `Krea2 LoRA Analyzer (TJ)` — LoRA 키 형식 무관 분석/필터 지원
+
+  * 기존엔 `diffusion_model.blocks.{N}....lora_A/B.weight`(dot) 한 형식만
+    인식 → musubi-tuner 등에서 다른 옵션으로 학습하면 분석 0으로 실패
+  * 이제 형식 자동 인식: **kohya**(`lora_unet_blocks_{N}_...lora_down/up`),
+    **LoKr**(`lokr_w1/w2`), **단축형**(`.A/.B`), **dot 표준** 모두 지원
+  * 블록 인덱스는 `blocks`/`layerwise_blocks`/`refiner_blocks` 를 `.`/`_`
+    구분자 모두 허용하는 정규식으로 추출 (레이어 필터/부분 학습본도 정상)
+  * `build_filtered_lora` 도 동일하게 형식 무관 처리 (down 쪽만 강도 스케일)
+
+---
 ## [2.3.4] - 2026-07-16
 
 ### [Security]

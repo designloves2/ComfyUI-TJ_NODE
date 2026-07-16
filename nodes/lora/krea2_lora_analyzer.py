@@ -7,6 +7,7 @@ Krea2 LoRA Analyzer + Selective Loader  (TJ_NODE 편입판)
 """
 
 import os
+import re
 import json
 import torch
 import folder_paths
@@ -42,6 +43,7 @@ KREA2_PRESETS = {
 
 
 def block_prefix(idx: int) -> str:
+    """(참고용) 표준 diffusion_model 접두. 분석/필터는 형식 무관 파서를 사용."""
     if idx < NUM_MAIN_BLOCKS:
         return f"diffusion_model.blocks.{idx}."
     elif idx < NUM_MAIN_BLOCKS + NUM_LAYERWISE_BLOCKS:
@@ -60,28 +62,96 @@ def block_display_name(idx: int) -> str:
 
 
 # ─────────────────────────────────────────────
-# 분석
+# 형식 무관 키 파서
+#   Krea2 LoRA 는 학습 옵션/모듈에 따라 키 저장 형식이 다양하다:
+#     - dot 표준 : diffusion_model.blocks.{N}.attn.wq.lora_A.weight / .lora_B.weight
+#     - kohya    : lora_unet_blocks_{N}_attn_wq.lora_down.weight / .lora_up.weight / .alpha
+#     - LoKr     : ...lokr_w1 / ...lokr_w2
+#     - 단축형   : blocks.{N}.attn.wq.A / .B
+#   접두/컴포넌트에 의존하지 않고, (down/up) 쌍의 노름으로 블록별 기여도를 계산한다.
+# ─────────────────────────────────────────────
+
+# down(=lora_A) 쪽 / up(=lora_B) 쪽 접미사
+_DOWN_SUFFIXES = (".lora_down.weight", ".lora_A.weight", ".lokr_w1", ".hada_w1_a", ".A")
+_UP_SUFFIXES   = (".lora_up.weight",   ".lora_B.weight", ".lokr_w2", ".hada_w2_a", ".B")
+_ALL_SUFFIXES  = _DOWN_SUFFIXES + _UP_SUFFIXES + (".alpha",)
+
+
+def _role_and_base(key: str):
+    """키의 역할('down'/'up')과 모듈 베이스명을 반환. 아니면 (None, None)."""
+    for suf in _DOWN_SUFFIXES:
+        if key.endswith(suf):
+            return "down", key[:-len(suf)]
+    for suf in _UP_SUFFIXES:
+        if key.endswith(suf):
+            return "up", key[:-len(suf)]
+    return None, None
+
+
+def _module_base(key: str):
+    """알려진 접미사(.alpha 포함)를 제거한 모듈 베이스명. 아니면 None."""
+    for suf in _ALL_SUFFIXES:
+        if key.endswith(suf):
+            return key[:-len(suf)]
+    return None
+
+
+def _is_down_key(key: str) -> bool:
+    return any(key.endswith(suf) for suf in _DOWN_SUFFIXES)
+
+
+def _block_index_from_base(base: str):
+    """모듈 베이스명 → Krea2 블록 인덱스(0~31). 매칭 불가 시 None.
+    구분자는 '.'/'_' 모두 허용 (dot / kohya 형식 동시 지원)."""
+    if not base:
+        return None
+    m = re.search(r'refiner_blocks[._](\d+)', base)
+    if m:
+        return NUM_MAIN_BLOCKS + NUM_LAYERWISE_BLOCKS + int(m.group(1))
+    m = re.search(r'layerwise_blocks[._](\d+)', base)
+    if m:
+        return NUM_MAIN_BLOCKS + int(m.group(1))
+    m = re.search(r'blocks[._](\d+)', base)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+# ─────────────────────────────────────────────
+# 분석 (형식 무관)
 # ─────────────────────────────────────────────
 
 def analyze_krea2_lora(lora_sd: dict) -> dict:
+    # 모듈 베이스별 down/up 텐서 수집
+    modules = {}
+    for key, val in lora_sd.items():
+        role, base = _role_and_base(key)
+        if role:
+            modules.setdefault(base, {})[role] = val
+
+    block_norm = {i: 0.0 for i in range(TOTAL_BLOCKS)}
+    block_cnt  = {i: 0 for i in range(TOTAL_BLOCKS)}
+    for base, du in modules.items():
+        if "down" not in du or "up" not in du:
+            continue
+        bi = _block_index_from_base(base)
+        if bi is None or not (0 <= bi < TOTAL_BLOCKS):
+            continue
+        try:
+            a = du["down"].float()
+            b = du["up"].float()
+            block_norm[bi] += float(torch.norm(a) * torch.norm(b))
+            block_cnt[bi]  += 1
+        except Exception:
+            continue
+
     block_data = {}
-    for block_idx in range(TOTAL_BLOCKS):
-        prefix     = block_prefix(block_idx)
-        total_norm = 0.0
-        pair_count = 0
-        for comp in COMPONENTS:
-            key_a = f"{prefix}{comp}.lora_A.weight"
-            key_b = f"{prefix}{comp}.lora_B.weight"
-            if key_a in lora_sd and key_b in lora_sd:
-                a = lora_sd[key_a].float()
-                b = lora_sd[key_b].float()
-                total_norm += float(torch.norm(a) * torch.norm(b))
-                pair_count += 1
-        avg_norm = total_norm / pair_count if pair_count > 0 else 0.0
-        block_data[block_idx] = {
-            "name":   block_display_name(block_idx),
-            "norm":   avg_norm,
-            "pairs":  pair_count,
+    for i in range(TOTAL_BLOCKS):
+        avg = block_norm[i] / block_cnt[i] if block_cnt[i] else 0.0
+        block_data[i] = {
+            "name":   block_display_name(i),
+            "norm":   avg,
+            "pairs":  block_cnt[i],
             "impact": 0.0,
         }
     max_norm = max(v["norm"] for v in block_data.values()) or 1.0
@@ -91,23 +161,29 @@ def analyze_krea2_lora(lora_sd: dict) -> dict:
 
 
 # ─────────────────────────────────────────────
-# 필터링 LoRA 빌드
+# 필터링 LoRA 빌드 (형식 무관)
 # ─────────────────────────────────────────────
 
 def build_filtered_lora(lora_sd: dict, config: dict) -> dict:
     filtered = {}
     for key, tensor in lora_sd.items():
-        matched = False
-        for block_idx in range(TOTAL_BLOCKS):
-            if key.startswith(block_prefix(block_idx)):
-                matched = True
-                bc = config.get(str(block_idx), {})
-                if bc.get("enable", True):
-                    s = float(bc.get("strength", 1.0))
-                    filtered[key] = tensor * s if ".lora_A.weight" in key else tensor
-                break
-        # other_weights: 블록 미매칭 키는 그대로 포함
-        if not matched:
+        base = _module_base(key)
+        bi = _block_index_from_base(base) if base else None
+
+        # 블록에 매핑되지 않는 키(other_weights) → 그대로 포함
+        if bi is None or not (0 <= bi < TOTAL_BLOCKS):
+            filtered[key] = tensor
+            continue
+
+        bc = config.get(str(bi), {})
+        if not bc.get("enable", True):
+            continue  # 블록 비활성 → 이 모듈의 모든 키 제외
+
+        s = float(bc.get("strength", 1.0))
+        # 강도는 down(=lora_A/lokr_w1) 쪽에만 곱해 선형 스케일 (형식 무관)
+        if s != 1.0 and _is_down_key(key):
+            filtered[key] = tensor * s
+        else:
             filtered[key] = tensor
     return filtered
 
