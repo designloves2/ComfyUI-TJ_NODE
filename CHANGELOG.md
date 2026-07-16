@@ -3,6 +3,31 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.5.0] - 2026-07-16
+
+### [Added]
+
+* `Enhanced KSampler (TJ)` 신규 노드 — 표준 KSampler + 프롬프트 반영 증폭 내장
+
+  * `enhance_arch`: `auto / krea2 / klein / zimage / off` — **하나의 샘플러에서 골라 사용**
+  * `auto` 는 모델 클래스로 아키텍처 자동 판별, 미매칭 시 표준 KSampler 로 안전 fallback
+  * **Krea2**: MODEL 패치 — `txtfusion.forward` 런타임 교체, 12-tap→24청크 증폭 + 폭주 방지 클램프
+  * **Klein**: CONDITIONING 연산 — Qwen3 3-레이어 슬라이스 스케일 + whiten/norm
+  * **Z-Image**: CONDITIONING 연산 — 슬라이스 구조가 없어 아키텍처 중립 연산만 적용
+  * 고급 노브 노출: `adv_active_scale`, `adv_per_token_whiten`, `adv_norm_equalize`,
+    `adv_early/mid/late_layer_scale`(Klein 전용)
+  * 출력에 `enhance_info` 추가 (감지/적용 아키텍처·강도 확인용)
+  * 신규 CATEGORY: ` ✨ TJ_Node/Sampling`
+
+### [Credits]
+
+* 증폭 로직은 **capitan01R** 의 MIT 라이선스 프로젝트에서 이식했습니다.
+  원저작권 고지는 `THIRD_PARTY_LICENSES.md` 및 소스 상단에 명시.
+
+  * [ComfyUI-Krea2T-Enhancer](https://github.com/capitan01R/ComfyUI-Krea2T-Enhancer)
+  * [ComfyUI-Flux2Klein-Enhancer](https://github.com/capitan01R/ComfyUI-Flux2Klein-Enhancer)
+
+---
 ## [2.4.1] - 2026-07-16
 
 ### [Added]

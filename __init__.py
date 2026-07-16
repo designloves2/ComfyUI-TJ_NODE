@@ -71,6 +71,9 @@ from .nodes.lora import (
     ZImageLoRAAnalyzer,
 )
 
+# ── Sampling ──────────────────────────────────────────────────────────────
+from .nodes.sampling import TJ_EnhancedKSampler
+
 # ── Generator ─────────────────────────────────────────────────────────────
 from .nodes.generator import TJ_ZImageTurbo, TJ_Flux2Klein, TJ_ZITControlNet
 
@@ -134,6 +137,9 @@ NODE_CLASS_MAPPINGS = {
     "Klein4BLoRAAnalyzer": Klein4BLoRAAnalyzer,
     "Klein9BLoRAAnalyzer": Klein9BLoRAAnalyzer,
     "ZImageLoRAAnalyzer":  ZImageLoRAAnalyzer,
+
+    # Sampling
+    "TJ_EnhancedKSampler": TJ_EnhancedKSampler,
 
     # Generator
     "TJ_ZImageTurbo":   TJ_ZImageTurbo,
@@ -199,6 +205,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "Klein4BLoRAAnalyzer": "Klein 4B LoRA Analyzer (TJ)",
     "Klein9BLoRAAnalyzer": "Klein 9B LoRA Analyzer (TJ)",
     "ZImageLoRAAnalyzer":  "Z-Image LoRA Analyzer (TJ)",
+
+    # Sampling
+    "TJ_EnhancedKSampler": "Enhanced KSampler (TJ)",
 
     # Generator
     "TJ_ZImageTurbo":   "Z-Image Turbo (TJ)",
