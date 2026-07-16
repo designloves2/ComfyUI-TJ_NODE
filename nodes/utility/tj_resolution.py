@@ -18,7 +18,7 @@ class TJ_Resolution:
             "required": {
                 # JS DOM UI 가 채우는 값 (위젯은 JS 에서 숨김)
                 "width":  ("INT", {"default": 1024, "min": 8, "max": 16384, "step": 8}),
-                "height": ("INT", {"default": 1536, "min": 8, "max": 16384, "step": 8}),
+                "height": ("INT", {"default": 1024, "min": 8, "max": 16384, "step": 8}),
                 # UI 상태 보존용(모드/비율/기준크기/스냅) — 워크플로우 저장 시 함께 저장됨
                 "ui_state": ("STRING", {"default": "", "multiline": False}),
             }

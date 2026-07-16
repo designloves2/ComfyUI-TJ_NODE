@@ -22,11 +22,18 @@ const PRESETS = [
     { label: "4:5",  w: 4, h: 5 },
 ];
 const BASES = [512, 768, 1024, 1536];
+// 비율별 대표 해상도 목록의 기준값 (긴 변 기준)
+// 1:1 이면 512×512 … 2048×2048, 16:9 면 1024×576 / 1280×720 / 2048×1152 처럼 표준 사이즈가 나온다.
+const SIZE_BASES = [512, 768, 1024, 1280, 1328, 1408, 1536, 2048];
 const SNAPS = [8, 16, 32, 64];
 
 const gcd = (a, b) => { a = Math.abs(Math.round(a)); b = Math.abs(Math.round(b)); while (b) { [a, b] = [b, a % b]; } return a || 1; };
 const ratioStr = (w, h) => { if (w <= 0 || h <= 0) return "-"; const g = gcd(w, h); return `${Math.round(w / g)}:${Math.round(h / g)}`; };
 const snapTo = (v, m) => Math.max(m, Math.round(v / m) * m);
+// 해당 비율에서 자주 쓰는 8개 해상도 (긴 변 = 기준값, 짧은 변은 비율로 계산 후 16 배수 스냅)
+const sizesFor = (rw, rh) => SIZE_BASES.map((b) => (rw >= rh
+    ? { w: b, h: snapTo(b * rh / rw, 16) }
+    : { w: snapTo(b * rw / rh, 16), h: b }));
 
 const css = (el, s) => { el.style.cssText = s; return el; };
 const mkDiv = (s = "") => css(document.createElement("div"), s);
@@ -93,12 +100,12 @@ app.registerExtension({
 
         // ── 상태 ──
         const st = {
-            mode: "ratio",          // "ratio" | "res"
-            rw: 2, rh: 3,
+            mode: "preset",         // "preset"(비율 프리셋 목록) | "ratio" | "res"
+            rw: 1, rh: 1,
             base: 1024,
             snap: 16,
             w: Number(wW.value) || 1024,
-            h: Number(wH.value) || 1536,
+            h: Number(wH.value) || 1024,
         };
         try {
             const saved = JSON.parse(wState?.value || "{}");
@@ -129,8 +136,8 @@ app.registerExtension({
             b.appendChild(mkShape(p.w, p.h));
             b.appendChild(mkSpan(p.label));
             b.onclick = () => {
-                st.mode = "ratio"; st.rw = p.w; st.rh = p.h;
-                applyFromBase();
+                st.mode = "preset"; st.rw = p.w; st.rh = p.h;
+                pickNearestSize();
                 render();
             };
             grid.appendChild(b);
@@ -147,6 +154,10 @@ app.registerExtension({
         // 3) 패널
         const panel = mkDiv("border:1px solid #303030;border-radius:8px;padding:12px;background:#181818;");
         wrap.appendChild(panel);
+
+        // 3-0) 비율별 대표 해상도 목록 (preset 모드 전용)
+        const sizeList = mkDiv("display:flex;flex-direction:column;border:1px solid #303030;border-radius:8px;overflow:hidden;");
+        panel.appendChild(sizeList);
 
         // 3-1) RATIO 행 (ratio 모드 전용)
         const ratioRow = mkDiv("display:flex;align-items:center;gap:8px;margin-bottom:10px;");
@@ -218,6 +229,37 @@ app.registerExtension({
         panel.appendChild(dimLbl);
 
         // ── 계산 ──
+        // 프리셋 목록에서 현재 크기와 가장 가까운 항목으로 스냅
+        function pickNearestSize() {
+            const list = sizesFor(st.rw, st.rh);
+            let best = list[2] || list[0];   // 기본 1024 기준
+            let bestD = Infinity;
+            for (const s2 of list) {
+                const d = Math.abs(s2.w - st.w) + Math.abs(s2.h - st.h);
+                if (d < bestD) { bestD = d; best = s2; }
+            }
+            st.w = best.w; st.h = best.h;
+        }
+        function renderSizeList() {
+            sizeList.innerHTML = "";
+            const list = sizesFor(st.rw, st.rh);
+            list.forEach((s2, i) => {
+                const on = (s2.w === st.w && s2.h === st.h);
+                const row = mkDiv(`
+                    padding:11px 8px;text-align:center;cursor:pointer;font-size:14px;
+                    border-bottom:${i < list.length - 1 ? "1px solid #262626" : "none"};
+                    background:${on ? ACCENT_SOFT : "transparent"};
+                    color:${on ? ACCENT_TEXT : "#bbb"};
+                    font-weight:${on ? "700" : "400"};
+                `);
+                row.textContent = `${s2.w} × ${s2.h}`;
+                row.onmouseenter = () => { if (!on) row.style.background = "#202020"; };
+                row.onmouseleave = () => { if (!on) row.style.background = "transparent"; };
+                row.onclick = () => { st.w = s2.w; st.h = s2.h; render(); };
+                sizeList.appendChild(row);
+            });
+        }
+
         function applyFromBase() {
             st.w = snapTo(st.base, st.snap);
             st.h = snapTo(st.base * st.rh / st.rw, st.snap);
@@ -236,18 +278,27 @@ app.registerExtension({
 
         // ── 렌더 ──
         function render(syncInputs = true) {
-            const isRatio = st.mode === "ratio";
+            const isPreset = st.mode === "preset";
+            const isRatio  = st.mode === "ratio";
+            const isRes    = st.mode === "res";
+
+            // preset: 대표 해상도 목록만 / ratio: 비율+기준+W·H / res: W·H 자유
+            sizeList.style.display = isPreset ? "flex" : "none";
             ratioRow.style.display = isRatio ? "flex" : "none";
             baseRow.style.display  = isRatio ? "grid" : "none";
+            whLabels.style.display = isPreset ? "none" : "flex";
+            whRow.style.display    = isPreset ? "none" : "flex";
+            snapRow.style.display  = isPreset ? "none" : "flex";
             // 비율 모드에선 ⇄ 가 RATIO 행에 있으므로 W/H 사이 버튼은 숨김
-            swapWH.style.display = isRatio ? "none" : "flex";
+            swapWH.style.display = isRes ? "flex" : "none";
 
             setActive(bModeRatio, isRatio);
-            setActive(bModeRes, !isRatio);
+            setActive(bModeRes, isRes);
             presetBtns.forEach((b, i) => {
                 const p = PRESETS[i];
-                setActive(b, isRatio && p.w === st.rw && p.h === st.rh);
+                setActive(b, isPreset && p.w === st.rw && p.h === st.rh);
             });
+            if (isPreset) renderSizeList();
             baseBtns.forEach((b, i) => setActive(b, BASES[i] === st.base));
             snapBtns.forEach((b, i) => setActive(b, SNAPS[i] === st.snap));
 
