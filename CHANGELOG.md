@@ -3,6 +3,17 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.3.6] - 2026-07-16
+
+### [Changed]
+
+* `Krea2 LoRA Analyzer (TJ)` — impact 계산을 실제 효과 크기로 개선
+
+  * 기존 `‖down‖·‖up‖`(상한)은 블록 간 차이가 뭉개져 40~60%로 평평하게 나옴
+  * 실제 델타 `‖up @ down‖_F × (alpha/rank)` 로 변경 → 블록별 기여도가 또렷하게 분산
+  * rank 공간 계산(`trace((uᵀu)(d dᵀ))`)이라 대형 mlp 도 빠름, kohya `alpha` 반영
+
+---
 ## [2.3.5] - 2026-07-16
 
 ### [Changed]

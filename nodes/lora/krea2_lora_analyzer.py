@@ -121,13 +121,34 @@ def _block_index_from_base(base: str):
 # 분석 (형식 무관)
 # ─────────────────────────────────────────────
 
+def _effective_delta_norm(down, up):
+    """실제 기여 크기 ‖up @ down‖_F 를 rank 공간에서 효율적으로 계산.
+    (norm, rank) 반환. 단순 ‖d‖·‖u‖(상한)보다 블록 간 차이를 또렷하게 반영한다.
+    ‖up@down‖_F^2 = trace((uᵀu)(d dᵀ)) → rank×rank 연산이라 큰 mlp도 빠름."""
+    d = down.float()
+    u = up.float()
+    if d.ndim == 2 and u.ndim == 2 and d.shape[0] == u.shape[1]:
+        Gu = u.transpose(0, 1) @ u        # [r, r]
+        Gd = d @ d.transpose(0, 1)        # [r, r]
+        val = float(torch.sqrt(torch.clamp((Gu * Gd).sum(), min=0.0)))
+        return val, d.shape[0]
+    # 형상 불일치(LoKr 등) → 상한 근사로 폴백
+    return float(torch.norm(d) * torch.norm(u)), (d.shape[0] if d.ndim else 1)
+
+
 def analyze_krea2_lora(lora_sd: dict) -> dict:
-    # 모듈 베이스별 down/up 텐서 수집
+    # 모듈 베이스별 down/up 텐서 + alpha 수집
     modules = {}
+    alphas = {}
     for key, val in lora_sd.items():
         role, base = _role_and_base(key)
         if role:
             modules.setdefault(base, {})[role] = val
+        elif key.endswith(".alpha"):
+            try:
+                alphas[key[:-len(".alpha")]] = float(val)
+            except Exception:
+                pass
 
     block_norm = {i: 0.0 for i in range(TOTAL_BLOCKS)}
     block_cnt  = {i: 0 for i in range(TOTAL_BLOCKS)}
@@ -138,9 +159,11 @@ def analyze_krea2_lora(lora_sd: dict) -> dict:
         if bi is None or not (0 <= bi < TOTAL_BLOCKS):
             continue
         try:
-            a = du["down"].float()
-            b = du["up"].float()
-            block_norm[bi] += float(torch.norm(a) * torch.norm(b))
+            n, rank = _effective_delta_norm(du["down"], du["up"])
+            a = alphas.get(base)          # kohya: 효과 스케일 = alpha/rank
+            if a is not None and rank:
+                n *= a / rank
+            block_norm[bi] += n
             block_cnt[bi]  += 1
         except Exception:
             continue
