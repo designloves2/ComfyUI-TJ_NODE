@@ -3,6 +3,21 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.3.4] - 2026-07-16
+
+### [Security]
+
+* `Save & Preview Video (TJ)` read-side arbitrary file read 차단
+  (ComfyUI-Manager 리뷰 지적사항)
+
+  * `_tj_resolve_media_path()` 상대경로 분기가 `..` 를 거부하지 않아
+    `../../../../etc/passwd` 등이 input/output/temp 루트 밖으로 빠져나가
+    외부 파일로 인식 → temp 로 복사·노출되던 문제 수정
+  * `..` 세그먼트 및 루트 밖 절대경로 거부, 최종 경로를
+    `realpath` + `commonpath` 로 input/output/temp 내부인지 검증
+  * `any_type` `video` 입력을 신뢰 불가 STRING 으로 취급
+
+---
 ## [2.3.0] - 2026-07-14
 
 ### [Added]

@@ -277,46 +277,71 @@ def _tj_media_meta_for_path(media_path, media_type="video_file"):
 
 
 def _tj_resolve_media_path(candidate):
+    """`video`/`audio` 입력은 any_type 이라 신뢰할 수 없는 STRING 이 올 수 있다.
+    반환 경로는 반드시 ComfyUI input/output/temp 루트 내부여야 한다.
+    - '..' 세그먼트 및 (루트 밖) 절대경로 거부
+    - realpath + commonpath 로 최종 경로 containment 검증 (심볼릭 링크 우회 방지)
+    """
     if not candidate:
         return None
     try:
         cand = str(candidate).strip().strip("\"'")
     except Exception:
         return None
-    if not cand:
+    if not cand or "\x00" in cand:
         return None
-    if os.path.isabs(cand) and os.path.exists(cand):
-        # 절대경로는 ComfyUI 알려진 디렉터리 내부만 허용
-        real_cand = os.path.realpath(cand)
-        known_roots = [
-            os.path.realpath(folder_paths.get_input_directory()),
-            os.path.realpath(folder_paths.get_output_directory()),
-            os.path.realpath(folder_paths.get_temp_directory()),
-        ]
+
+    roots = [
+        os.path.realpath(folder_paths.get_input_directory()),
+        os.path.realpath(folder_paths.get_output_directory()),
+        os.path.realpath(folder_paths.get_temp_directory()),
+    ]
+
+    def _contained_existing(path):
+        """realpath 후 루트 내부이고 실제 존재하면 그 경로를, 아니면 None."""
         try:
-            if any(os.path.commonpath([root, real_cand]) == root for root in known_roots):
-                return cand
-        except ValueError:
-            pass
-        # 알려진 디렉터리 외부 절대경로 → 상대경로 검색으로 fall-through
-    search_roots = [folder_paths.get_input_directory(), folder_paths.get_output_directory(), folder_paths.get_temp_directory()]
-    for root in search_roots:
-        p = os.path.join(root, cand)
-        if os.path.exists(p):
-            return p
-    base = os.path.basename(cand)
-    if base:
-        for root in search_roots:
-            p = os.path.join(root, base)
-            if os.path.exists(p):
-                return p
+            rp = os.path.realpath(path)
+        except Exception:
+            return None
+        if not os.path.exists(rp):
+            return None
+        for root in roots:
             try:
-                for sub in ("video", "videos", "upload", "uploads", "download", "AnimateDiff"):
-                    p = os.path.join(root, sub, base)
-                    if os.path.exists(p):
-                        return p
-            except Exception:
-                pass
+                if os.path.commonpath([root, rp]) == root:
+                    return rp
+            except ValueError:
+                continue  # 다른 드라이브 등 — 공통 경로 없음
+        return None
+
+    # 절대경로: 알려진 루트 내부만 허용 (그 외는 거부)
+    if os.path.isabs(cand):
+        return _contained_existing(cand)
+
+    # 상대경로: '..' 세그먼트를 완전히 거부한 뒤 루트 하위로만 결합
+    norm = cand.replace("\\", "/")
+    parts = [seg for seg in norm.split("/") if seg not in ("", ".")]
+    if any(seg == ".." for seg in parts):
+        return None
+    rel = os.path.join(*parts) if parts else ""
+    if not rel:
+        return None
+
+    for root in roots:
+        got = _contained_existing(os.path.join(root, rel))
+        if got:
+            return got
+
+    # basename 폴백 (흔한 하위 폴더까지) — 모두 containment 재검증됨
+    base = os.path.basename(rel)
+    if base:
+        for root in roots:
+            got = _contained_existing(os.path.join(root, base))
+            if got:
+                return got
+            for sub in ("video", "videos", "upload", "uploads", "download", "AnimateDiff"):
+                got = _contained_existing(os.path.join(root, sub, base))
+                if got:
+                    return got
     return None
 
 
