@@ -11,4 +11,5 @@ from .queue_loop import TJ_QueueLoop
 from .index_lora_loader import TJ_IndexLoRALoader
 from .led_display import TJ_LEDDisplay
 from .tj_universal_calculator import TJ_UniversalCalculator
+from .tj_resolution import TJ_Resolution
 from .video_grid_comparer import TJ_VideoGridComparer

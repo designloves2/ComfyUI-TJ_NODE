@@ -41,6 +41,7 @@ from .nodes.utility import (
     TJ_LEDDisplay,
     TJ_UniversalCalculator,
     TJ_VideoGridComparer,
+    TJ_Resolution,
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
@@ -116,6 +117,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_LEDDisplay":     TJ_LEDDisplay,
     "TJ_UniversalCalculator": TJ_UniversalCalculator,
     "TJ_VideoGridComparer": TJ_VideoGridComparer,
+    "TJ_Resolution":       TJ_Resolution,
 
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
@@ -184,6 +186,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_LEDDisplay":     "LED Display (TJ)",
     "TJ_UniversalCalculator": "Universal Calculator (TJ)",
     "TJ_VideoGridComparer": "Video Grid Comparer (TJ)",
+    "TJ_Resolution":       "Resolution (TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
