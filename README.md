@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.4.0
+# ✨ TJ_NODE v2.4.1
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -111,7 +111,7 @@ Wireless routing is used between sections.
 
 ---
 
-# 🚀 What's New in v2.4.0
+# 🚀 What's New in v2.4.x
 
 ## ✨ New: LoRA Analyzer 제품군 확장 (Klein 4B/9B, Z-Image)
 
@@ -126,6 +126,15 @@ Same UI and features, now for more architectures.
 | `Z-Image LoRA Analyzer (TJ)` | layers 30 (Turbo/Base 공통) | **30** |
 
 > 블록 수는 실제 LoRA 파일들을 교차 검증해 확정한 값입니다.
+
+**⚠ 아키텍처 불일치 자동 경고**
+4B/9B 처럼 구조만 다른 변형을 **잘못 고르면 초과 블록이 조용히 버려져** 분석이 틀리게 나옵니다.
+이제 이를 감지해 경고합니다 (노드 상태줄 + `analysis_text` + 콘솔).
+- 예) Klein **9B LoRA를 4B 노드**에 넣으면 → `⚠ Double up to 7 (this node supports 5)` 경고
+- 인식 블록이 0개면 → `⚠ 다른 아키텍처 LoRA일 수 있음` 안내
+
+Automatically warns when a LoRA doesn't fit the chosen node (e.g. a 9B LoRA in the 4B node),
+instead of silently ignoring the out-of-range blocks.
 
 **공통 기능** (4개 노드 전부):
 - 블록별 기여도 분석 + 실시간 효과 막대 (강도 조절 시 즉시 반영)
