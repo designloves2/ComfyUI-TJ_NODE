@@ -493,8 +493,14 @@ app.registerExtension({
                     saveStatusLabel.style.color = "#ff4444";
                 } else {
                     updateImpact(result.block_data);
-                    saveStatusLabel.textContent = t("stAnalyzed");
-                    saveStatusLabel.style.color = "#44dd88";
+                    if (result.warning) {
+                        // 아키텍처 불일치(예: 9B LoRA를 4B 노드에) 등 — 조용히 틀리지 않도록 경고
+                        saveStatusLabel.textContent = `⚠ ${result.warning}`;
+                        saveStatusLabel.style.color = "#ffaa00";
+                    } else {
+                        saveStatusLabel.textContent = t("stAnalyzed");
+                        saveStatusLabel.style.color = "#44dd88";
+                    }
                 }
             } catch (e) {
                 saveStatusLabel.textContent = `❌ ${e.message}`;

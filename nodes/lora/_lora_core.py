@@ -98,18 +98,26 @@ class BlockSpec:
                 self._alias_map.append((a, si))
         self._alias_map.sort(key=lambda x: -len(x[0]))
 
-    def block_index(self, base: str):
-        """모듈 베이스명 → 블록 인덱스. 매칭 불가 시 None."""
+    def probe(self, base: str):
+        """모듈 베이스명 → (섹션 인덱스, 로컬 번호). 매칭 불가 시 None.
+        범위 초과여도 그대로 돌려준다(아키텍처 불일치 감지에 사용)."""
         if not base:
             return None
         for alias, si in self._alias_map:
             m = re.search(re.escape(alias) + r'[._](\d+)', base)
             if m:
-                local = int(m.group(1))
-                aliases, cnt, label = self.sections[si]
-                if 0 <= local < cnt:
-                    return self.offsets[si] + local
-                return None
+                return si, int(m.group(1))
+        return None
+
+    def block_index(self, base: str):
+        """모듈 베이스명 → 블록 인덱스. 매칭 불가/범위 초과 시 None."""
+        p = self.probe(base)
+        if p is None:
+            return None
+        si, local = p
+        aliases, cnt, label = self.sections[si]
+        if 0 <= local < cnt:
+            return self.offsets[si] + local
         return None
 
     def display_name(self, idx: int) -> str:
@@ -206,6 +214,45 @@ def analyze_lora(lora_sd: dict, spec: BlockSpec) -> dict:
     for i in block_data:
         block_data[i]["impact"] = round(block_data[i]["norm"] / max_norm * 100, 1)
     return block_data
+
+
+def check_spec_fit(lora_sd: dict, spec: BlockSpec) -> dict:
+    """이 LoRA 가 이 노드(아키텍처 스펙)에 맞는지 검사.
+
+    4B/9B 처럼 구조만 다른 변형을 잘못 고르면 초과 블록이 조용히 버려져
+    분석이 틀리게 나오므로, 미리 감지해 경고한다.
+    반환: {"matched": n, "over": {label: max_local}, "warning": str|None}
+    """
+    matched = 0
+    over = {}
+    for key in lora_sd:
+        base = module_base(key)
+        if not base:
+            continue
+        p = spec.probe(base)
+        if p is None:
+            continue
+        si, local = p
+        aliases, cnt, label = spec.sections[si]
+        if 0 <= local < cnt:
+            matched += 1
+        else:
+            over[label] = max(over.get(label, -1), local)
+
+    warning = None
+    if matched == 0:
+        warning = ("No blocks recognized — this LoRA may be for a different "
+                   "architecture (check you picked the matching Analyzer node).")
+    elif over:
+        detail = ", ".join(
+            f"{label} up to {mx} (this node supports {cnt})"
+            for (aliases, cnt, label) in spec.sections
+            for lbl2, mx in over.items() if lbl2 == label
+        )
+        warning = ("Architecture mismatch — this LoRA has blocks beyond this node's "
+                   f"range: {detail}. Those blocks are ignored; use the matching "
+                   "variant node (e.g. 9B vs 4B).")
+    return {"matched": matched, "over": over, "warning": warning}
 
 
 def build_filtered_lora(lora_sd: dict, config: dict, spec: BlockSpec) -> dict:

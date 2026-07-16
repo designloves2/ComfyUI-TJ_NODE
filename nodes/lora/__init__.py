@@ -8,7 +8,7 @@ TJ_NODE - LoRA 분석/편집 노드 패키지
 import os
 import folder_paths
 
-from ._lora_core import SPECS, analyze_lora, build_filtered_lora
+from ._lora_core import SPECS, analyze_lora, build_filtered_lora, check_spec_fit
 from ._analyzer_base import BaseLoRAAnalyzer, TJ_LORA_CATEGORY
 
 from .krea2_lora_analyzer import (
@@ -119,7 +119,12 @@ try:
 
             lora_sd    = comfy.utils.load_torch_file(full_path)
             block_data = analyze_lora(lora_sd, spec)
-            return web.json_response({"status": "ok", "block_data": block_data})
+            fit        = check_spec_fit(lora_sd, spec)
+            return web.json_response({
+                "status": "ok",
+                "block_data": block_data,
+                "warning": fit["warning"],   # 아키텍처 불일치 시 UI 경고용
+            })
         except Exception as e:
             return web.json_response({"error": str(e)}, status=500)
 

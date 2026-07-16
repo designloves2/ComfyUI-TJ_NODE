@@ -11,7 +11,7 @@ import folder_paths
 import comfy.utils
 import comfy.sd
 
-from ._lora_core import SPECS, analyze_lora, build_filtered_lora
+from ._lora_core import SPECS, analyze_lora, build_filtered_lora, check_spec_fit
 
 TJ_LORA_CATEGORY = " ✨ TJ_Node/Lora Analyzer"
 
@@ -55,6 +55,9 @@ class BaseLoRAAnalyzer:
 
         lora_sd    = comfy.utils.load_torch_file(full_path)
         block_data = analyze_lora(lora_sd, spec)
+        fit        = check_spec_fit(lora_sd, spec)
+        if fit["warning"]:
+            print(f"[TJ LoRA Analyzer] ⚠ {os.path.basename(full_path)}: {fit['warning']}")
 
         try:
             config = json.loads(block_config) if block_config.strip() else {}
@@ -78,8 +81,10 @@ class BaseLoRAAnalyzer:
             f"  File   : {os.path.basename(full_path)}",
             f"  Blocks : {total}  |  Keys: {len(lora_sd)}",
             f"  Mode   : {mode}",
-            f"╠═══════════════════════════════════════════════╣",
         ]
+        if fit["warning"]:
+            lines.append(f"  ⚠ WARN  : {fit['warning']}")
+        lines.append(f"╠═══════════════════════════════════════════════╣")
         enabled_count = 0
         for idx in range(total):
             d        = block_data[idx]
