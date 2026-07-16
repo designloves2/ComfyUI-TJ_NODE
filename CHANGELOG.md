@@ -3,6 +3,18 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.3.7] - 2026-07-16
+
+### [Added]
+
+* `Krea2 LoRA Analyzer (TJ)` — `use_original` 토글 추가 (A/B 비교용)
+
+  * 체크 시 내 블록 설정(config)은 UI에 **그대로 유지**하되, 큐 실행은
+    필터 무시하고 **원본 LoRA(전체 ON·강도 1.0)**로 돌림
+  * 원본 vs 내 조정본을 설정 손실 없이 즉시 오가며 비교 가능
+  * 분석 텍스트에 현재 Mode(ORIGINAL/FILTERED) 표시
+
+---
 ## [2.3.6] - 2026-07-16
 
 ### [Changed]

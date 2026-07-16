@@ -224,6 +224,9 @@ class Krea2LoRAAnalyzer:
                 "model":           ("MODEL",),
                 "lora_name":       (folder_paths.get_filename_list("loras"),),
                 "global_strength": ("FLOAT", {"default": 1.0, "min": -5.0, "max": 5.0, "step": 0.01}),
+                "use_original":    ("BOOLEAN", {"default": False,
+                                    "label_on": "원본값 사용 (블록설정 무시)",
+                                    "label_off": "내 블록설정 적용"}),
                 "block_config":    ("STRING", {"default": "{}", "multiline": True}),
             },
             "optional": {
@@ -237,7 +240,7 @@ class Krea2LoRAAnalyzer:
     CATEGORY      = " ✨ TJ_Node/Lora Analyzer"
     OUTPUT_NODE   = True
 
-    def execute(self, model, lora_name, global_strength, block_config, clip=None):
+    def execute(self, model, lora_name, global_strength, use_original, block_config, clip=None):
         full_path = folder_paths.get_full_path("loras", lora_name)
         if not full_path or not os.path.exists(full_path):
             err = f"LoRA not found: {lora_name}"
@@ -251,23 +254,29 @@ class Krea2LoRAAnalyzer:
         except Exception:
             config = {}
 
+        # 원본값 사용: 블록 설정(config)은 UI에 그대로 두되, 큐 실행은 필터 없이
+        # 전체 블록 ON·강도 1.0(원본 LoRA)으로 돌린다. (A/B 비교용)
+        effective_config = {} if use_original else config
+
         # 선택적 LoRA 적용
-        filtered = build_filtered_lora(lora_sd, config)
+        filtered = build_filtered_lora(lora_sd, effective_config)
         model_out, clip_out = comfy.sd.load_lora_for_models(
             model, clip, filtered, global_strength, global_strength
         ) if filtered else (model, clip)
 
         # 분석 텍스트
+        mode = "ORIGINAL (use_original ON)" if use_original else "FILTERED (block config)"
         lines = [
             f"╔══ Krea2 LoRA Analyzer ══════════════════════╗",
             f"  File   : {os.path.basename(full_path)}",
             f"  Blocks : {TOTAL_BLOCKS}  |  Keys: {len(lora_sd)}",
+            f"  Mode   : {mode}",
             f"╠═══════════════════════════════════════════════╣",
         ]
         enabled_count = 0
         for idx in range(TOTAL_BLOCKS):
             d        = block_data[idx]
-            bc       = config.get(str(idx), {})
+            bc       = effective_config.get(str(idx), {})
             is_on    = bc.get("enable", True)
             strength = float(bc.get("strength", 1.0))
             impact   = d["impact"]
