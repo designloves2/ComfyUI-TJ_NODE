@@ -1078,7 +1078,7 @@ app.registerExtension({
                 if (this.tj_mode === "single" || this.tj_mode === "single_locked") {
                     const img = this.tj_imgs[this.tj_view_idx];
                     if (!img || !img.complete || img._tj_error || img.naturalWidth === 0) {
-                        ctx.fillStyle = img?._tj_error ? "#441111" : "#111111";
+                        ctx.fillStyle = "#111111";   // 실패/로딩 모두 검정 — 문구로 구분(빨간 배경은 위압적)
                         ctx.fillRect(0, startY, drawW, drawH);
                         ctx.fillStyle = "#cccccc";
                         ctx.font = "12px sans-serif";
@@ -1167,7 +1167,7 @@ app.registerExtension({
                         const x = rect.x;
                         const y = startY + rect.yOffset;
                         if (!img || !img.complete || img._tj_error || img.naturalWidth === 0) {
-                            ctx.fillStyle = img?._tj_error ? "#441111" : "#111111";
+                            ctx.fillStyle = "#111111";   // 실패/로딩 모두 검정 — 문구로 구분(빨간 배경은 위압적)
                             ctx.fillRect(x, y, Math.max(1, cellW), Math.max(1, cellH));
                             ctx.fillStyle = "#888";
                             ctx.font = "10px sans-serif";
@@ -2069,7 +2069,7 @@ app.registerExtension({
                     startY += 28;
                     const drawW = this.size[0] - 8;
                     const drawH = this.size[1] - startY - 8;
-                    ctx.fillStyle = "#220000";
+                    ctx.fillStyle = "#111111";
                     ctx.fillRect(4, startY, drawW, drawH);
                     
                     ctx.fillStyle = "#ff4444";
