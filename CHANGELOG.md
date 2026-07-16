@@ -3,6 +3,39 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.4.0] - 2026-07-16
+
+### [Added]
+
+* **LoRA Analyzer 3종 신규 추가** — Krea2 와 동일한 UI/기능
+
+  * `Klein 4B LoRA Analyzer (TJ)` — double 5 + single 20 = **25 블록**
+  * `Klein 9B LoRA Analyzer (TJ)` — double 8 + single 24 = **32 블록**
+  * `Z-Image LoRA Analyzer (TJ)` — layers **30** (Turbo/Base 공통)
+  * 블록 수는 실제 LoRA 파일들로 교차 검증한 값
+  * 카테고리: ` ✨ TJ_Node/Lora Analyzer`
+
+### [Changed]
+
+* LoRA Analyzer 공용 코어로 리팩터링 (중복 제거)
+
+  * `nodes/lora/_lora_core.py` — 키 형식 무관 파서 + 효과 노름 + `BlockSpec`
+  * `nodes/lora/_analyzer_base.py` — 노드 베이스 (ARCH 만 지정하면 동작)
+  * Krea2 노드도 동일 코어 사용 (동작 동일)
+* 지원 키 형식 확장: dot 표준 / kohya(`lora_down/up`) / **diffusers(`.lora.down.weight`)**
+  / LoKr(`lokr_w1/w2`) / 단축형(`.A/.B`)
+* Klein diffusers 네이밍(`transformer.transformer_blocks`,
+  `transformer.single_transformer_blocks`) 별칭 자동 인식
+* API 라우트 일반화: `/krea2analyzer/*` → `/tjlora/analyze`, `/tjlora/save_filtered`,
+  `/tjlora/structure` (arch 파라미터)
+* 프론트엔드 단일화: `web/krea2_analyzer.js` → `web/tj_lora_analyzer.js`
+  (블록 수/섹션을 아키텍처별로 동적 렌더링, 섹션 토글 버튼 자동 생성)
+
+### [Fixed]
+
+* `use_original` 토글 라벨 i18n 적용 (하드코딩 한글 → 언어별 자동 전환)
+
+---
 ## [2.3.7] - 2026-07-16
 
 ### [Added]

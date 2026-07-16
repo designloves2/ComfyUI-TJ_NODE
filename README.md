@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.3.0
+# ✨ TJ_NODE v2.4.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -108,6 +108,33 @@ Wireless routing is used between sections.
 ---
 
 #스크린샷 : SECTION ARCHITECTURE
+
+---
+
+# 🚀 What's New in v2.4.0
+
+## ✨ New: LoRA Analyzer 제품군 확장 (Klein 4B/9B, Z-Image)
+
+Krea2 Analyzer와 **동일한 UI/기능**을 다른 아키텍처로 확장했습니다.
+Same UI and features, now for more architectures.
+
+| 노드 | 블록 구조 | 총 블록 |
+|---|---|---|
+| `Krea2 LoRA Analyzer (TJ)` | main 28 + TxtFusion layerwise 2 + refiner 2 | **32** |
+| `Klein 4B LoRA Analyzer (TJ)` | double 5 + single 20 | **25** |
+| `Klein 9B LoRA Analyzer (TJ)` | double 8 + single 24 | **32** |
+| `Z-Image LoRA Analyzer (TJ)` | layers 30 (Turbo/Base 공통) | **30** |
+
+> 블록 수는 실제 LoRA 파일들을 교차 검증해 확정한 값입니다.
+
+**공통 기능** (4개 노드 전부):
+- 블록별 기여도 분석 + 실시간 효과 막대 (강도 조절 시 즉시 반영)
+- `🔍 원본 대비` 겹쳐보기, 🎯 핵심만 / ⚖️ 균형 / 🧹 약한블록 정리 원클릭
+- `use_original` 토글 — 설정 유지한 채 원본으로 큐 실행 (A/B 비교)
+- 한/영 UI 토글 🌐, 프리셋 저장/불러오기, 필터링 LoRA 저장
+
+**키 형식 무관 분석** — 학습 툴/옵션이 달라도 자동 인식:
+`lora_A/B`(dot) · `lora_down/up`(kohya) · `.lora.down.weight`(diffusers) · `lokr_w1/w2`(LoKr) · `.A/.B`(단축형)
 
 ---
 

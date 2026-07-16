@@ -1,304 +1,32 @@
 """
-Krea2 LoRA Analyzer + Selective Loader  (TJ_NODE 편입판)
-원본: ComfyUI-Krea2-Analyzer v2.1
+Krea2 LoRA Analyzer + Selective Loader  (TJ_NODE)
 
-핵심: return {"ui": {...}, "result": (...)} 포맷 사용
-→ ComfyUI가 JS onExecuted로 데이터 전송하는 공식 채널
+블록 구조: main 28 + txtfusion layerwise 2 + refiner 2 = 32
+분석/필터 로직은 _lora_core (키 형식 무관) 사용.
 """
 
-import os
-import re
-import json
-import torch
-import folder_paths
-import comfy.utils
-import comfy.sd
+from ._lora_core import SPECS, analyze_lora, build_filtered_lora
+from ._analyzer_base import BaseLoRAAnalyzer
 
-# ─────────────────────────────────────────────
-# 블록 구조  (28 main + 2 layerwise + 2 refiner = 32)
-# ─────────────────────────────────────────────
-
-NUM_MAIN_BLOCKS      = 28
-NUM_LAYERWISE_BLOCKS = 2
-NUM_REFINER_BLOCKS   = 2
-TOTAL_BLOCKS         = 32
-
-COMPONENTS = [
-    "attn.gate", "attn.wk", "attn.wo", "attn.wq", "attn.wv",
-    "mlp.down",  "mlp.gate", "mlp.up"
-]
-
-# ─────────────────────────────────────────────
-# 프리셋
-# ─────────────────────────────────────────────
-
-KREA2_PRESETS = {
-    "All ON":           list(range(32)),
-    "Main Blocks Only": list(range(28)),
-    "TxtFusion OFF":    list(range(28)),
-    "Late Blocks (14-27)": list(range(14, 28)),
-    "Early Blocks (0-13)": list(range(14)),
-    "All OFF":          [],
-}
+KREA2_SPEC   = SPECS["krea2"]
+TOTAL_BLOCKS = KREA2_SPEC.total   # 32
 
 
-def block_prefix(idx: int) -> str:
-    """(참고용) 표준 diffusion_model 접두. 분석/필터는 형식 무관 파서를 사용."""
-    if idx < NUM_MAIN_BLOCKS:
-        return f"diffusion_model.blocks.{idx}."
-    elif idx < NUM_MAIN_BLOCKS + NUM_LAYERWISE_BLOCKS:
-        return f"diffusion_model.txtfusion.layerwise_blocks.{idx - NUM_MAIN_BLOCKS}."
-    else:
-        return f"diffusion_model.txtfusion.refiner_blocks.{idx - NUM_MAIN_BLOCKS - NUM_LAYERWISE_BLOCKS}."
+class Krea2LoRAAnalyzer(BaseLoRAAnalyzer):
+    ARCH = "krea2"
 
 
+# ── 하위호환 헬퍼 (기존 시그니처 유지) ─────────────────
 def block_display_name(idx: int) -> str:
-    if idx < NUM_MAIN_BLOCKS:
-        return f"Block {idx:02d}"
-    elif idx < NUM_MAIN_BLOCKS + NUM_LAYERWISE_BLOCKS:
-        return f"TxtFusion-Layerwise {idx - NUM_MAIN_BLOCKS}"
-    else:
-        return f"TxtFusion-Refiner {idx - NUM_MAIN_BLOCKS - NUM_LAYERWISE_BLOCKS}"
-
-
-# ─────────────────────────────────────────────
-# 형식 무관 키 파서
-#   Krea2 LoRA 는 학습 옵션/모듈에 따라 키 저장 형식이 다양하다:
-#     - dot 표준 : diffusion_model.blocks.{N}.attn.wq.lora_A.weight / .lora_B.weight
-#     - kohya    : lora_unet_blocks_{N}_attn_wq.lora_down.weight / .lora_up.weight / .alpha
-#     - LoKr     : ...lokr_w1 / ...lokr_w2
-#     - 단축형   : blocks.{N}.attn.wq.A / .B
-#   접두/컴포넌트에 의존하지 않고, (down/up) 쌍의 노름으로 블록별 기여도를 계산한다.
-# ─────────────────────────────────────────────
-
-# down(=lora_A) 쪽 / up(=lora_B) 쪽 접미사
-_DOWN_SUFFIXES = (".lora_down.weight", ".lora_A.weight", ".lokr_w1", ".hada_w1_a", ".A")
-_UP_SUFFIXES   = (".lora_up.weight",   ".lora_B.weight", ".lokr_w2", ".hada_w2_a", ".B")
-_ALL_SUFFIXES  = _DOWN_SUFFIXES + _UP_SUFFIXES + (".alpha",)
-
-
-def _role_and_base(key: str):
-    """키의 역할('down'/'up')과 모듈 베이스명을 반환. 아니면 (None, None)."""
-    for suf in _DOWN_SUFFIXES:
-        if key.endswith(suf):
-            return "down", key[:-len(suf)]
-    for suf in _UP_SUFFIXES:
-        if key.endswith(suf):
-            return "up", key[:-len(suf)]
-    return None, None
-
-
-def _module_base(key: str):
-    """알려진 접미사(.alpha 포함)를 제거한 모듈 베이스명. 아니면 None."""
-    for suf in _ALL_SUFFIXES:
-        if key.endswith(suf):
-            return key[:-len(suf)]
-    return None
-
-
-def _is_down_key(key: str) -> bool:
-    return any(key.endswith(suf) for suf in _DOWN_SUFFIXES)
-
-
-def _block_index_from_base(base: str):
-    """모듈 베이스명 → Krea2 블록 인덱스(0~31). 매칭 불가 시 None.
-    구분자는 '.'/'_' 모두 허용 (dot / kohya 형식 동시 지원)."""
-    if not base:
-        return None
-    m = re.search(r'refiner_blocks[._](\d+)', base)
-    if m:
-        return NUM_MAIN_BLOCKS + NUM_LAYERWISE_BLOCKS + int(m.group(1))
-    m = re.search(r'layerwise_blocks[._](\d+)', base)
-    if m:
-        return NUM_MAIN_BLOCKS + int(m.group(1))
-    m = re.search(r'blocks[._](\d+)', base)
-    if m:
-        return int(m.group(1))
-    return None
-
-
-# ─────────────────────────────────────────────
-# 분석 (형식 무관)
-# ─────────────────────────────────────────────
-
-def _effective_delta_norm(down, up):
-    """실제 기여 크기 ‖up @ down‖_F 를 rank 공간에서 효율적으로 계산.
-    (norm, rank) 반환. 단순 ‖d‖·‖u‖(상한)보다 블록 간 차이를 또렷하게 반영한다.
-    ‖up@down‖_F^2 = trace((uᵀu)(d dᵀ)) → rank×rank 연산이라 큰 mlp도 빠름."""
-    d = down.float()
-    u = up.float()
-    if d.ndim == 2 and u.ndim == 2 and d.shape[0] == u.shape[1]:
-        Gu = u.transpose(0, 1) @ u        # [r, r]
-        Gd = d @ d.transpose(0, 1)        # [r, r]
-        val = float(torch.sqrt(torch.clamp((Gu * Gd).sum(), min=0.0)))
-        return val, d.shape[0]
-    # 형상 불일치(LoKr 등) → 상한 근사로 폴백
-    return float(torch.norm(d) * torch.norm(u)), (d.shape[0] if d.ndim else 1)
+    return KREA2_SPEC.display_name(idx)
 
 
 def analyze_krea2_lora(lora_sd: dict) -> dict:
-    # 모듈 베이스별 down/up 텐서 + alpha 수집
-    modules = {}
-    alphas = {}
-    for key, val in lora_sd.items():
-        role, base = _role_and_base(key)
-        if role:
-            modules.setdefault(base, {})[role] = val
-        elif key.endswith(".alpha"):
-            try:
-                alphas[key[:-len(".alpha")]] = float(val)
-            except Exception:
-                pass
-
-    block_norm = {i: 0.0 for i in range(TOTAL_BLOCKS)}
-    block_cnt  = {i: 0 for i in range(TOTAL_BLOCKS)}
-    for base, du in modules.items():
-        if "down" not in du or "up" not in du:
-            continue
-        bi = _block_index_from_base(base)
-        if bi is None or not (0 <= bi < TOTAL_BLOCKS):
-            continue
-        try:
-            n, rank = _effective_delta_norm(du["down"], du["up"])
-            a = alphas.get(base)          # kohya: 효과 스케일 = alpha/rank
-            if a is not None and rank:
-                n *= a / rank
-            block_norm[bi] += n
-            block_cnt[bi]  += 1
-        except Exception:
-            continue
-
-    block_data = {}
-    for i in range(TOTAL_BLOCKS):
-        avg = block_norm[i] / block_cnt[i] if block_cnt[i] else 0.0
-        block_data[i] = {
-            "name":   block_display_name(i),
-            "norm":   avg,
-            "pairs":  block_cnt[i],
-            "impact": 0.0,
-        }
-    max_norm = max(v["norm"] for v in block_data.values()) or 1.0
-    for idx in block_data:
-        block_data[idx]["impact"] = round(block_data[idx]["norm"] / max_norm * 100, 1)
-    return block_data
+    return analyze_lora(lora_sd, KREA2_SPEC)
 
 
-# ─────────────────────────────────────────────
-# 필터링 LoRA 빌드 (형식 무관)
-# ─────────────────────────────────────────────
-
-def build_filtered_lora(lora_sd: dict, config: dict) -> dict:
-    filtered = {}
-    for key, tensor in lora_sd.items():
-        base = _module_base(key)
-        bi = _block_index_from_base(base) if base else None
-
-        # 블록에 매핑되지 않는 키(other_weights) → 그대로 포함
-        if bi is None or not (0 <= bi < TOTAL_BLOCKS):
-            filtered[key] = tensor
-            continue
-
-        bc = config.get(str(bi), {})
-        if not bc.get("enable", True):
-            continue  # 블록 비활성 → 이 모듈의 모든 키 제외
-
-        s = float(bc.get("strength", 1.0))
-        # 강도는 down(=lora_A/lokr_w1) 쪽에만 곱해 선형 스케일 (형식 무관)
-        if s != 1.0 and _is_down_key(key):
-            filtered[key] = tensor * s
-        else:
-            filtered[key] = tensor
-    return filtered
-
-
-# ─────────────────────────────────────────────
-# 노드
-# ─────────────────────────────────────────────
-
-class Krea2LoRAAnalyzer:
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "model":           ("MODEL",),
-                "lora_name":       (folder_paths.get_filename_list("loras"),),
-                "global_strength": ("FLOAT", {"default": 1.0, "min": -5.0, "max": 5.0, "step": 0.01}),
-                # 라벨 기본값은 영문(글로벌). JS(i18n)가 언어에 맞춰 덮어쓴다.
-                "use_original":    ("BOOLEAN", {"default": False,
-                                    "label_on": "Use ORIGINAL (ignore blocks)",
-                                    "label_off": "Use my block config"}),
-                "block_config":    ("STRING", {"default": "{}", "multiline": True}),
-            },
-            "optional": {
-                "clip": ("CLIP",),
-            }
-        }
-
-    RETURN_TYPES  = ("MODEL", "CLIP", "STRING", "STRING")
-    RETURN_NAMES  = ("model", "clip", "analysis_text", "analysis_json")
-    FUNCTION      = "execute"
-    CATEGORY      = " ✨ TJ_Node/Lora Analyzer"
-    OUTPUT_NODE   = True
-
-    def execute(self, model, lora_name, global_strength, use_original, block_config, clip=None):
-        full_path = folder_paths.get_full_path("loras", lora_name)
-        if not full_path or not os.path.exists(full_path):
-            err = f"LoRA not found: {lora_name}"
-            return {"ui": {"analysis_json": ["{}"]}, "result": (model, clip, err, "{}")}
-
-        lora_sd    = comfy.utils.load_torch_file(full_path)
-        block_data = analyze_krea2_lora(lora_sd)
-
-        try:
-            config = json.loads(block_config) if block_config.strip() else {}
-        except Exception:
-            config = {}
-
-        # 원본값 사용: 블록 설정(config)은 UI에 그대로 두되, 큐 실행은 필터 없이
-        # 전체 블록 ON·강도 1.0(원본 LoRA)으로 돌린다. (A/B 비교용)
-        effective_config = {} if use_original else config
-
-        # 선택적 LoRA 적용
-        filtered = build_filtered_lora(lora_sd, effective_config)
-        model_out, clip_out = comfy.sd.load_lora_for_models(
-            model, clip, filtered, global_strength, global_strength
-        ) if filtered else (model, clip)
-
-        # 분석 텍스트
-        mode = "ORIGINAL (use_original ON)" if use_original else "FILTERED (block config)"
-        lines = [
-            f"╔══ Krea2 LoRA Analyzer ══════════════════════╗",
-            f"  File   : {os.path.basename(full_path)}",
-            f"  Blocks : {TOTAL_BLOCKS}  |  Keys: {len(lora_sd)}",
-            f"  Mode   : {mode}",
-            f"╠═══════════════════════════════════════════════╣",
-        ]
-        enabled_count = 0
-        for idx in range(TOTAL_BLOCKS):
-            d        = block_data[idx]
-            bc       = effective_config.get(str(idx), {})
-            is_on    = bc.get("enable", True)
-            strength = float(bc.get("strength", 1.0))
-            impact   = d["impact"]
-            if is_on: enabled_count += 1
-            bar    = "█" * int(impact / 10) + "░" * (10 - int(impact / 10))
-            status = "ON " if is_on else "OFF"
-            lines.append(f"  [{status}] {d['name']:24s} {bar} {impact:5.1f}%  str:{strength:+.2f}")
-        lines += [
-            f"╠═══════════════════════════════════════════════╣",
-            f"  Enabled: {enabled_count} / {TOTAL_BLOCKS} blocks",
-            f"╚═══════════════════════════════════════════════╝",
-        ]
-
-        analysis_text = "\n".join(lines)
-        analysis_json = json.dumps(block_data)
-
-        # ★ 핵심: "ui" 딕셔너리로 JS에 데이터 전송
-        return {
-            "ui":     {"analysis_json": [analysis_json]},
-            "result": (model_out, clip_out, analysis_text, analysis_json),
-        }
+def build_filtered_krea2_lora(lora_sd: dict, config: dict) -> dict:
+    return build_filtered_lora(lora_sd, config, KREA2_SPEC)
 
 
 NODE_CLASS_MAPPINGS = {
