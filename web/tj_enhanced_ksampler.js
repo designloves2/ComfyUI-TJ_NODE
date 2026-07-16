@@ -63,11 +63,9 @@ app.registerExtension({
             // 고급 노브는 ON + 해당 아키텍처에서 쓰는 것만
             for (const name of ALL_ADV) toggleWidget(get(name), wanted.has(name));
 
+            // 노드 크기는 건드리지 않는다 — 사용자가 latent preview 영역을
+            // 원하는 만큼 늘려 쓰도록 수동 조절에 맡긴다.
             node.setDirtyCanvas(true, true);
-            requestAnimationFrame(() => {
-                node.setSize([node.size[0], node.computeSize()[1]]);
-                node.setDirtyCanvas(true, true);
-            });
         };
 
         // 값이 어떤 경로로 바뀌든 반영되도록 값 자체를 가로챈다
