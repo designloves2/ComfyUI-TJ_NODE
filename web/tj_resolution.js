@@ -232,15 +232,13 @@ app.registerExtension({
             snapRow.appendChild(b);
             return b;
         });
-        const infoLbl = mkSpan("", `margin-left:auto;font-size:12px;color:#888;flex-shrink:0;`);
-        snapRow.appendChild(infoLbl);
 
         // 3-5) 미리보기 박스
         const previewArea = mkDiv("display:flex;align-items:center;justify-content:center;height:170px;");
         const previewBox = mkDiv(`border:2px solid ${ACCENT};background:${ACCENT_SOFT};border-radius:3px;`);
         previewArea.appendChild(previewBox);
         panel.appendChild(previewArea);
-        const dimLbl = mkSpan("", `display:block;text-align:center;margin-top:8px;font-size:14px;color:${ACCENT_TEXT};font-weight:600;`);
+        const dimLbl = mkDiv(`text-align:center;margin-top:8px;font-size:14px;font-weight:600;`);
         panel.appendChild(dimLbl);
 
         // ── 계산 ──
@@ -324,16 +322,16 @@ app.registerExtension({
             if (skip !== "h")  hIn.value  = String(st.h);
 
             const mp = (st.w * st.h) / 1e6;
-            infoLbl.innerHTML =
-                `<span style="color:${ACCENT_TEXT};font-weight:600;">${ratioStr(st.w, st.h)}</span>` +
-                `<span style="color:#666;"> · </span>${mp.toFixed(2)} MP`;
 
             // 미리보기 박스: 비율 유지하며 영역에 맞춤
             const MAXW = 150, MAXH = 150;
             const sc = Math.min(MAXW / st.w, MAXH / st.h);
             previewBox.style.width  = Math.max(8, Math.round(st.w * sc)) + "px";
             previewBox.style.height = Math.max(8, Math.round(st.h * sc)) + "px";
-            dimLbl.textContent = `${st.w} × ${st.h}`;
+            dimLbl.innerHTML =
+                `<span style="color:${ACCENT_TEXT};">${st.w} × ${st.h}</span>` +
+                `<span style="color:#666;font-weight:400;"> · </span>` +
+                `<span style="color:#888;font-weight:400;">${mp.toFixed(2)} MP</span>`;
 
             pushValues();
         }
