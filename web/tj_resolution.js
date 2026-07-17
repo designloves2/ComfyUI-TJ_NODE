@@ -51,7 +51,7 @@ const sizesFor = (rw, rh) => {
 };
 
 // ── Auto Set (Wireless) — Multi Router(TJ) 와 동일한 규약 ──
-// properties.auto_sets[slot] = 이름, 출력 라벨 = 이름 + " ▸"
+// properties.auto_sets[slot] = 이름, 출력 라벨 = 이름 + " ▶" (코어와 동일)
 // 이름 중복은 캔버스 전체를 훑어 _1, _2 … 로 회피하고,
 // 등록 후 Get / Multi Get 노드에 갱신 신호를 보내야 목록에 나타난다.
 // (노드 타입은 set_getnode_tj.js 의 AUTO_SET_PROVIDER_TYPES 에도 등록되어 있어야 함)
@@ -100,8 +100,11 @@ function updateAutoSets(node) {
     (node.outputs || []).forEach((out, i) => {
         if (!out) return;
         const base = OUTPUT_NAMES[i] || `out_${i + 1}`;
+        // 프론트 버전에 따라 name / label / localized_name 중 읽는 필드가 달라
+        // 셋 다 세팅해야 모든 슬롯에 화살표가 일관되게 표시된다.
+        const setLabel = (txt) => { out.name = txt; out.label = txt; out.localized_name = txt; };
         if (!enabled) {
-            out.label = base;
+            setLabel(base);
             return;
         }
         let finalName = base;
@@ -109,7 +112,7 @@ function updateAutoSets(node) {
         while (used.has(finalName)) finalName = `${base}_${tries++}`;
         used.add(finalName);
         node.properties.auto_sets[i] = finalName;
-        out.label = `${finalName} ▸`;
+        setLabel(`${finalName} ▶`);   // 코어(set_getnode_tj.js)와 동일한 화살표
     });
 
     node.setDirtyCanvas?.(true, true);

@@ -3,6 +3,18 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.6.9] - 2026-07-16
+
+### [Fixed]
+
+* `Resolution (TJ)` — Auto Set ON 시 **width 슬롯에만 화살표가 안 붙던 문제**
+
+  * 프론트 버전에 따라 출력 라벨을 `name` / `label` / `localized_name` 중
+    다른 필드에서 읽어, 한쪽 슬롯만 반영되던 현상 → **세 필드 모두 설정**
+  * 화살표를 코어(`set_getnode_tj.js`)와 동일한 `▶` 로 통일
+    (Multi Router 의 `▸` 와 코어의 `▶` 가 서로 달랐음)
+
+---
 ## [2.6.8] - 2026-07-16
 
 ### [Fixed]
