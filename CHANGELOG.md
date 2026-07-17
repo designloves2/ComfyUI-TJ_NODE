@@ -3,6 +3,19 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.6.5] - 2026-07-16
+
+### [Added]
+
+* `Resolution (TJ)` — **Auto Set (Wireless) 지원** (TJ 아이덴티티)
+
+  * `auto_set` 토글 + `setnode_name` 위젯 추가
+  * ON 시 `width` / `height` 출력이 Wireless Provider 로 자동 등록
+    → `{이름}/width ▶`, `{이름}/height ▶`
+  * Registry Name = Output Label = Get Selection Name 규칙 준수
+  * 이름 중복 방지·fake-wire 복구는 기존 TJ 코어에 위임 (재구현 없음)
+
+---
 ## [2.6.4] - 2026-07-16
 
 ### [Changed]

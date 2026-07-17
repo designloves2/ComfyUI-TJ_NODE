@@ -50,6 +50,70 @@ const sizesFor = (rw, rh) => {
     return [];   // 커스텀 비율 등 목록 없음
 };
 
+// ── Auto Set (Wireless) — TJ 코어 재사용 ───────────────────
+// Registry Name = Output Label = Get Selection Name 규칙 준수 ({이름}/width ▶)
+const OUTPUT_NAMES = ["width", "height"];
+
+function autoSetEnabled(node) {
+    return !!(node?.widgets?.find((w) => w.name === "auto_set")?.value);
+}
+function getBaseName(node) {
+    const setW = node.widgets?.find((w) => w.name === "setnode_name" || w.name === "set_name");
+    return String(setW?.value || node.title || "Resolution").trim();
+}
+function updateAutoSets(node) {
+    if (!node) return;
+    if (!node.properties) node.properties = {};
+
+    if (!autoSetEnabled(node)) {
+        node.properties.auto_sets = {};
+        (node.outputs || []).forEach((out, idx) => {
+            if (!out) return;
+            const orig = out._tj_orig_name || OUTPUT_NAMES[idx] || `out_${idx}`;
+            out.name = orig; out.label = orig; out.localized_name = orig;
+            delete out._tj_auto_label;
+        });
+    } else {
+        const base = getBaseName(node);
+        const autoSets = {};
+        (node.outputs || []).forEach((out, idx) => {
+            if (!out) return;
+            if (!out._tj_orig_name) out._tj_orig_name = out.name || OUTPUT_NAMES[idx];
+            const slotName = OUTPUT_NAMES[idx] || `OUT_${idx + 1}`;
+            const fullName = base ? `${base}/${slotName}` : slotName;
+            autoSets[idx] = fullName;
+            out._tj_auto_label = fullName;
+            out.name = `${fullName} ▶`;
+            out.label = `${fullName} ▶`;
+            out.localized_name = `${fullName} ▶`;
+        });
+        node.properties.auto_sets = autoSets;
+    }
+    // 이름 중복 방지 / fake-wire 복구는 코어에 위임
+    if (window.TJ_NODE_ensureUniqueAutoSetNames && node.graph) {
+        window.TJ_NODE_ensureUniqueAutoSetNames(node.graph);
+    }
+    if (window.TJ_NODE_scheduleWirelessRepair && node.graph) {
+        window.TJ_NODE_scheduleWirelessRepair(node.graph, 80);
+    }
+    node.setDirtyCanvas?.(true, true);
+    app.canvas?.setDirty(true, true);
+}
+function installAutoSet(node) {
+    for (const name of ["auto_set", "setnode_name"]) {
+        const w = node.widgets?.find((x) => x.name === name);
+        if (w && !w._tj_res_attached) {
+            w._tj_res_attached = true;
+            const orig = w.callback;
+            w.callback = function (v) {
+                if (orig) orig.call(this, v);
+                updateAutoSets(node);
+            };
+        }
+    }
+    requestAnimationFrame(() => updateAutoSets(node));
+}
+
 const css = (el, s) => { el.style.cssText = s; return el; };
 const mkDiv = (s = "") => css(document.createElement("div"), s);
 const mkSpan = (t, s = "") => { const e = css(document.createElement("span"), s); e.textContent = t; return e; };
@@ -369,6 +433,7 @@ app.registerExtension({
         if (node.title_text_color !== undefined) node.title_text_color = "#FFFFFF";
 
         render();
+        installAutoSet(node);   // Auto Set — TJ 아이덴티티
         node.setSize([Math.max(MIN_W, node.size[0] || 360), node.size[1]]);
         requestAnimationFrame(fitNode);
         setTimeout(fitNode, 120);
