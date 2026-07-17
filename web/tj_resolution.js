@@ -408,7 +408,7 @@ app.registerExtension({
 
         // ── 크기: 콘텐츠 높이에 맞춰 보정 (렌더 실측 기반, 줌 보정 포함) ──
         const MIN_W = 320;
-        const fitNode = () => {
+        const fitNode = (tries = 0) => {
             const contentH = wrap.scrollHeight;
             if (!contentH) return;
             const scale = app.canvas?.ds?.scale || 1;
@@ -418,6 +418,8 @@ app.registerExtension({
             if (Math.abs(delta) > 2) {
                 node.setSize([Math.max(MIN_W, node.size[0] || MIN_W), Math.max(120, node.size[1] + delta)]);
                 node.setDirtyCanvas(true, true);
+                // 한 번의 보정으로 안 맞을 수 있어 재확인하되, 최대 6회로 제한한다
+                if (tries < 6) requestAnimationFrame(() => fitNode(tries + 1));
             }
         };
         const origOnResize = node.onResize;
@@ -444,7 +446,6 @@ app.registerExtension({
                 raf = requestAnimationFrame(() => { try { fitNode(); } catch (_) {} });
             });
             ro.observe(wrap);
-            ro.observe(host);
         }
     },
 });
