@@ -50,66 +50,81 @@ const sizesFor = (rw, rh) => {
     return [];   // 커스텀 비율 등 목록 없음
 };
 
-// ── Auto Set (Wireless) — TJ 코어 재사용 ───────────────────
-// Registry Name = Output Label = Get Selection Name 규칙 준수 ({이름}/width ▶)
+// ── Auto Set (Wireless) — Multi Router(TJ) 와 동일한 규약 ──
+// properties.auto_sets[slot] = 이름, 출력 라벨 = 이름 + " ▸"
+// 이름 중복은 캔버스 전체를 훑어 _1, _2 … 로 회피하고,
+// 등록 후 Get / Multi Get 노드에 갱신 신호를 보내야 목록에 나타난다.
+// (노드 타입은 set_getnode_tj.js 의 AUTO_SET_PROVIDER_TYPES 에도 등록되어 있어야 함)
 const OUTPUT_NAMES = ["width", "height"];
 
-function autoSetEnabled(node) {
-    return !!(node?.widgets?.find((w) => w.name === "auto_set")?.value);
-}
-function getBaseName(node) {
-    const setW = node.widgets?.find((w) => w.name === "setnode_name" || w.name === "set_name");
-    return String(setW?.value || node.title || "Resolution").trim();
-}
-function updateAutoSets(node) {
-    if (!node) return;
-    if (!node.properties) node.properties = {};
-
-    if (!autoSetEnabled(node)) {
-        node.properties.auto_sets = {};
-        (node.outputs || []).forEach((out, idx) => {
-            if (!out) return;
-            const orig = out._tj_orig_name || OUTPUT_NAMES[idx] || `out_${idx}`;
-            out.name = orig; out.label = orig; out.localized_name = orig;
-            delete out._tj_auto_label;
-        });
-    } else {
-        const base = getBaseName(node);
-        const autoSets = {};
-        (node.outputs || []).forEach((out, idx) => {
-            if (!out) return;
-            if (!out._tj_orig_name) out._tj_orig_name = out.name || OUTPUT_NAMES[idx];
-            const slotName = OUTPUT_NAMES[idx] || `OUT_${idx + 1}`;
-            const fullName = base ? `${base}/${slotName}` : slotName;
-            autoSets[idx] = fullName;
-            out._tj_auto_label = fullName;
-            out.name = `${fullName} ▶`;
-            out.label = `${fullName} ▶`;
-            out.localized_name = `${fullName} ▶`;
-        });
-        node.properties.auto_sets = autoSets;
-    }
-    // 이름 중복 방지 / fake-wire 복구는 코어에 위임
-    if (window.TJ_NODE_ensureUniqueAutoSetNames && node.graph) {
-        window.TJ_NODE_ensureUniqueAutoSetNames(node.graph);
-    }
-    if (window.TJ_NODE_scheduleWirelessRepair && node.graph) {
-        window.TJ_NODE_scheduleWirelessRepair(node.graph, 80);
-    }
-    node.setDirtyCanvas?.(true, true);
-    app.canvas?.setDirty(true, true);
-}
-function installAutoSet(node) {
-    for (const name of ["auto_set", "setnode_name"]) {
-        const w = node.widgets?.find((x) => x.name === name);
-        if (w && !w._tj_res_attached) {
-            w._tj_res_attached = true;
-            const orig = w.callback;
-            w.callback = function (v) {
-                if (orig) orig.call(this, v);
-                updateAutoSets(node);
-            };
+function collectExistingSets(node) {
+    const used = new Set();
+    for (const n of node.graph?._nodes || []) {
+        if (n === node) continue;
+        if (n.type === "TJ_SetNode") {
+            const w = n.widgets?.find((x) => x.name === "set_name" || x.name === "setnode_name");
+            if (w?.value) used.add(String(w.value).trim());
         }
+        if (n.properties?.auto_sets) {
+            Object.values(n.properties.auto_sets).forEach((v) => { if (v) used.add(String(v).trim()); });
+        }
+    }
+    return used;
+}
+
+function notifyGetNodes(node) {
+    setTimeout(() => {
+        for (const n of node.graph?._nodes || []) {
+            if (n.type === "TJ_GetNode") {
+                if (n._syncWithSetNode) n._syncWithSetNode();
+                const w = n.widgets?.find((x) => x.name === "set_name");
+                if (w && n._connectToSetNode) n._connectToSetNode(w.value);
+            }
+            if (n.type === "TJ_MultiGetNode") {
+                if (n._syncWithSetNodes) n._syncWithSetNodes();
+                if (n._rebuild) n._rebuild();
+            }
+        }
+        app.canvas?.setDirty(true, true);
+    }, 50);
+}
+
+function updateAutoSets(node) {
+    if (!node || !node.graph) return;
+    if (!node.properties) node.properties = {};
+    const enabled = !!(node.widgets?.find((w) => w.name === "auto_set")?.value);
+
+    node.properties.auto_sets = {};
+    const used = collectExistingSets(node);
+
+    (node.outputs || []).forEach((out, i) => {
+        if (!out) return;
+        const base = OUTPUT_NAMES[i] || `out_${i + 1}`;
+        if (!enabled) {
+            out.label = base;
+            return;
+        }
+        let finalName = base;
+        let tries = 1;
+        while (used.has(finalName)) finalName = `${base}_${tries++}`;
+        used.add(finalName);
+        node.properties.auto_sets[i] = finalName;
+        out.label = `${finalName} ▸`;
+    });
+
+    node.setDirtyCanvas?.(true, true);
+    notifyGetNodes(node);   // 이걸 해야 get_name 목록에 뜬다
+}
+
+function installAutoSet(node) {
+    const w = node.widgets?.find((x) => x.name === "auto_set");
+    if (w && !w._tj_res_attached) {
+        w._tj_res_attached = true;
+        const orig = w.callback;
+        w.callback = function (v) {
+            if (orig) orig.call(this, v);
+            updateAutoSets(node);
+        };
     }
     requestAnimationFrame(() => updateAutoSets(node));
 }

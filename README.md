@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.6.7
+# ✨ TJ_NODE v2.6.8
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 

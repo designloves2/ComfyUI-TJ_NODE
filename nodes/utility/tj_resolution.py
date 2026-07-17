@@ -19,9 +19,6 @@ class TJ_Resolution:
                 # Auto Set — width/height 출력을 Wireless Provider 로 자동 등록
                 "auto_set": ("BOOLEAN", {"default": False,
                              "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
-                "setnode_name": ("STRING", {"default": "Resolution",
-                                 "tooltip": "Auto Set 시 Provider 이름 접두사 "
-                                            "({이름}/width ▶, {이름}/height ▶)"}),
                 # JS DOM UI 가 채우는 값 (위젯은 JS 에서 숨김)
                 "width":  ("INT", {"default": 1024, "min": 8, "max": 16384, "step": 8}),
                 "height": ("INT", {"default": 1024, "min": 8, "max": 16384, "step": 8}),
@@ -30,7 +27,7 @@ class TJ_Resolution:
             }
         }
 
-    def run(self, width, height, auto_set=False, setnode_name="Resolution", ui_state=""):
+    def run(self, width, height, auto_set=False, ui_state=""):
         w = max(8, int(width))
         h = max(8, int(height))
         return (w, h)

@@ -3,6 +3,25 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.6.8] - 2026-07-16
+
+### [Fixed]
+
+* `Resolution (TJ)` — Auto Set 이 **get_name 목록에 나타나지 않던 문제**
+
+  * 원인 1: 코어의 `AUTO_SET_PROVIDER_TYPES` 에 `TJ_Resolution` **미등록**
+    → Get 노드가 provider 로 인식조차 못 함. `set_getnode_tj.js` 에 추가
+  * 원인 2: 등록 후 **Get / Multi Get 노드에 갱신 신호를 보내지 않음**
+    → Multi Router 와 동일하게 `_syncWithSetNode` / `_rebuild` 호출 추가
+  * 규약을 Multi Router(TJ) 기준으로 통일: 출력 라벨 `이름 ▸`,
+    이름 중복은 캔버스 전체를 훑어 `_1`, `_2` … 로 회피
+
+### [Removed]
+
+* `Resolution (TJ)` 의 `setnode_name` 위젯 제거 — Auto Set 노드에는 불필요
+  (해당 위젯은 Auto Set 없이 단일 슬롯을 지정하는 다른 성격의 노드용)
+
+---
 ## [2.6.7] - 2026-07-16
 
 ### [Fixed]
