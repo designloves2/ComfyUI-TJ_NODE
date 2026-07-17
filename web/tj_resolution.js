@@ -177,8 +177,8 @@ app.registerExtension({
         // 3-1) RATIO 행 (ratio 모드 전용)
         const ratioRow = mkDiv("display:flex;align-items:center;gap:8px;margin-bottom:10px;");
         ratioRow.appendChild(mkSpan("RATIO", "color:#888;font-size:11px;letter-spacing:.08em;flex-shrink:0;"));
-        const rwIn = mkNumInput(st.rw, (v) => { st.rw = Math.max(1, parseFloat(v) || 1); applyFromWidth(); render(false); });
-        const rhIn = mkNumInput(st.rh, (v) => { st.rh = Math.max(1, parseFloat(v) || 1); applyFromWidth(); render(false); });
+        const rwIn = mkNumInput(st.rw, (v) => { st.rw = Math.max(1, parseFloat(v) || 1); applyFromWidth(); render("rw"); });
+        const rhIn = mkNumInput(st.rh, (v) => { st.rh = Math.max(1, parseFloat(v) || 1); applyFromWidth(); render("rh"); });
         const swapRatio = mkBtn("⇄", () => {
             [st.rw, st.rh] = [st.rh, st.rw];
             [st.w, st.h] = [st.h, st.w];
@@ -208,13 +208,13 @@ app.registerExtension({
 
         const wIn = mkNumInput(st.w, (v) => {
             st.w = Math.max(8, parseInt(v) || 8);
-            if (st.mode === "ratio") applyFromWidth(false);
-            render(false);
+            if (st.mode === "ratio") applyFromWidth();   // 파생되는 height 는 스냅 적용
+            render("w");
         });
         const hIn = mkNumInput(st.h, (v) => {
             st.h = Math.max(8, parseInt(v) || 8);
-            if (st.mode === "ratio") applyFromHeight(false);
-            render(false);
+            if (st.mode === "ratio") applyFromHeight();  // 파생되는 width 는 스냅 적용
+            render("h");
         });
         const swapWH = mkBtn("⇄", () => { [st.w, st.h] = [st.h, st.w]; render(); },
             "flex-shrink:0;width:44px;font-size:16px;");
@@ -292,7 +292,8 @@ app.registerExtension({
         }
 
         // ── 렌더 ──
-        function render(syncInputs = true) {
+        // skip: 지금 타이핑 중인 필드명("w"/"h"/"rw"/"rh") — 그 필드만 덮어쓰지 않는다
+        function render(skip = null) {
             const isPreset = st.mode === "preset";
             const isRatio  = st.mode === "ratio";
             const isRes    = st.mode === "res";
@@ -317,12 +318,10 @@ app.registerExtension({
             baseBtns.forEach((b, i) => setActive(b, BASES[i] === st.base));
             snapBtns.forEach((b, i) => setActive(b, SNAPS[i] === st.snap));
 
-            if (syncInputs) {
-                rwIn.value = String(st.rw);
-                rhIn.value = String(st.rh);
-                wIn.value = String(st.w);
-                hIn.value = String(st.h);
-            }
+            if (skip !== "rw") rwIn.value = String(st.rw);
+            if (skip !== "rh") rhIn.value = String(st.rh);
+            if (skip !== "w")  wIn.value  = String(st.w);
+            if (skip !== "h")  hIn.value  = String(st.h);
 
             const mp = (st.w * st.h) / 1e6;
             infoLbl.innerHTML =
