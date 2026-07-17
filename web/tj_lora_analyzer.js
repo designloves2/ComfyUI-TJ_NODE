@@ -684,19 +684,19 @@ app.registerExtension({
         // (scrollHeight=0 → 고정 폴백) 모든 노드가 같은 높이로 굳고 하단에 여백이 남았다.
         // 그래서 "실제 렌더된 host 높이"와 "콘텐츠 높이"의 차이만큼 노드를 보정한다.
         // host 는 노드 크기에 따라 늘어나므로, RO 가 다시 돌며 delta≈0 으로 수렴한다.
-        const fitNode = (tries = 0) => {
+        const fitNode = () => {
             const contentH = wrap.scrollHeight;
-            if (!contentH) return;                       // 아직 레이아웃 전
-            const scale = app.canvas?.ds?.scale || 1;    // 캔버스 줌 보정
+            if (!contentH) return;                        // 아직 레이아웃 전
+            const scale = app.canvas?.ds?.scale || 1;
             const hostH = host.getBoundingClientRect().height / scale;
             if (!hostH) return;
-            const delta = contentH - hostH;
-            if (Math.abs(delta) > 2) {
-                const w = Math.max(540, node.size[0] || 540);
-                node.setSize([w, Math.max(120, node.size[1] + delta)]);
+            // 노드 높이 = (DOM 위젯 외 영역: 타이틀/슬롯/일반위젯) + 콘텐츠 높이
+            // overhead 를 실측해 한 번에 정확히 계산한다 → 반복 보정이 필요 없어 루프가 없다.
+            const overhead = node.size[1] - hostH;
+            const target = Math.round(overhead + contentH);
+            if (Math.abs(target - node.size[1]) > 2) {
+                node.setSize([Math.max(540, node.size[0] || 540), Math.max(120, target)]);
                 node.setDirtyCanvas(true, true);
-                // 한 번의 보정으로 안 맞을 수 있어 재확인하되, 최대 6회로 제한한다
-                if (tries < 6) requestAnimationFrame(() => fitNode(tries + 1));
             }
         };
         const MIN_W = 540;

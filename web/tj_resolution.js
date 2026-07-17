@@ -408,18 +408,19 @@ app.registerExtension({
 
         // ── 크기: 콘텐츠 높이에 맞춰 보정 (렌더 실측 기반, 줌 보정 포함) ──
         const MIN_W = 320;
-        const fitNode = (tries = 0) => {
+        const fitNode = () => {
             const contentH = wrap.scrollHeight;
-            if (!contentH) return;
+            if (!contentH) return;                        // 아직 레이아웃 전
             const scale = app.canvas?.ds?.scale || 1;
             const hostH = host.getBoundingClientRect().height / scale;
             if (!hostH) return;
-            const delta = contentH - hostH;
-            if (Math.abs(delta) > 2) {
-                node.setSize([Math.max(MIN_W, node.size[0] || MIN_W), Math.max(120, node.size[1] + delta)]);
+            // 노드 높이 = (DOM 위젯 외 영역: 타이틀/슬롯/일반위젯) + 콘텐츠 높이
+            // overhead 를 실측해 한 번에 정확히 계산한다 → 반복 보정이 필요 없어 루프가 없다.
+            const overhead = node.size[1] - hostH;
+            const target = Math.round(overhead + contentH);
+            if (Math.abs(target - node.size[1]) > 2) {
+                node.setSize([Math.max(MIN_W, node.size[0] || MIN_W), Math.max(120, target)]);
                 node.setDirtyCanvas(true, true);
-                // 한 번의 보정으로 안 맞을 수 있어 재확인하되, 최대 6회로 제한한다
-                if (tries < 6) requestAnimationFrame(() => fitNode(tries + 1));
             }
         };
         const origOnResize = node.onResize;
