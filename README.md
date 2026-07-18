@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.6.9
+# ✨ TJ_NODE v2.7.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -17,6 +17,72 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 ---
 
 <img width="2713" height="1640" alt="12b63f61-5a0b-4f77-9827-b4f0918e3299" src="https://github.com/user-attachments/assets/8de8b406-b1c3-4c12-98cb-3fc292f4df26" />
+
+---
+
+# 🆕 Latest Additions (v2.7.0)
+
+가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
+The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
+
+## 📐 Resolution (TJ)
+
+비율 프리셋 + 실제 생태계 버킷 해상도 + 커스텀 비율/해상도를 하나의 DOM UI로 고르는 노드.
+Ratio presets, real ecosystem-bucket resolutions, and custom ratio/resolution — all in one DOM UI.
+
+* **9개 비율 프리셋**(1:1, 16:9, 9:16, 2:1, 3:2, 2:3, 4:3, 3:4, 4:5), 클릭 시 그 비율의 **대표 해상도 8개** 목록 표시
+* 해상도 값은 LTX-2 / Z-Image / Klein / Flux / Krea2 / Qwen-Image / Ideogram 등 실사용 버킷 기준 (예: `1664×928`, `1920×1088`)
+* **Custom Ratio**: `RATIO [w] ⇄ [h]` + 기준 크기 — 한쪽 값만 입력하면 나머지가 비율에 맞춰 자동 계산
+* **Custom Resolution**: 자유 입력 + ⇄ 스왑
+* 스냅 8/16/32/64, 비율대로 그려지는 미리보기 박스, **Auto Set** 지원 (`width ▶`, `height ▶`)
+* CATEGORY: `✨ TJ_Node/Utility`
+
+## 🎛 Enhanced KSampler (TJ)
+
+표준 KSampler + 아키텍처별 프롬프트 반영 증폭(enhancer)을 하나의 노드에 내장.
+A standard KSampler with a selectable per-architecture prompt-adherence enhancer built in.
+
+* `enhance_arch`: `krea2 / klein / zimage` 중 선택 — 로드된 모델에 맞는 것만 고르면 됨
+* `enhance_enabled` 마스터 토글 — OFF 시 표준 KSampler와 완전히 동일하게 동작
+* 선택한 아키텍처에 **필요한 옵션만 표시**(다른 아키텍처 노브는 자동 숨김), 전 옵션에 영문 툴팁
+* Krea2: `txtfusion` 텍스트 청크 증폭(+`text_scale`) / Klein: Qwen3 레이어 슬라이스 스케일 / Z-Image: 중립 conditioning 연산
+* 선택 아키텍처와 실제 모델이 다르면 감지·경고 후 안전하게 표준 동작으로 fallback
+* 노드 높이는 수동 조절 — latent preview 영역을 원하는 만큼 확보 가능
+* 증폭 로직은 capitan01R 의 MIT 프로젝트에서 이식 ([THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참고)
+* CATEGORY: `✨ TJ_Node/Sampling`
+
+## 🧬 LoRA Analyzer 제품군 (Krea2 / Klein 4B·9B / Z-Image)
+
+블록 단위로 LoRA를 분석하고 선택적으로 필터링·저장하는 노드 4종. 하나의 공용 코어로 동작.
+Four block-level LoRA analyzer nodes sharing one core — one per architecture.
+
+| 노드 | 블록 구조 |
+|---|---|
+| `Krea2 LoRA Analyzer (TJ)` | main 28 + TxtFusion layerwise 2 + refiner 2 = **32** |
+| `Klein 4B LoRA Analyzer (TJ)` | double 5 + single 20 = **25** |
+| `Klein 9B LoRA Analyzer (TJ)` | double 8 + single 24 = **32** |
+| `Z-Image LoRA Analyzer (TJ)` | layers **30** (Turbo/Base 공통) |
+
+* **실시간 효과 막대** — 강도 조절 시 즉시 반영, `🔍 원본 대비` 겹쳐보기
+* **키 형식 무관 분석** — dot / kohya / diffusers / LoKr / 단축형 전부 자동 인식
+* 🎯 핵심만 · ⚖️ 균형 · 🧹 약한블록 정리 원클릭, 프리셋 저장/불러오기
+* `use_original` 토글 — 설정 유지한 채 원본으로 A/B 비교
+* **아키텍처 불일치 경고** — 9B LoRA를 4B 노드에 넣는 등 잘못된 조합 자동 감지
+* 저장 경로는 설치 폴더 `models/loras` 하위로 샌드박스, 한/영 UI 토글 🌐
+* 아이디어 출처: [comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora) (코드 미카피, 자체 구현)
+* CATEGORY: `✨ TJ_Node/Lora Analyzer`
+
+## 🧠 LLM (GGUF) 노드 GPU 설치
+
+Prompt Studio / Image to Prompt / Prompt Enhancer / Scene Maker 는 `llama-cpp-python` 을 사용합니다.
+기본 `pip` 설치는 **CPU 전용**이라 느리고 최신 모델(Gemma4/Qwen3-VL)이 안 될 수 있습니다.
+GPU 가속 + 최신 모델은 **소스 빌드**가 필요합니다 → **[LLAMA_GPU_SETUP.md](LLAMA_GPU_SETUP.md)** 참고
+(`build_llama_gemma4.bat` 더블클릭이면 자동 빌드/설치).
+
+> v2.7.0: LLM 노드의 VRAM 처리 개선 — vision 재실행 시 GPU 유지(예전엔 CPU fallback 으로 수십 초),
+> 실행 후 VRAM 자동 반납, GGUF 로드 전 ComfyUI 모델 언로드로 충돌 방지.
+
+---
 
 # ✨ Overview
 

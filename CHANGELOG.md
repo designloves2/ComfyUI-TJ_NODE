@@ -3,6 +3,40 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.7.0] - 2026-07-19
+
+### [Fixed]
+
+* **LLM/GGUF 노드 VRAM 처리 대폭 개선** (Prompt Studio / Image to Prompt / Prompt Enhancer / Scene Maker)
+
+  * **vision 노드 재실행 시 clip 인코더가 CPU 로 fallback 해 수십~수백 배 느려지던 문제**
+    (예: 654ms → 124초). 원인은 비전 chat handler 의 `_exit_stack` 이 `del` 로는
+    닫히지 않아 clip/mtmd CUDA 컨텍스트가 완전히 해제되지 않던 것. 새 헬퍼
+    `_free_chat_handler()` 가 `_exit_stack.close()` 를 명시적으로 호출해 해결 →
+    재실행해도 clip 이 GPU 를 유지 (3회 연속 617/529/547ms 검증).
+  * **실행 후 llama.cpp 모델 VRAM 이 해제되지 않던 문제**. `torch.cuda.empty_cache()`
+    는 llama.cpp 의 자체 CUDA 컨텍스트에 무효 → `Llama.close()` 를 명시적으로 호출하도록
+    `_free_llm()` 수정 (VRAM 이 baseline 으로 반납됨).
+
+### [Added]
+
+* GGUF 로드 직전 `_free_comfy_vram()` — ComfyUI 모델을 먼저 언로드해 VRAM 확보
+  (이미지 생성 → LLM 전환 시 VRAM 충돌/로드 실패 방지).
+* **`LLAMA_GPU_SETUP.md`** — llama-cpp-python GPU 빌드/설치 안내 (한/영). 왜 소스
+  빌드가 필요한지, 사전 준비물, 문제 해결(temp 삭제·cublas 누락·VRAM 부족) 정리.
+
+### [Changed]
+
+* **`build_llama_gemma4.bat` 개선**
+
+  * `pip install -e .`(editable) → **wheel 빌드 후 설치** 로 변경. editable 은 소스를
+    `%TEMP%` 에 두어 Windows 가 temp 를 청소하면 `llama.dll not found` 로 깨졌음 —
+    wheel 은 self-contained 라 재발 방지.
+  * 임베디드 Python 경로를 스크립트 위치 기준 **자동 감지** (하드코딩 제거).
+  * 빌드된 `.whl` 을 `wheels/` 에 보관 → 재빌드 없이 재설치 가능. `--no-deps` 로
+    설치해 기존 numpy/torch 를 건드리지 않음.
+
+---
 ## [2.6.9] - 2026-07-16
 
 ### [Fixed]

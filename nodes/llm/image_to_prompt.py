@@ -8,7 +8,7 @@ from ._llm_utils import (
     CLIP_LOADER_TYPE_OPTIONS, MODEL_FORMAT_OPTIONS, AESTHETIC_OPTIONS,
     _HANDLER_CLASSES,
     _text_encoder_ggufs, _text_encoder_mmproj_options, _text_encoder_model_options,
-    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _clean_output,
+    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _free_chat_handler, _free_comfy_vram, _clean_output,
     _load_clip_from_text_encoder, _generate_with_textgenerate,
     MODEL_FORMAT_INSTRUCTIONS, AESTHETIC_DESCRIPTORS,
     _load_json_data,
@@ -210,6 +210,7 @@ class TJ_ImageToPrompt:
             handler_cls, handler_label = self._resolve_handler(chat_handler, gguf_model)
             img_uri = tensor_to_data_uri(image)
             chat_handler_instance = handler_cls(clip_model_path=mmproj_path, verbose=False)
+            _free_comfy_vram()   # GGUF 로드 전 ComfyUI 이미지 모델을 VRAM 에서 내려 공간 확보
             llm = Llama(model_path=model_path, chat_handler=chat_handler_instance,
                         n_gpu_layers=int(n_gpu_layers), verbose=False, n_ctx=int(n_ctx),
                         seed=int(seed), logits_all=True)
@@ -224,13 +225,10 @@ class TJ_ImageToPrompt:
                 raw_output = output["choices"][0]["message"]["content"].strip()
             finally:
                 _free_llm(llm)
-                try:
-                    del chat_handler_instance
-                except Exception:
-                    pass
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
+                # clip/mtmd 컨텍스트를 exit_stack.close() 로 완전 해제 —
+                # 안 하면 다음 실행에서 clip 이 CPU 로 fallback 해 느려진다.
+                _free_chat_handler(chat_handler_instance)
+                chat_handler_instance = None
             model_label = gguf_model
 
         final_prompt = _clean_output(raw_output)

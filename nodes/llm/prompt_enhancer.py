@@ -5,7 +5,7 @@ from ._llm_utils import (
     DEFAULT_TEXT_ENCODER_MODEL, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL,
     CLIP_LOADER_TYPE_OPTIONS, PURPOSE_OPTIONS, MODEL_FORMAT_OPTIONS, AESTHETIC_OPTIONS,
     _text_encoder_ggufs, _text_encoder_mmproj_options, _text_encoder_model_options,
-    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _clean_output,
+    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _free_comfy_vram, _clean_output,
     _strip_thinking_tags, _strip_thinking_process_block,
     _load_clip_from_text_encoder, _generate_with_textgenerate,
     build_layered_system_prompt,
@@ -106,6 +106,7 @@ class TJ_PromptEnhancer:
             model_path = _resolve_text_encoder_path(gguf_model)
             if not model_path or not os.path.isfile(model_path):
                 raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
+            _free_comfy_vram()   # GGUF 로드 전 ComfyUI 모델을 VRAM 에서 내려 공간 확보
             llm = Llama(model_path=model_path, n_gpu_layers=n_gpu_layers, verbose=False, n_ctx=int(n_ctx), seed=int(seed))
             try:
                 messages = [

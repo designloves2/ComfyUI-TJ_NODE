@@ -277,7 +277,63 @@ def _clean_output(text, original_input=""):
     return text.strip().strip("\"'")
 
 
+def _free_comfy_vram():
+    # GGUF(llama.cpp)는 ComfyUI 메모리 매니저 바깥에서 자체 CUDA 컨텍스트로
+    # VRAM 을 잡는다. 스마트 메모리가 켜져 있으면 ComfyUI 가 이미지 모델을
+    # VRAM 에 상주시켜 두므로, GGUF 로드 직전에 ComfyUI 모델을 내려 공간을
+    # 확보해야 한다(안 그러면 sysmem 으로 흘러넘쳐 느려지거나 로드 실패).
+    try:
+        import comfy.model_management as mm
+    except Exception:
+        return
+    try:
+        mm.unload_all_models()
+    except Exception:
+        pass
+    try:
+        mm.soft_empty_cache(force=True)
+    except Exception:
+        pass
+
+
+def _free_chat_handler(handler):
+    # 비전 핸들러(Llava/Qwen-VL 등)는 clip/mtmd 컨텍스트를 self._exit_stack 에
+    # 등록해두는데, ExitStack 은 GC 로는 정리 콜백이 안 돈다(.close() 필요).
+    # 그래서 `del handler` 만으로는 clip CUDA 컨텍스트가 완전히 해제되지 않아,
+    # 같은 프로세스에서 다음 로드 시 clip 이 GPU 백엔드를 못 잡고 CPU 로
+    # fallback → vision 인코딩이 수십~수백 배 느려진다.
+    # _exit_stack 을 명시적으로 close 하면 재로드해도 clip 이 GPU 를 유지한다.
+    if handler is None:
+        return
+    try:
+        if hasattr(handler, "close"):
+            handler.close()
+    except Exception:
+        pass
+    try:
+        es = getattr(handler, "_exit_stack", None)
+        if es is not None:
+            es.close()
+    except Exception:
+        pass
+    try:
+        del handler
+    except Exception:
+        pass
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def _free_llm(llm):
+    # llama.cpp 는 자체 CUDA 컨텍스트로 VRAM 을 잡으므로 del/gc 나
+    # torch.cuda.empty_cache() 만으로는 해제되지 않는다. Llama.close() 를
+    # 명시적으로 호출해 model+context 를 확실히 free 해야 VRAM 이 내려간다.
+    try:
+        if llm is not None and hasattr(llm, "close"):
+            llm.close()
+    except Exception:
+        pass
     try:
         del llm
     except Exception:

@@ -13,3 +13,7 @@ Thumbs.db
 
 # comfy node publish artifact
 node.zip
+
+# locally built llama-cpp-python wheels (env-specific, do not distribute)
+wheels/
+*.whl

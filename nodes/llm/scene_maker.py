@@ -10,7 +10,7 @@ import os
 from ._llm_utils import (
     MMPROJ_NONE, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL, _HANDLER_CLASSES,
     _text_encoder_ggufs, _text_encoder_mmproj_options,
-    _resolve_text_encoder_path, _is_bad_choice, _free_llm, tensor_to_data_uri,
+    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _free_chat_handler, _free_comfy_vram, tensor_to_data_uri,
 )
 
 
@@ -194,6 +194,7 @@ class _GGUFRunner:
                 kwargs["logits_all"] = True
                 self.has_vision = True
 
+        _free_comfy_vram()   # GGUF 로드 전 ComfyUI 모델을 VRAM 에서 내려 공간 확보
         self.llm = Llama(**kwargs)
 
     def generate(self, prompt, max_length, seed, image=None):
@@ -212,10 +213,9 @@ class _GGUFRunner:
 
     def close(self):
         _free_llm(self.llm)
-        try:
-            del self.chat_handler_instance
-        except Exception:
-            pass
+        # clip/mtmd 컨텍스트 완전 해제 (exit_stack.close) — 다음 실행 GPU 유지
+        _free_chat_handler(getattr(self, "chat_handler_instance", None))
+        self.chat_handler_instance = None
 
 
 # ── Prompt Templates ───────────────────────────────────────────────────────
