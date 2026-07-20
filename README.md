@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.8.2
+# ✨ TJ_NODE v2.8.3
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -20,7 +20,7 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.8.2)
+# 🆕 Latest Additions (v2.8.3)
 
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
@@ -43,6 +43,7 @@ Transfer results between workflow groups on one canvas while keeping their queue
 * 캐시는 `output/tj_send_bridge` 에 **내용 해시로 중복 없이** 저장(자동 정리: 미사용 7일·총 1GB·5000개 상한), 경로는 ComfyUI 허용 폴더 내부로 제한
 * 영상은 원본 경로를 **참조만** 하고 복사하지 않습니다 (캐시 폴더는 이미지 전용)
 * `Send (TJ)` 타이틀의 **`?` 버튼** → 캐시 현황(파일 수·용량) 확인 및 **수동 정리**(부분/전체)
+* `Send Point (TJ)` 의 **출력 On/Off 토글** → OFF 시 이후 그래프 실행을 차단 (값은 유지, 값이 없어도 에러 없음)
 * 기존 `Set/Get Node (TJ)` 와는 **독립적인 별도 시스템** — 서로 간섭하지 않습니다
 * CATEGORY: `✨ TJ_Node/Wireless`
 
