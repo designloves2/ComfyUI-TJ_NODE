@@ -90,6 +90,7 @@ def resolve_image_ref(ref):
         base = bridge_dir()
         cand = os.path.join(base, ref)
         if _contained(cand, base) and os.path.isfile(cand):
+            touch_bridge_file(cand)   # 사용 표시 → 쓰는 동안은 만료되지 않음
             return os.path.realpath(cand)
         # 브리지 폴더에 없으면 아래의 루트 내부 탐색으로 넘어간다
         # (저장 노드 결과물이 output/ 등에 있는 경우)
@@ -101,15 +102,31 @@ def resolve_image_ref(ref):
     return None
 
 
-MAX_BRIDGE_FILES = 500
-MAX_BRIDGE_BYTES = 1024 * 1024 * 1024      # 1 GB
+MAX_BRIDGE_FILES = 5000                     # 개수는 넉넉히 (실질 방어선은 용량)
+MAX_BRIDGE_BYTES = 1024 * 1024 * 1024       # 1 GB
+MAX_BRIDGE_AGE_DAYS = 7                     # 마지막 사용 후 7일 지나면 정리
 
 
-def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES):
-    """브리지 폴더를 오래된 파일부터 정리한다.
+def touch_bridge_file(path):
+    """브리지 캐시 파일을 '사용됨' 으로 표시(mtime 갱신).
 
-    개수만으로는 용량을 보장할 수 없어(고해상도 PNG 는 장당 수 MB) **총 용량**도
-    함께 상한을 둔다. 방금 저장한 최신 파일은 항상 남긴다.
+    만료 기준을 '생성 후' 가 아니라 '마지막 사용 후' 로 만들기 위한 것.
+    저장된 워크플로우에서 계속 쓰는 이미지는 만료되지 않는다.
+    """
+    try:
+        os.utime(path, None)
+    except Exception:
+        pass
+
+
+def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES,
+                      max_age_days=MAX_BRIDGE_AGE_DAYS):
+    """브리지 폴더를 오래 안 쓴 파일부터 정리한다.
+
+    - 마지막 사용 후 max_age_days 경과 → 삭제
+    - 그 뒤에도 개수/총 용량 상한을 넘으면 오래된 것부터 추가 삭제
+      (개수만으로는 용량을 보장할 수 없다 — 고해상도 PNG 는 장당 수 MB)
+    - 방금 저장한 최신 파일은 항상 남긴다
     (영상은 원본을 참조만 하므로 이 폴더에 쌓이지 않는다 — 이미지 캐시 전용)
     """
     try:
@@ -118,14 +135,30 @@ def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES):
             p = os.path.join(base, f)
             if os.path.isfile(p):
                 st = os.stat(p)
-                entries.append((st.st_mtime, st.st_size, p))
+                entries.append([st.st_mtime, st.st_size, p])
     except Exception:
         return
 
-    entries.sort()                                  # 오래된 것부터
+    entries.sort()                                  # 오래 안 쓴 것부터
+    if len(entries) <= 1:
+        return
+
+    # 1) 기간 만료 (최신 1개는 보존)
+    if max_age_days and max_age_days > 0:
+        cutoff = time.time() - max_age_days * 86400
+        for e in entries[:-1]:
+            if e[0] < cutoff:
+                try:
+                    os.remove(e[2])
+                    e[1] = None                     # 삭제됨 표시
+                except Exception:
+                    pass
+        entries = [e for e in entries if e[1] is not None]
+
+    # 2) 개수 / 총 용량 상한
     total = sum(size for _, size, _ in entries)
     idx = 0
-    last = len(entries) - 1                         # 최신 1개는 보존
+    last = len(entries) - 1
     while idx < last and (len(entries) - idx > keep or total > max_bytes):
         _, size, path = entries[idx]
         try:
