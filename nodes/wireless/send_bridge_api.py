@@ -102,26 +102,38 @@ def resolve_image_ref(ref):
 
 
 MAX_BRIDGE_FILES = 500
+MAX_BRIDGE_BYTES = 1024 * 1024 * 1024      # 1 GB
 
 
-def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES):
-    """브리지 폴더가 무한히 커지지 않도록 오래된 파일부터 정리 (여유롭게 유지)."""
+def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES):
+    """브리지 폴더를 오래된 파일부터 정리한다.
+
+    개수만으로는 용량을 보장할 수 없어(고해상도 PNG 는 장당 수 MB) **총 용량**도
+    함께 상한을 둔다. 방금 저장한 최신 파일은 항상 남긴다.
+    (영상은 원본을 참조만 하므로 이 폴더에 쌓이지 않는다 — 이미지 캐시 전용)
+    """
     try:
-        entries = [
-            (os.path.getmtime(os.path.join(base, f)), os.path.join(base, f))
-            for f in os.listdir(base)
-            if os.path.isfile(os.path.join(base, f))
-        ]
+        entries = []
+        for f in os.listdir(base):
+            p = os.path.join(base, f)
+            if os.path.isfile(p):
+                st = os.stat(p)
+                entries.append((st.st_mtime, st.st_size, p))
     except Exception:
         return
-    if len(entries) <= keep:
-        return
-    entries.sort()                       # 오래된 것부터
-    for _, path in entries[: len(entries) - keep]:
+
+    entries.sort()                                  # 오래된 것부터
+    total = sum(size for _, size, _ in entries)
+    idx = 0
+    last = len(entries) - 1                         # 최신 1개는 보존
+    while idx < last and (len(entries) - idx > keep or total > max_bytes):
+        _, size, path = entries[idx]
         try:
             os.remove(path)
+            total -= size
         except Exception:
             pass
+        idx += 1
 
 
 def _tensor_to_bridge_file(tensor, sender_id=None):
