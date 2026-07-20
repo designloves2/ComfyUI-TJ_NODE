@@ -21,6 +21,13 @@ import numpy as np
 import torch
 from PIL import Image
 
+try:
+    from comfy_execution.graph_utils import ExecutionBlocker
+except Exception:
+    class ExecutionBlocker:  # type: ignore[no-redef]
+        def __init__(self, message):
+            self.message = message
+
 from ...core.tj_types import any_type
 from .send_bridge_api import GET_REGISTRY, resolve_image_ref
 
@@ -49,6 +56,15 @@ class TJ_SendPoint:
                     "tooltip": "이 Send Point 의 고유 이름. Send (TJ) 노드에 이 이름으로 "
                                "버튼이 생깁니다. 비워두면 버튼이 만들어지지 않습니다.",
                 }),
+                # 출력 게이트: OFF 면 이 노드 아래쪽 그래프가 실행되지 않는다
+                "output_enabled": ("BOOLEAN", {
+                    "default": True,
+                    "label_on": "Output ON",
+                    "label_off": "Output OFF (차단)",
+                    "tooltip": "OFF 로 두면 값을 내보내지 않고 이 노드 이후 그래프의 실행을 "
+                               "막습니다. 전달받은 값은 그대로 유지되며, 값이 없어도 "
+                               "에러가 나지 않습니다.",
+                }),
             },
             "optional": {
                 # ↓ JS 가 채우는 내부 저장 슬롯 (사용자 입력용 아님, UI 에서 숨김)
@@ -65,8 +81,10 @@ class TJ_SendPoint:
         }
 
     @classmethod
-    def IS_CHANGED(cls, point_name="", received_ref="", received_text="",
+    def IS_CHANGED(cls, point_name="", output_enabled=True, received_ref="", received_text="",
                    received_kind="", received_info="", unique_id=None, **kwargs):
+        if not output_enabled:
+            return "off"
         entry = GET_REGISTRY.get(str(unique_id))
         if entry:
             return entry.get("ts", 0.0)
@@ -84,8 +102,13 @@ class TJ_SendPoint:
             return (path,)          # 영상은 경로(STRING)로 넘긴다
         return (_load_image_as_tensor(path),)
 
-    def execute(self, point_name="", received_ref="", received_text="",
+    def execute(self, point_name="", output_enabled=True, received_ref="", received_text="",
                 received_kind="", received_info="", unique_id=None, **kwargs):
+        # 출력 OFF: 값을 내보내지 않고 이후 그래프 실행을 차단한다.
+        # (값이 아직 없어도 에러를 내지 않는다 — 꺼둔 가지는 그냥 쉬는 상태)
+        if not output_enabled:
+            return (ExecutionBlocker(None),)
+
         entry = GET_REGISTRY.get(str(unique_id))
 
         # 1) 세션 메모리 우선 (이번 세션에서 방금 받은 값)
