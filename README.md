@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.7.0
+# ✨ TJ_NODE v2.8.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -20,10 +20,29 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.7.0)
+# 🆕 Latest Additions (v2.8.0)
 
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
+
+## 📮 Send (TJ) / Send Point (TJ) — Send Bridge
+
+한 캔버스 안의 서로 다른 워크플로우 그룹을 **큐 실행상 완전히 분리**하면서 결과물만 전달하는 노드 쌍.
+Transfer results between workflow groups on one canvas while keeping their queue execution fully separate.
+
+* **큐 분리가 핵심** — `Send Point` 는 실행 시 자기 저장값만 읽고 `Send` 를 그래프상 참조하지 않습니다.
+  덕분에 **그룹A(생성)를 다시 돌리지 않고 그룹B(업스케일 등)만 단독 실행**할 수 있습니다
+* 전달은 큐 실행이 아니라 **버튼 클릭 = API 한 번으로 값 복사** (연결이 아님)
+* `point_name` (고유 이름)으로 `Send` 노드에 **버튼이 자동 생성** — 이름을 비우면 버튼이 생기지 않습니다
+* **타입별 미리보기**: 🖼 IMAGE → 이미지 · 🎬 VIDEO → 플레이어 · 📝 STRING → 텍스트
+  (수신 타입도 함께 표시: `✅ IMAGE ← Send (TJ)`)
+* **영구 기억** — 받은 값이 워크플로우에 저장되어 **ComfyUI 재시작·재오픈 후에도 유지**되고
+  미리보기까지 복원됩니다 (LATENT 등 직렬화 불가 타입은 세션 한정으로 표시)
+* **부분 실행** — 아직 값이 없을 때 버튼을 누르면 전체 큐가 아니라
+  **그 Send 에 연결된 상위 노드만** 실행한 뒤 전달합니다
+* 캐시는 `output/tj_send_bridge` 에 **내용 해시로 중복 없이** 저장, 경로는 ComfyUI 허용 폴더 내부로 제한
+* 기존 `Set/Get Node (TJ)` 와는 **독립적인 별도 시스템** — 서로 간섭하지 않습니다
+* CATEGORY: `✨ TJ_Node/Wireless`
 
 ## 📐 Resolution (TJ)
 

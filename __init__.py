@@ -4,7 +4,7 @@
 from .core import tj_api
 
 # ── Wireless ──────────────────────────────────────────────────────────────
-from .nodes.wireless import TJ_SetNode, TJ_GetNode, TJ_MultiGetNode
+from .nodes.wireless import TJ_SetNode, TJ_GetNode, TJ_MultiGetNode, TJ_Send, TJ_SendPoint
 
 # ── Etc ───────────────────────────────────────────────────────────────────
 from .nodes.etc import (
@@ -85,6 +85,8 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SetNode":       TJ_SetNode,
     "TJ_GetNode":       TJ_GetNode,
     "TJ_MultiGetNode":  TJ_MultiGetNode,
+    "TJ_Send":          TJ_Send,
+    "TJ_SendPoint":     TJ_SendPoint,
 
     # Etc
     "TJ_MultiRouter":       TJ_MultiRouter,
@@ -154,6 +156,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SetNode":       "Set Node (TJ)",
     "TJ_GetNode":       "Get Node (TJ)",
     "TJ_MultiGetNode":  "Multi Get Node (TJ)",
+    "TJ_Send":          "Send (TJ)",
+    "TJ_SendPoint":     "Send Point (TJ)",
 
     # Etc
     "TJ_MultiRouter":       "Multi Router(TJ)",
