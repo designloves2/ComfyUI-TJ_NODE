@@ -42,6 +42,7 @@ Transfer results between workflow groups on one canvas while keeping their queue
   **그 Send 에 연결된 상위 노드만** 실행한 뒤 전달합니다
 * 캐시는 `output/tj_send_bridge` 에 **내용 해시로 중복 없이** 저장(자동 정리: 미사용 7일·총 1GB·5000개 상한), 경로는 ComfyUI 허용 폴더 내부로 제한
 * 영상은 원본 경로를 **참조만** 하고 복사하지 않습니다 (캐시 폴더는 이미지 전용)
+* `Send (TJ)` 타이틀의 **`?` 버튼** → 캐시 현황(파일 수·용량) 확인 및 **수동 정리**(부분/전체)
 * 기존 `Set/Get Node (TJ)` 와는 **독립적인 별도 시스템** — 서로 간섭하지 않습니다
 * CATEGORY: `✨ TJ_Node/Wireless`
 

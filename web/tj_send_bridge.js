@@ -9,6 +9,7 @@ import { api } from "../../scripts/api.js";
 // 받은 값은 received_* 위젯에 저장되어 워크플로우와 함께 보존된다(영구 기억).
 // 미리보기는 종류별로: IMAGE→이미지, VIDEO→플레이어, STRING→텍스트.
 
+const ACCENT = "#7612DA";   // TJ 브랜드 컬러
 const POINT_TYPE = "TJ_SendPoint";
 const SENDER_TYPE = "TJ_Send";
 const INTERNAL_WIDGETS = [
@@ -42,6 +43,153 @@ function hideWidget(widget) {
 function fitPointNode(node) {
     node.setSize(node.computeSize());
     node.setDirtyCanvas(true, true);
+}
+
+// ── 캐시 관리 팝업 (Send 노드 타이틀의 ? 버튼) ─────────────────
+const fmtBytes = (b) => {
+    if (!b) return "0 B";
+    const u = ["B", "KB", "MB", "GB"];
+    let i = 0;
+    while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+    return `${b.toFixed(i === 0 ? 0 : 1)} ${u[i]}`;
+};
+const fmtAgo = (ts) => {
+    if (!ts) return "-";
+    const s = Date.now() / 1000 - ts;
+    if (s < 60) return "방금";
+    if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+    if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
+    return `${Math.floor(s / 86400)}일 전`;
+};
+
+let cachePanel = null;
+
+function closeCachePanel() {
+    cachePanel?.remove();
+    cachePanel = null;
+}
+
+async function openCachePanel() {
+    closeCachePanel();
+    const el = document.createElement("div");
+    cachePanel = el;
+    el.style.cssText = `
+        position:fixed; top:70px; right:16px; width:290px; z-index:10000;
+        background:#1b1b1f; color:#ddd; border:1px solid ${ACCENT};
+        border-radius:8px; box-shadow:0 8px 28px rgba(0,0,0,.55);
+        font-size:12px; font-family:sans-serif; overflow:hidden;`;
+    el.innerHTML = `
+        <div style="background:${ACCENT};color:#fff;padding:7px 10px;font-weight:600;
+                    display:flex;justify-content:space-between;align-items:center;">
+          <span>Send Bridge 캐시</span>
+          <span data-close style="cursor:pointer;padding:0 4px;">✕</span>
+        </div>
+        <div data-body style="padding:10px;line-height:1.7;">불러오는 중…</div>`;
+    el.querySelector("[data-close]").onclick = closeCachePanel;
+    document.body.appendChild(el);
+    await refreshCachePanel();
+}
+
+async function refreshCachePanel() {
+    if (!cachePanel) return;
+    const body = cachePanel.querySelector("[data-body]");
+    let info;
+    try {
+        info = await (await fetch("/tj_send_bridge/cache_info")).json();
+    } catch (e) {
+        body.textContent = "조회 실패 (콘솔 확인)";
+        return;
+    }
+    const L = info.limits || {};
+    body.innerHTML = `
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:#999;">파일 수</span><b>${info.files}</b></div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:#999;">총 용량</span><b>${fmtBytes(info.bytes)}</b></div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:#999;">가장 오래 미사용</span><span>${fmtAgo(info.oldest_ts)}</span></div>
+      <div style="display:flex;justify-content:space-between;">
+        <span style="color:#999;">최근 사용</span><span>${fmtAgo(info.newest_ts)}</span></div>
+      <div style="margin:8px 0;border-top:1px solid #333;"></div>
+      <div style="color:#888;font-size:11px;line-height:1.6;">
+        자동 정리 기준<br>· 미사용 ${L.max_age_days}일 경과<br>
+        · 총 ${fmtBytes(L.max_bytes)} 초과<br>· ${L.max_files}개 초과
+      </div>
+      <div style="margin:10px 0 4px;display:flex;gap:6px;">
+        <button data-prune style="flex:1;cursor:pointer;background:#2a2a30;color:#eee;
+          border:1px solid #555;border-radius:5px;padding:6px 4px;">부분 정리</button>
+        <button data-all style="flex:1;cursor:pointer;background:#3a1f1f;color:#ffb4b4;
+          border:1px solid #a33;border-radius:5px;padding:6px 4px;">전체 정리</button>
+      </div>
+      <div data-msg style="min-height:16px;color:#8fd14f;font-size:11px;"></div>
+      <div style="color:#777;font-size:10px;">부분 정리 = 위 자동 기준을 지금 적용<br>
+        전체 정리 = 캐시 전부 삭제 (다시 Send 하면 복구)</div>`;
+
+    const msg = body.querySelector("[data-msg]");
+    const clean = async (mode) => {
+        if (mode === "all" &&
+            !confirm("캐시를 전부 삭제할까요?\n저장된 Send Point 미리보기가 사라지며, Send 를 다시 누르면 복구됩니다.")) {
+            return;
+        }
+        msg.style.color = "#8fd14f";
+        msg.textContent = "정리 중…";
+        try {
+            const res = await fetch("/tj_send_bridge/cache_clean", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ mode }),
+            });
+            const d = await res.json();
+            await refreshCachePanel();
+            const m = cachePanel?.querySelector("[data-msg]");
+            if (m) m.textContent = `${d.removed}개 삭제 · ${fmtBytes(d.freed)} 확보`;
+        } catch (e) {
+            msg.style.color = "#ff6b6b";
+            msg.textContent = "정리 실패 (콘솔 확인)";
+        }
+    };
+    body.querySelector("[data-prune]").onclick = () => clean("prune");
+    body.querySelector("[data-all]").onclick = () => clean("all");
+}
+
+// Send 노드 타이틀 우측에 ? 버튼을 그리고 클릭을 처리한다
+const HELP_R = 7;
+function installHelpButton(node) {
+    if (node.__tjHelpInstalled) return;
+    node.__tjHelpInstalled = true;
+
+    const origDraw = node.onDrawForeground;
+    node.onDrawForeground = function (ctx) {
+        origDraw?.apply(this, arguments);
+        if (this.flags?.collapsed) return;
+        const cx = this.size[0] - 14;
+        const cy = -LiteGraph.NODE_TITLE_HEIGHT * 0.5;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, HELP_R, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", cx, cy + 0.5);
+        ctx.restore();
+    };
+
+    const origDown = node.onMouseDown;
+    node.onMouseDown = function (e, pos, canvas) {
+        // 타이틀 영역(y<0)의 우측 원 안을 클릭했는지
+        const cx = this.size[0] - 14;
+        const cy = -LiteGraph.NODE_TITLE_HEIGHT * 0.5;
+        const dx = pos[0] - cx;
+        const dy = pos[1] - cy;
+        if (pos[1] < 0 && dx * dx + dy * dy <= (HELP_R + 3) * (HELP_R + 3)) {
+            openCachePanel();
+            return true;   // 드래그로 전파되지 않게
+        }
+        return origDown ? origDown.apply(this, arguments) : undefined;
+    };
 }
 
 // ── 버튼 ───────────────────────────────────────────────────────
@@ -400,6 +548,7 @@ app.registerExtension({
 
     async nodeCreated(node) {
         if (node.type === SENDER_TYPE) {
+            installHelpButton(node);      // 타이틀 우측 ? → 캐시 관리 팝업
             rebuildSenderButtons(node);
         } else if (node.type === POINT_TYPE) {
             INTERNAL_WIDGETS.forEach((n) => hideWidget(findWidget(node, n)));
@@ -446,6 +595,7 @@ app.registerExtension({
             app.graph._nodes
                 .filter((n) => n.type === SENDER_TYPE)
                 .forEach((senderNode) => {
+                    installHelpButton(senderNode);   // 로드된 노드에도 ? 버튼 부착
                     if (senderNode._tj_last_sig !== sig) {
                         senderNode._tj_last_sig = sig;
                         rebuildSenderButtons(senderNode);

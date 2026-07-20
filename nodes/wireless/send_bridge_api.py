@@ -141,7 +141,10 @@ def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES,
 
     entries.sort()                                  # 오래 안 쓴 것부터
     if len(entries) <= 1:
-        return
+        return 0, 0
+
+    removed = 0
+    freed = 0
 
     # 1) 기간 만료 (최신 1개는 보존)
     if max_age_days and max_age_days > 0:
@@ -150,6 +153,8 @@ def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES,
             if e[0] < cutoff:
                 try:
                     os.remove(e[2])
+                    removed += 1
+                    freed += e[1]
                     e[1] = None                     # 삭제됨 표시
                 except Exception:
                     pass
@@ -164,9 +169,69 @@ def _prune_bridge_dir(base, keep=MAX_BRIDGE_FILES, max_bytes=MAX_BRIDGE_BYTES,
         try:
             os.remove(path)
             total -= size
+            removed += 1
+            freed += size
         except Exception:
             pass
         idx += 1
+    return removed, freed
+
+
+def cache_info():
+    """브리지 캐시 현황 (개수 / 용량 / 최신·최오래 사용 시각)."""
+    base = bridge_dir()
+    files = 0
+    total = 0
+    oldest = None
+    newest = None
+    try:
+        for f in os.listdir(base):
+            p = os.path.join(base, f)
+            if not os.path.isfile(p):
+                continue
+            st = os.stat(p)
+            files += 1
+            total += st.st_size
+            oldest = st.st_mtime if oldest is None else min(oldest, st.st_mtime)
+            newest = st.st_mtime if newest is None else max(newest, st.st_mtime)
+    except Exception:
+        pass
+    return {
+        "files": files,
+        "bytes": total,
+        "oldest_ts": oldest,
+        "newest_ts": newest,
+        "limits": {
+            "max_files": MAX_BRIDGE_FILES,
+            "max_bytes": MAX_BRIDGE_BYTES,
+            "max_age_days": MAX_BRIDGE_AGE_DAYS,
+        },
+    }
+
+
+def clear_bridge_dir():
+    """브리지 캐시 전체 삭제. (removed, freed) 반환."""
+    base = bridge_dir()
+    removed = 0
+    freed = 0
+    try:
+        for f in os.listdir(base):
+            p = os.path.join(base, f)
+            if not os.path.isfile(p):
+                continue
+            # 안전장치: 브리지 폴더 내부만 삭제
+            if not _contained(p, base):
+                continue
+            try:
+                size = os.path.getsize(p)
+                os.remove(p)
+                removed += 1
+                freed += size
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return removed, freed
 
 
 def _tensor_to_bridge_file(tensor, sender_id=None):
@@ -439,6 +504,36 @@ try:
             """워크플로우를 다시 열었을 때 저장된 ref 로 미리보기를 복원하기 위한 조회."""
             ref = request.rel_url.query.get("ref", "")
             return web.json_response({"ok": True, "view": view_params(ref)})
+
+        @PromptServer.instance.routes.get("/tj_send_bridge/cache_info")
+        async def tj_send_bridge_cache_info(request):
+            """캐시 현황(개수/용량/보관 정책) 조회."""
+            return web.json_response({"ok": True, **cache_info()})
+
+        @PromptServer.instance.routes.post("/tj_send_bridge/cache_clean")
+        async def tj_send_bridge_cache_clean(request):
+            """수동 정리.
+            mode=prune : 보관 규칙(미사용 7일/용량/개수) 적용 — 부분 정리
+            mode=all   : 캐시 전체 삭제
+            """
+            try:
+                data = await request.json()
+            except Exception:
+                data = {}
+            mode = str(data.get("mode", "prune"))
+
+            before = cache_info()
+            if mode == "all":
+                removed, freed = clear_bridge_dir()
+                GET_REGISTRY.clear()          # 파일이 사라졌으니 세션 참조도 정리
+            else:
+                removed, freed = _prune_bridge_dir(bridge_dir())
+            after = cache_info()
+            return web.json_response({
+                "ok": True, "mode": mode,
+                "removed": removed, "freed": freed,
+                "before": before, "after": after,
+            })
 
         _ROUTES_REGISTERED = True
         print("[TJ Send Bridge] API route registered ✅")
