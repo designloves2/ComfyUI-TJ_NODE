@@ -119,7 +119,8 @@ async def list_dir_files(request):
             return web.json_response({"success": False, "error": "Invalid subfolder path"})
 
         if not os.path.isdir(target_dir):
-            return web.json_response({"success": True, "files": [], "folders": []})
+            # exists=False 로 폴더가 사라졌음을 알려 프론트가 죽은 북마크를 정리할 수 있게 한다.
+            return web.json_response({"success": True, "files": [], "folders": [], "exists": False})
 
         folders = []
         files = []
@@ -128,7 +129,12 @@ async def list_dir_files(request):
             full_path = os.path.join(target_dir, entry)
             if os.path.isdir(full_path):
                 folder_rel = (subfolder.rstrip("/") + "/" + entry) if subfolder else entry
-                folders.append({"name": entry, "subfolder": folder_rel})
+                # 폴더도 파일과 동일한 정렬 기준(시간)을 쓸 수 있도록 mtime 을 함께 내려준다.
+                try:
+                    fmtime = os.stat(full_path).st_mtime
+                except OSError:
+                    fmtime = 0
+                folders.append({"name": entry, "subfolder": folder_rel, "mtime": fmtime})
             else:
                 ext = os.path.splitext(entry)[1].lower()
                 if ext in ALLOWED_EXTENSIONS:
@@ -139,9 +145,16 @@ async def list_dir_files(request):
                     else:
                         prefix = "input/"
                     rel = (prefix + subfolder.rstrip("/") + "/" + entry) if subfolder else (prefix + entry)
-                    files.append({"filename": entry, "path": rel})
+                    # 정렬용 메타데이터(수정시각/크기/확장자)를 함께 내려준다.
+                    try:
+                        st = os.stat(full_path)
+                        mtime, size = st.st_mtime, st.st_size
+                    except OSError:
+                        mtime, size = 0, 0
+                    files.append({"filename": entry, "path": rel,
+                                  "mtime": mtime, "size": size, "ext": ext.lstrip(".")})
 
-        return web.json_response({"success": True, "files": files, "folders": folders})
+        return web.json_response({"success": True, "files": files, "folders": folders, "exists": True})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
 
@@ -214,6 +227,10 @@ async def upload_local(request):
         filename = "".join(c for c in filename if c.isalnum() or c in "._-")
         if not filename:
             filename = "uploaded_image.png"
+
+        # 이미지 파일만 허용 (확장자 화이트리스트). 비-이미지는 저장하지 않는다.
+        if os.path.splitext(filename)[1].lower() not in ALLOWED_EXTENSIONS:
+            return web.json_response({"success": False, "error": "Only image files are allowed"})
 
         input_dir = folder_paths.get_input_directory()
         dest = os.path.join(input_dir, filename)

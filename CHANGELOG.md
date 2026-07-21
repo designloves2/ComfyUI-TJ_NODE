@@ -3,6 +3,80 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.9.0] - 2026-07-21
+
+### [Added]
+
+* **`KREA2 (Prompt Enhance)`** — `model_format` 목록 맨 앞에 추가 (Prompt Studio / Prompt
+  Enhancer / Image to Prompt 공용). 이미지 분석·텍스트 교정 양쪽에서 쓰이므로, 사용자
+  프롬프트 전용이던 원문 대신 **소스 중립** 문구(`the source may be the user's written
+  prompt or an image you have just analyzed`)로 재작성. `User's Input:` 꼬리표와
+  thinking-block 지시를 제거해 뒤따르는 시스템 지시문을 삼키거나 "Thinking Process"
+  노출을 유발하던 문제도 함께 제거.
+* LLM 노드들의 `clip_loader_type` 을 **ComfyUI CLIPLoader 에서 동적으로 조회**하도록 변경
+  — 하드코딩 목록의 오타(`pixeldict`→`pixeldit`)를 고치고 `krea2`/`boogu` 를 추가. 새
+  ComfyUI 가 타입을 추가해도 자동으로 따라간다. `krea` 가 포함된 파일명은 Auto 모드에서
+  `krea2` 타입을 우선 시도.
+* **`Save With Original Names (TJ)`** 신규 노드 — 배치의 각 이미지를 원본 파일명 그대로
+  저장한다. `Multi Image Loader` 의 `FILENAMES` 출력(줄바꿈 구분)을 그대로 연결해 쓴다.
+  저장 위치는 output 하위 지정 폴더로 격리, 확장자는 원본 유지/선택 가능, 동일 파일명은
+  덮어쓰기/자동 번호 선택.
+* **`Index LoRA Loader Counter (TJ)`** 신규 노드 — Index LoRA Loader 의 활성(= `[none]`
+  이 아닌) LoRA 슬롯 개수를 **그래프 연결 없이** 실시간으로 추적한다. 캔버스에서 대상
+  로더의 `lora_1..lora_20` 위젯을 JS 가 직접 읽어 세므로, Queue Loop 의 `queue_count`/
+  `end_index` 에 연결해도 순환 의존성이 생기지 않는다(직접 연결 시
+  `Queue Loop → Index LoRA Loader → Queue Loop` 순환으로 ComfyUI 가 실행을 거부하는
+  것을 실제로 재현·확인함). 로더가 하나면 자동 인식, 여러 개면 드롭다운으로 선택.
+* `Multi Image Loader (TJ)`
+
+  * **출력 슬롯 `FILENAMES`** 추가 — 로드/선택된 이미지들의 원본 파일명(확장자 포함,
+    줄바꿈 구분). `Save With Original Names (TJ)` 와 함께 사용해 원본과 같은 이름으로
+    저장하는 용도.
+  * 파일 피커에 **정렬**(이름/시간/종류 × 오름/내림, localStorage 저장) 추가. 폴더는
+    파일과 동일한 기준으로 정렬하되 항상 최상위.
+  * **폴더 북마크** — 상단 바에서 등록/이동/해제, input·output·download 탭 한정, 폴더가
+    삭제되면 자동으로 목록에서 제거.
+  * 로컬 업로드를 **이미지 파일로 제한**(클라이언트 필터 + 서버 확장자 검증 — 기존엔
+    임의 파일이 업로드됐음).
+
+### [Fixed]
+
+* **원격/고지연 환경에서 Multi Image Loader 썸네일 로딩이 가끔 멈추는 문제** — 북마크
+  유효성 검사를 세션당 1회로 제한하고 메인 콘텐츠 로딩 이후 유휴 시점에 실행하도록
+  변경(썸네일 요청과 커넥션을 다투지 않게), 모든 목록 조회 요청에 타임아웃(응답 없으면
+  "다시 시도" 버튼과 함께 오류 표시), 썸네일 이미지에 `loading="lazy"` 적용.
+* **`Resolution (TJ)` 가 새로고침/워크플로우 재로드 시 1:1 로 초기화되던 문제** —
+  `nodeCreated` 시점엔 저장된 위젯 값이 아직 복원되기 전이라 항상 기본값을 읽고
+  있었음. `onConfigure`(위젯 값이 실제로 복원된 뒤) 에서 상태를 다시 읽어 UI 를
+  재구성하도록 수정. "워크플로우 열기" 실경로로 검증.
+* **`Queue Loop (TJ)` 가 연결된 입력을 무시하고 타이핑했던 값으로 Reset/Start 되던
+  문제** — `queue_count`/`start_index`/`end_index`/`step` 이 다른 노드에 연결되어
+  있어도 위젯의 예전 타이핑 값을 읽고 있었음. 연결된 원본 노드의 현재 값을
+  **실행 없이 즉시** 읽어오도록 수정(Index LoRA Loader Counter, PrimitiveInt 등),
+  알 수 없는 노드는 마지막 실행 결과값으로 폴백. 유휴 상태의 `ready` 표시도 연결된
+  값이 바뀌면 계속 최신으로 갱신됨.
+* `LoRA Analyzer` 4종(Krea2/Klein 4B·9B/Z-Image) — `use_original` 아래 UI(프리셋·조절·
+  저장/블록 목록)를 **아코디언으로 접기/펴기** 가능하도록 변경, 상태는
+  `node.properties` 에 저장되어 불러오기·새로고침 후에도 유지. 노드 크기 계산을
+  `computeSize` 기반으로 바꿔, 접었다 펴는 과정에서 노드 높이가 수천 px 로 발산하던
+  버그도 함께 해결.
+* `Smart Show (TJ)`
+
+  * 사용자가 조정한 노드 크기가 워크플로우 로드 중 임시 축소값으로 영구 손상되던
+    문제 — 크기 저장을 실제 사용자 드래그 리사이즈(`resizing_node`)일 때만 하도록
+    제한하고, 복원 시 직렬화된 `size` 대신 사용자 의도값(`saved_grid_size`)을
+    우선하도록 수정.
+  * Edit 모드 ON 상태에서 새 입력이 들어오면 편집 중이던 텍스트가 사라지던 문제 —
+    편집 중에는 입력을 무시하도록 수정, 편집 내용이 `text_content` 위젯에 실시간
+    동기화되지 않던 문제도 함께 해결.
+
+### [Security]
+
+* `list_dir_files` API — 폴더 존재 여부(`exists`)와 정렬용 메타데이터(수정시각·크기·
+  확장자)를 추가로 반환. `upload_local` API 가 이미지 확장자가 아닌 파일을 거부하도록
+  강화(기존엔 임의 파일이 업로드 가능했음).
+
+---
 ## [2.8.3] - 2026-07-20
 
 ### [Added]

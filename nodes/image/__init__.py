@@ -3,6 +3,7 @@ from .multi_image_loader import TJ_MultiImageLoader
 from .dynamic_batch import DynamicImageBatch
 from .save_primary import TJ_SaveImage_Primary
 from .save_subsequent import TJ_SaveImage_Subsequent
+from .save_original_names import TJ_SaveWithOriginalNames
 from .dynamic_batch_eclipse import DynamicImageBatchEclipse
 from .save_eclipse_subsequent import TJ_SaveImage_EclipseSubsequent
 from .batch_to_multi_output import TJ_BatchToMultiOutput

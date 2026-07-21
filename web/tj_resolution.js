@@ -458,6 +458,24 @@ app.registerExtension({
         node.setSize([Math.max(MIN_W, node.size[0] || 360), node.size[1]]);
         requestAnimationFrame(fitNode);
         setTimeout(fitNode, 120);
+
+        // 워크플로우 불러오기: nodeCreated 시점엔 아직 저장된 위젯 값이 반영되기
+        // 전이라(항상 기본값 1:1을 읽음) st 가 항상 초기값으로 남는다. LiteGraph 는
+        // node.configure() 안에서 widgets_values 를 실제로 채운 "뒤" 에 onConfigure
+        // 를 호출하므로, 여기서 ui_state/width/height 를 다시 읽어 UI 를 복원한다.
+        const origOnConfigure = node.onConfigure;
+        node.onConfigure = function (data) {
+            origOnConfigure?.apply(this, arguments);
+            try {
+                const saved = JSON.parse(wState?.value || "{}");
+                Object.assign(st, saved);
+            } catch (_) {}
+            st.w = Number(wW.value) || st.w;
+            st.h = Number(wH.value) || st.h;
+            render();
+            requestAnimationFrame(() => { try { fitNode(); } catch (_) {} });
+            setTimeout(() => { try { fitNode(); } catch (_) {} }, 150);
+        };
         if (typeof ResizeObserver !== "undefined") {
             let raf = null;
             const ro = new ResizeObserver(() => {

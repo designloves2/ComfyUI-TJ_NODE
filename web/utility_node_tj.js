@@ -1613,16 +1613,22 @@ app.registerExtension({
                 const origOnResize = this.onResize;
                 this.onResize = function(size) {
                     if (["video_file", "audio_file", "video"].includes(this.tj_display_type)) {
-                        if (size[0] < 400) size[0] = 400; 
+                        if (size[0] < 400) size[0] = 400;
                     }
                     if (this.tj_display_type === "audio_file") {
                         size[1] = 120;
                     }
 
                     if (!this.properties) this.properties = {};
-                    this.properties.saved_grid_size = [size[0], size[1]];
+                    // 사용자가 직접 드래그로 리사이즈할 때만 저장한다.
+                    // 로드/레이아웃 패스의 프로그램적 리사이즈(노드를 임시로 작게 잡음)는
+                    // resizing_node 가 이 노드가 아니므로 저장되지 않아, 사용자 크기가
+                    // 손상되지 않는다. (시간 기반 플래그로는 못 막는 레이스를 원천 차단)
+                    if (app.canvas && app.canvas.resizing_node === this) {
+                        this.properties.saved_grid_size = [size[0], size[1]];
+                    }
                     try { syncSmartShowDomWidths(); } catch (_) {}
-                    
+
                     if (origOnResize) origOnResize.apply(this, arguments);
                 };
 
@@ -1696,6 +1702,16 @@ app.registerExtension({
                 const textArea = document.createElement("textarea");
                 textArea.style.cssText = "flex:1 1 0%; height:100%; display:none; resize:none; background:#111; color:#eee; border:1px solid #555; border-radius:4px; padding:6px; font-family:monospace; font-size:12px; box-sizing:border-box; margin-bottom:4px; overflow-y:auto; pointer-events:auto;";
                 textArea.readOnly = true;
+                // Edit 모드에서 사용자가 입력한 내용을 text_content 위젯에 실시간 반영.
+                // (예전엔 동기화가 없어 편집본이 Python 출력에 반영되지 않았고,
+                //  재그리기 때 원본으로 되돌아가 편집이 사라졌다.)
+                textArea.oninput = () => {
+                    const editW = this.widgets?.find(w => w.name === "edit_mode");
+                    if (editW && editW.value) {
+                        const txtW = this.widgets?.find(w => w.name === "text_content");
+                        if (txtW) txtW.value = textArea.value;
+                    }
+                };
 
                 const mediaEl = document.createElement("video");
                 mediaEl.style.cssText = "flex:1 1 0%; min-height:0; width:100%; display:none; background:#000; object-fit:contain; border-radius:4px; margin-bottom:4px; pointer-events:auto;";
@@ -1971,6 +1987,21 @@ app.registerExtension({
             const origOnConfigure = nodeType.prototype.onConfigure;
             nodeType.prototype.onConfigure = function(data) {
                 if (origOnConfigure) origOnConfigure.apply(this, arguments);
+                // 불러오기: 사용자가 의도한 크기(saved_grid_size)를 권위값으로 복원한다.
+                // data.size(직렬화된 node.size)는 자동저장 직전 레이아웃 패스가 노드를
+                // 임시로 축소한 값일 수 있어 신뢰하지 않는다. saved_grid_size 는 이제
+                // 사용자 드래그로만 갱신되므로 항상 사용자 의도를 담는다.
+                // 로드 중 축소가 반복될 수 있어 여러 시점에 다시 적용한다.
+                const savedSize = (Array.isArray(this.properties?.saved_grid_size) && this.properties.saved_grid_size.length >= 2)
+                    ? this.properties.saved_grid_size.slice(0, 2)
+                    : (Array.isArray(data?.size) && data.size.length >= 2 ? [data.size[0], data.size[1]] : null);
+                if (savedSize) {
+                    this.properties.saved_grid_size = [savedSize[0], savedSize[1]];
+                    const applySize = () => { try { this.setSize([savedSize[0], savedSize[1]]); } catch (_) {} };
+                    setTimeout(applySize, 0);
+                    setTimeout(applySize, 80);
+                    setTimeout(applySize, 250);
+                }
                 const detachSnapshot = () => tjDetachCopiedPreviewSnapshot(this, { inputIndex: 0, inputName: "input" });
                 detachSnapshot();
                 requestAnimationFrame(() => {
@@ -1997,6 +2028,12 @@ app.registerExtension({
             nodeType.prototype.onExecuted = function(message) {
                 if (this.properties?.tj_snapshot_detached) {
                     tjRestoreDetachedSnapshotIfNeeded(this);
+                    return;
+                }
+                // Edit 모드 ON = 잠금: 텍스트를 편집하는 동안 들어온 입력은 무시한다.
+                // 편집 내용을 그대로 유지하며, Edit 를 OFF 해야 다음 입력을 다시 받는다.
+                const editModeW = this.widgets?.find(w => w.name === "edit_mode");
+                if (editModeW && editModeW.value && this.tj_display_type === "text") {
                     return;
                 }
                 if (message && message.tj_type) {

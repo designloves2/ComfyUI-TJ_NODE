@@ -10,8 +10,8 @@ import folder_paths
 class TJ_MultiImageLoader:
     """Multi Image Loader (TJ) - Load multiple images into a batch tensor."""
 
-    RETURN_TYPES = ("IMAGE", "INT", "INT")
-    RETURN_NAMES = ("BATCH", "WIDTH", "HEIGHT")
+    RETURN_TYPES = ("IMAGE", "INT", "INT", "STRING")
+    RETURN_NAMES = ("BATCH", "WIDTH", "HEIGHT", "FILENAMES")
     FUNCTION = "load_images"
     CATEGORY = " ✨ TJ_Node/Image"
     OUTPUT_NODE = False
@@ -160,7 +160,7 @@ class TJ_MultiImageLoader:
             paths = []
 
         if not paths:
-            return (torch.zeros(1, 64, 64, 3), 64, 64)
+            return (torch.zeros(1, 64, 64, 3), 64, 64, "")
 
         resample = self._get_resample(interpolation)
         first_img = Image.open(self._resolve_path(paths[0])).convert("RGB")
@@ -181,20 +181,26 @@ class TJ_MultiImageLoader:
                 tw, th = fw, fh
 
         tensors = []
+        names = []
         for p in paths:
             try:
                 img = Image.open(self._resolve_path(p)).convert("RGB")
                 img = self._resize_to_target(img, tw, th, scale_method, resample)
                 arr = np.array(img).astype(np.float32) / 255.0
                 tensors.append(torch.from_numpy(arr).unsqueeze(0))
+                # 파일명(확장자 포함)만 — 저장 노드에 원본 이름을 넘길 때 사용.
+                names.append(os.path.basename(str(p)))
             except Exception as e:
                 print(f"[TJ_MultiImageLoader] Failed to load: {p} — {e}")
 
         if not tensors:
-            return (torch.zeros(1, 64, 64, 3), 64, 64)
+            return (torch.zeros(1, 64, 64, 3), 64, 64, "")
 
         batch = torch.cat(tensors, dim=0)
         sel = self._parse_batch_select(batch_select, batch.shape[0])
         if sel != list(range(batch.shape[0])):
             batch = batch[sel]
-        return (batch, tw, th)
+            names = [names[i] for i in sel if 0 <= i < len(names)]
+        # 로드/선택된 이미지의 파일명 목록 (줄바꿈 구분). 1장이면 그 이름 하나.
+        filenames = "\n".join(names)
+        return (batch, tw, th, filenames)

@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.8.3
+# ✨ TJ_NODE v2.9.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -20,10 +20,51 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.8.3)
+# 🆕 Latest Additions (v2.9.0)
 
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
+
+## 🖼 Multi Image Loader (TJ) 업데이트
+
+* 파일 피커 **정렬**(이름/시간/종류 × 오름/내림, 폴더는 항상 최상위) + **폴더 북마크**
+  (input/output/download 한정, 삭제된 폴더는 자동으로 목록에서 제거)
+* **`FILENAMES`** 출력 슬롯 추가 — 로드된 이미지들의 원본 파일명(줄바꿈 구분)
+* 로컬 업로드는 **이미지 파일만** 허용 (서버측 검증 포함)
+* 원격/고지연 환경에서 썸네일 로딩이 멈추던 문제 수정(요청 타임아웃, 지연 로딩, 북마크
+  검증 세션당 1회 제한)
+
+## 💾 Save With Original Names (TJ)
+
+배치의 각 이미지를 **원본 파일명 그대로** 저장하는 신규 노드. `Multi Image Loader` 의
+`FILENAMES` 출력을 그대로 연결해서 씁니다. output 하위 폴더로 저장 위치 격리,
+확장자 원본유지/선택, 덮어쓰기/자동번호 선택 가능.
+
+## 🔢 Index LoRA Loader Counter (TJ)
+
+Index LoRA Loader 의 활성 LoRA 개수(`[none]` 제외)를 **그래프 연결 없이** 실시간으로
+추적하는 신규 노드. Queue Loop 의 `queue_count`/`end_index` 에 연결해 로라 개수만큼
+자동으로 큐를 돌리고 싶을 때 씁니다 — Index LoRA Loader 를 직접 연결하면 Queue Loop
+과 순환 참조가 생겨 ComfyUI 가 실행을 거부하므로, 이 노드는 그래프 링크가 아니라
+캔버스에서 대상 로더의 위젯 값을 JS 로 직접 읽는 방식으로 그 문제를 피합니다.
+
+## 🔧 Queue Loop (TJ) — 연결된 입력 처리 수정
+
+`queue_count`/`start_index`/`end_index`/`step` 이 다른 노드(Index LoRA Loader Counter
+등)에 연결되어 있어도 Reset/Start 가 연결 전 타이핑값을 쓰던 문제를 수정. 이제 연결된
+원본 노드의 현재 값을 **워크플로우 실행 없이 즉시** 반영합니다.
+
+## 🧩 그 외 안정성 수정
+
+* **Resolution (TJ)** — 새로고침/워크플로우 재로드 시 항상 1:1 로 초기화되던 문제 수정
+* **LoRA Analyzer** 4종 — `use_original` 아래 UI를 **아코디언**으로 접기/펴기 가능,
+  상태는 워크플로우에 저장되어 유지
+* **Smart Show (TJ)** — 사용자가 조절한 노드 크기가 로드 시 손상되던 문제, Edit 모드
+  중 새 입력이 편집 내용을 지우던 문제 수정
+* LLM 노드들의 `clip_loader_type` 을 ComfyUI 에서 동적으로 조회하도록 변경(오타 수정 +
+  `krea2` 추가), `model_format` 목록에 **KREA2 (Prompt Enhance)** 추가
+
+---
 
 ## 📮 Send (TJ) / Send Point (TJ) — Send Bridge
 

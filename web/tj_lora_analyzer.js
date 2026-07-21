@@ -80,6 +80,9 @@ const STR = {
         stAnalyzing: "분석 중…",
         stAnalyzed: "✅ 분석 완료",
         resetTitle: "이 블록 강도를 1.00으로 초기화",
+        secGuide:    "🔰 사용법",
+        secControls: "🎛 프리셋 · 조절 · 저장",
+        secBlocks:   "🧩 블록 목록",
         uoLabel: "원본값 사용",
         uoOn: "원본값 사용 (블록설정 무시)",
         uoOff: "내 블록설정 적용",
@@ -123,6 +126,9 @@ const STR = {
         stAnalyzing: "Analyzing…",
         stAnalyzed: "✅ Analysis done",
         resetTitle: "Reset this block to 1.00",
+        secGuide:    "🔰 How to",
+        secControls: "🎛 Presets · Adjust · Save",
+        secBlocks:   "🧩 Blocks",
         uoLabel: "use original",
         uoOn: "Use ORIGINAL (ignore blocks)",
         uoOff: "Use my block config",
@@ -613,14 +619,18 @@ app.registerExtension({
             return d;
         };
 
-        // 섹션 순서대로 헤더 + 행 생성
+        // 섹션 순서대로 헤더 + 행 생성 (아코디언으로 옮기기 위해 요소를 모아둔다)
+        const blockEls = [];
         SPEC.sections.forEach(s => {
             const end = s.start + s.count - 1;
-            wrap.appendChild(sectionLabel(`■ ${s.label} (${s.start === end ? s.start : `${s.start}–${end}`})`));
+            const lbl = sectionLabel(`■ ${s.label} (${s.start === end ? s.start : `${s.start}–${end}`})`);
+            wrap.appendChild(lbl);
+            blockEls.push(lbl);
             for (let i = s.start; i < s.start + s.count; i++) {
                 const r = mkRow(i);
                 rows.push(r);
                 wrap.appendChild(r.el);
+                blockEls.push(r.el);
             }
         });
 
@@ -660,6 +670,70 @@ app.registerExtension({
             }
         };
 
+        // ── 아코디언 (use_original 아래 UI 를 섹션별로 접기/펴기) ──────
+        // 접힘 상태는 node.properties 에 저장한다. properties 는 워크플로우 JSON 에
+        // 함께 직렬화되므로 불러오기·새로고침 후에도 그대로 복원된다.
+        const SECTION_DEFAULT_OPEN = {
+            guide: false, controls: true, blocks: true,
+        };
+        const secState = () => {
+            const p = node.properties || (node.properties = {});
+            if (!p.tj_sections || typeof p.tj_sections !== "object") {
+                p.tj_sections = { ...SECTION_DEFAULT_OPEN };
+            }
+            return p.tj_sections;
+        };
+
+        const sectionRefs = [];
+        const buildSection = (key, titleKey, els) => {
+            const box  = mkDiv("margin-bottom:6px;");
+            const head = mkDiv(`
+                display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
+                background:#241a33; border:1px solid #3c2a55; border-radius:5px;
+                padding:4px 8px; color:#cbb6e6; font-size:11px; font-weight:600;
+            `);
+            const caret = mkSpan("▼", "font-size:9px; width:10px; flex-shrink:0;");
+            const label = mkSpan("", "");
+            head.append(caret, label);
+
+            const body = mkDiv("padding-top:6px;");
+            els.forEach(e => body.appendChild(e));   // wrap 에서 body 로 이동
+            box.append(head, body);
+
+            const apply = () => {
+                const open = secState()[key] !== false;
+                body.style.display = open ? "" : "none";
+                caret.textContent = open ? "▼" : "▶";
+            };
+            head.onclick = () => {
+                const s = secState();
+                s[key] = !(s[key] !== false);
+                apply();
+                // 콘텐츠 높이가 바뀌었으니 노드 크기를 다시 맞춘다 (하단 여백 방지)
+                node.__tjScheduleFit?.();
+            };
+            onLang(() => label.textContent = t(titleKey));
+            sectionRefs.push(apply);
+            return box;
+        };
+
+        [
+            buildSection("guide", "secGuide", [guide]),
+            // 프리셋 ~ 저장까지는 하나의 아코디언으로 묶는다
+            buildSection("controls", "secControls",
+                [presetRow, btnBar, autoRow, cmpRow, saveRow]),
+            buildSection("blocks", "secBlocks", blockEls),
+        ].forEach(box => wrap.appendChild(box));
+        sectionRefs.forEach(fn => fn());
+
+        // 워크플로우를 불러오면 properties 가 이때 복원되므로 다시 반영한다
+        const origOnConfigure = node.onConfigure;
+        node.onConfigure = function () {
+            origOnConfigure?.apply(this, arguments);
+            sectionRefs.forEach(fn => fn());
+            node.__tjScheduleFit?.();
+        };
+
         // ── DOM 위젯 ──────────────────────────────────
         const host = document.createElement("div");
         host.style.cssText = "width:100%;box-sizing:border-box;";
@@ -680,25 +754,32 @@ app.registerExtension({
         });
 
         // ── 크기 ──────────────────────────────────────
-        // node.computeSize() 는 프론트 버전에 따라 DOM 위젯 높이를 반영하지 못해
-        // (scrollHeight=0 → 고정 폴백) 모든 노드가 같은 높이로 굳고 하단에 여백이 남았다.
-        // 그래서 "실제 렌더된 host 높이"와 "콘텐츠 높이"의 차이만큼 노드를 보정한다.
-        // host 는 노드 크기에 따라 늘어나므로, RO 가 다시 돌며 delta≈0 으로 수렴한다.
+        // DOM 위젯이 자기 높이를 직접 알려주게 하고, 노드 높이는 ComfyUI 가 계산하게 둔다.
+        // (예전엔 "노드높이 − host실측" 으로 overhead 를 구했는데, host 실측이 아직
+        //  갱신되지 않은 순간에 계산하면 overhead 가 틀어져 노드가 수천 px 로 발산했다.)
+        domWidget.computeSize = function (width) {
+            return [width, (wrap.scrollHeight || 0) + 8];
+        };
+
         const fitNode = () => {
-            const contentH = wrap.scrollHeight;
-            if (!contentH) return;                        // 아직 레이아웃 전
-            const scale = app.canvas?.ds?.scale || 1;
-            const hostH = host.getBoundingClientRect().height / scale;
-            if (!hostH) return;
-            // 노드 높이 = (DOM 위젯 외 영역: 타이틀/슬롯/일반위젯) + 콘텐츠 높이
-            // overhead 를 실측해 한 번에 정확히 계산한다 → 반복 보정이 필요 없어 루프가 없다.
-            const overhead = node.size[1] - hostH;
-            const target = Math.round(overhead + contentH);
+            if (!wrap.scrollHeight) return;               // 아직 레이아웃 전
+            const target = Math.round(node.computeSize()[1]);
+            if (!target || !isFinite(target)) return;
             if (Math.abs(target - node.size[1]) > 2) {
                 node.setSize([Math.max(540, node.size[0] || 540), Math.max(120, target)]);
                 node.setDirtyCanvas(true, true);
             }
         };
+        // 접기/펴기·로드 직후에는 DOM 레이아웃과 캔버스 draw 가 아직 안 끝나
+        // host 실측이 옛 값일 수 있다. 몇 프레임에 걸쳐 다시 맞춘다.
+        node.__tjScheduleFit = () => {
+            const tryFit = () => { try { fitNode(); } catch (_) {} };
+            requestAnimationFrame(tryFit);
+            setTimeout(tryFit, 80);
+            setTimeout(tryFit, 220);
+            setTimeout(tryFit, 500);
+        };
+
         const MIN_W = 540;
         const origOnResize = node.onResize;
         node.onResize = function (size) {

@@ -56,12 +56,46 @@ MMPROJ_NONE = "none"
 DEFAULT_TEXT_ENCODER_MODEL = "gemma4_e4b_it_fp8_scaled.safetensors"
 DEFAULT_GGUF_MODEL = "qwen3.5-4B-Uncensored-HauhauCS-Aggressive-Q8_0.gguf"
 DEFAULT_MMPROJ_MODEL = "mmproj-qwen3.5-4B-Uncensored-HauhauCS-Aggressive-BF16.gguf"
-CLIP_LOADER_TYPE_OPTIONS = [
-    "Auto", "stable_diffusion", "stable_cascade", "sd3", "stable_audio",
-    "mochi", "ltxv", "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma",
-    "ace", "omnigen2", "qwen_image", "hunyuan_image", "flux2", "ovis",
-    "longcat_image", "cogvideox", "lens", "pixeldict", "ideogram4",
+# ── CLIP loader type ───────────────────────────────────────────────────────
+# 설치된 ComfyUI 의 CLIPLoader 에서 지원 타입을 그대로 읽어온다.
+# 하드코딩해두면 ComfyUI 가 새 타입을 추가할 때마다 어긋나고(과거 'pixeldict' 오타처럼)
+# 목록에 없는 값은 로드 시 실패하므로, 런타임 조회 + 실패 시 폴백 방식으로 둔다.
+_CLIP_LOADER_TYPE_FALLBACK = [
+    "stable_diffusion", "stable_cascade", "sd3", "stable_audio", "mochi", "ltxv",
+    "pixart", "cosmos", "lumina2", "wan", "hidream", "chroma", "ace", "omnigen2",
+    "qwen_image", "hunyuan_image", "flux2", "ovis", "longcat_image", "cogvideox",
+    "lens", "pixeldit", "ideogram4", "boogu", "krea2",
 ]
+
+# 자주 쓰는 타입은 'Auto' 바로 뒤로 올려 고르기 쉽게 한다.
+_CLIP_LOADER_PINNED = ["krea2"]
+
+
+def _comfy_clip_loader_types():
+    """설치된 ComfyUI 가 실제로 지원하는 CLIPLoader type 목록."""
+    try:
+        import nodes as _nodes
+        cls = _nodes.NODE_CLASS_MAPPINGS.get("CLIPLoader")
+        if cls is not None:
+            spec = cls.INPUT_TYPES().get("required", {}).get("type", [None])[0]
+            if isinstance(spec, (list, tuple)):
+                values = [str(v) for v in spec if v]
+                if values:
+                    return values
+    except Exception:
+        pass
+    return list(_CLIP_LOADER_TYPE_FALLBACK)
+
+
+def _build_clip_loader_options():
+    types = _comfy_clip_loader_types()
+    options = ["Auto"]
+    options += [t for t in _CLIP_LOADER_PINNED if t in types]
+    options += [t for t in types if t not in options]
+    return options
+
+
+CLIP_LOADER_TYPE_OPTIONS = _build_clip_loader_options()
 
 # ── Purpose (편집: nodes/llm/data/purposes.json) ────────────────────────────
 _PURPOSE_FALLBACK = [
@@ -459,7 +493,9 @@ def _infer_clip_loader_candidates(clip_name, clip_loader_type="Auto"):
     if requested.lower() != "auto":
         candidates.append(requested)
     else:
-        if any(k in name for k in ("ideogram",)):
+        if "krea" in name:
+            candidates.extend(["krea2", "flux2", "stable_diffusion"])
+        elif any(k in name for k in ("ideogram",)):
             candidates.extend(["ideogram4", "qwen_image", "lumina2", "stable_diffusion"])
         elif any(k in name for k in ("qwen", "qwen3vl", "qwen_vl")):
             candidates.extend(["qwen_image", "ideogram4", "lumina2", "stable_diffusion"])

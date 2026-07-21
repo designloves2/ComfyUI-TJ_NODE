@@ -209,7 +209,7 @@ function refreshMultiImageLoaderAutoSets(node) {
     if (!node.properties) node.properties = {};
     const autoW = getAutoSetWidget(node);
     const enabled = autoW ? !!autoW.value : false;
-    const baseNames = ["BATCH", "WIDTH", "HEIGHT"];
+    const baseNames = ["BATCH", "WIDTH", "HEIGHT", "FILENAMES"];
 
     if (!enabled) {
         node.properties.auto_sets = {};
@@ -225,7 +225,7 @@ function refreshMultiImageLoaderAutoSets(node) {
     const existing = _tjCollectProviderNames(node.graph, node);
     node.properties.auto_sets = {};
     node.outputs?.forEach((out, i) => {
-        if (i > 2) return;
+        if (i > 3) return;
         const base = baseNames[i] || out.name || `output_${i + 1}`;
         const name = _tjUniqueAutoSetName(node.graph, base, existing, node);
         node.properties.auto_sets[i] = name;
@@ -319,6 +319,98 @@ function getImageSrc(path) {
     url += `&t=${Date.now()}`;
     return url;
 }
+
+// ── 정렬 설정 (localStorage 저장) ──
+const TJ_MIL_SORT_KEY = "tj_mil_sort_v1";
+function tjMilGetSort() {
+    try {
+        const s = JSON.parse(localStorage.getItem(TJ_MIL_SORT_KEY) || "{}");
+        return { key: s.key || "name", dir: s.dir || "asc" };
+    } catch { return { key: "name", dir: "asc" }; }
+}
+function tjMilSetSort(s) { try { localStorage.setItem(TJ_MIL_SORT_KEY, JSON.stringify(s)); } catch (_) {} }
+function tjMilSortFiles(files, sort) {
+    const arr = files.slice();
+    const dir = sort.dir === "desc" ? -1 : 1;
+    const byName = (a, b) => String(a.filename || "").localeCompare(String(b.filename || ""), undefined, { numeric: true, sensitivity: "base" });
+    arr.sort((a, b) => {
+        let r = 0;
+        if (sort.key === "time") r = (a.mtime || 0) - (b.mtime || 0) || byName(a, b);
+        else if (sort.key === "type") r = String(a.ext || "").localeCompare(String(b.ext || "")) || byName(a, b);
+        else r = byName(a, b);
+        return r * dir;
+    });
+    return arr;
+}
+// 폴더는 항상 파일보다 위에 오지만, 폴더끼리는 파일과 동일한 정렬 기준을 적용한다.
+// 'type'(확장자) 기준은 폴더엔 의미가 없으므로 이름순으로 대체한다.
+function tjMilSortFolders(folders, sort) {
+    const arr = folders.slice();
+    const dir = sort.dir === "desc" ? -1 : 1;
+    const byName = (a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { numeric: true, sensitivity: "base" });
+    arr.sort((a, b) => {
+        let r = 0;
+        if (sort.key === "time") r = (a.mtime || 0) - (b.mtime || 0) || byName(a, b);
+        else r = byName(a, b);
+        return r * dir;
+    });
+    return arr;
+}
+
+// ── 폴더 북마크 (localStorage 저장; input/download/output 탭 한정) ──
+const TJ_MIL_BM_KEY = "tj_mil_bookmarks_v1";
+const TJ_MIL_BM_TABS = ["input", "download", "output"];
+function tjMilGetBookmarks() {
+    try { const a = JSON.parse(localStorage.getItem(TJ_MIL_BM_KEY) || "[]"); return Array.isArray(a) ? a : []; }
+    catch { return []; }
+}
+function tjMilSetBookmarks(list) { try { localStorage.setItem(TJ_MIL_BM_KEY, JSON.stringify(list)); } catch (_) {} }
+function tjMilBmId(tab, subfolder) { return tab + "|" + (subfolder || ""); }
+function tjMilHasBookmark(tab, subfolder) {
+    const id = tjMilBmId(tab, subfolder);
+    return tjMilGetBookmarks().some(b => tjMilBmId(b.tab, b.subfolder) === id);
+}
+function tjMilAddBookmark(tab, subfolder) {
+    if (!TJ_MIL_BM_TABS.includes(tab)) return;
+    const list = tjMilGetBookmarks();
+    const id = tjMilBmId(tab, subfolder);
+    if (list.some(b => tjMilBmId(b.tab, b.subfolder) === id)) return;
+    const label = subfolder ? subfolder.split("/").filter(Boolean).pop() : tab;
+    list.push({ tab, subfolder: subfolder || "", label });
+    tjMilSetBookmarks(list);
+}
+function tjMilRemoveBookmark(tab, subfolder) {
+    const id = tjMilBmId(tab, subfolder);
+    tjMilSetBookmarks(tjMilGetBookmarks().filter(b => tjMilBmId(b.tab, b.subfolder) !== id));
+}
+// subfolder("a/b/c") → 각 단계 스택(["a","a/b","a/b/c"])으로 만들어 Back 이 정상 동작하게.
+function tjMilBuildStack(subfolder) {
+    if (!subfolder) return [];
+    const parts = subfolder.split("/").filter(Boolean);
+    const stack = [];
+    let acc = "";
+    for (const p of parts) { acc = acc ? acc + "/" + p : p; stack.push(acc); }
+    return stack;
+}
+// 이미지 파일만 업로드 허용 (클라이언트 1차 필터; 서버도 확장자 검증).
+const TJ_MIL_IMG_EXT = ["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "tif"];
+function tjMilIsImageFile(name) {
+    const ext = String(name || "").split(".").pop().toLowerCase();
+    return TJ_MIL_IMG_EXT.includes(ext);
+}
+
+// 네트워크 요청에 타임아웃을 건다. 원격/고지연 환경에서 요청 하나가 응답 없이
+// 걸려버리면(연결 끊김·프록시 지연 등) "Loading..." 이 영구히 붙잡히는 문제를 막는다.
+function tjMilFetchTimeout(url, options = {}, ms = 12000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms);
+    return fetch(url, { ...options, signal: ctrl.signal }).finally(() => clearTimeout(timer));
+}
+
+// 북마크 유효성 검사는 세션당 한 번이면 충분하다(폴더가 자주 사라지진 않음).
+// 픽커를 열 때마다 북마크 수만큼 추가 요청을 쏘면, 원격/고지연 환경에서 수백 개의
+// 썸네일 요청과 커넥션을 경쟁하게 되어 로딩이 오래 멈춰 보이는 원인이 될 수 있다.
+let TJ_MIL_BOOKMARKS_PRUNED_THIS_SESSION = false;
 
 
 // ── Register Extension ──
@@ -728,6 +820,87 @@ app.registerExtension({
                     tabsEl.appendChild(tabEl);
                 });
                 box.appendChild(tabsEl);
+
+                // ── 북마크 바 (상단 메뉴) ──
+                const bookmarkBar = document.createElement("div");
+                bookmarkBar.style.cssText = "display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid #0a3;background:#001a0d;flex-wrap:wrap;min-height:26px;";
+
+                function navigateToBookmark(bm) {
+                    if (!TJ_MIL_BM_TABS.includes(bm.tab)) return;
+                    activeTab = bm.tab;
+                    tabEls.forEach((d, i) => {
+                        const on = tabNames[i] === activeTab;
+                        d.style.color = on ? "#fff" : "#aaa";
+                        d.style.borderBottomColor = on ? "#58f" : "transparent";
+                    });
+                    subfolderStack[bm.tab] = tjMilBuildStack(bm.subfolder);
+                    loadTabContent();
+                }
+
+                function renderBookmarkBar() {
+                    bookmarkBar.innerHTML = "";
+                    const star = document.createElement("span");
+                    star.textContent = "★";
+                    star.style.cssText = "color:#ffcc33;font-size:12px;flex-shrink:0;";
+                    bookmarkBar.appendChild(star);
+
+                    const bms = tjMilGetBookmarks();
+                    if (bms.length === 0) {
+                        const hint = document.createElement("span");
+                        hint.textContent = "북마크 없음 — 폴더 안에서 ‘☆ 북마크’ 버튼으로 등록";
+                        hint.style.cssText = "color:#5a7;font-size:10px;";
+                        bookmarkBar.appendChild(hint);
+                        return;
+                    }
+                    bms.forEach(bm => {
+                        const chip = document.createElement("div");
+                        chip.style.cssText = "display:flex;align-items:center;gap:4px;background:#0a2a18;border:1px solid #0a5;border-radius:12px;padding:2px 6px 2px 8px;cursor:pointer;";
+                        const lbl = document.createElement("span");
+                        lbl.textContent = (bm.tab === "download" ? "⬇ " : bm.tab === "output" ? "⬆ " : "📥 ") + bm.label;
+                        lbl.title = `/${bm.tab}/${bm.subfolder || ""}`;
+                        lbl.style.cssText = "color:#7fe0b0;font-size:10px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+                        lbl.addEventListener("click", () => navigateToBookmark(bm));
+                        const rm = document.createElement("span");
+                        rm.textContent = "×";
+                        rm.style.cssText = "color:#f88;font-size:12px;line-height:1;flex-shrink:0;";
+                        rm.title = "북마크 해제";
+                        rm.addEventListener("click", (e) => {
+                            e.stopPropagation();
+                            tjMilRemoveBookmark(bm.tab, bm.subfolder);
+                            renderBookmarkBar();
+                            if (typeof updateBookmarkBtn === "function") updateBookmarkBtn();
+                        });
+                        chip.appendChild(lbl); chip.appendChild(rm);
+                        bookmarkBar.appendChild(chip);
+                    });
+                }
+
+                // 죽은 북마크(폴더 삭제됨) 자동 정리 — 세션당 1회, 메인 콘텐츠 로딩이
+                // 끝난 뒤 낮은 우선순위로 실행해 썸네일 요청과 커넥션을 다투지 않게 한다.
+                async function pruneDeadBookmarks() {
+                    if (TJ_MIL_BOOKMARKS_PRUNED_THIS_SESSION) return;
+                    const bms = tjMilGetBookmarks();
+                    if (bms.length === 0) return;
+                    TJ_MIL_BOOKMARKS_PRUNED_THIS_SESSION = true;
+                    let changed = false;
+                    for (const bm of bms) {
+                        try {
+                            const resp = await tjMilFetchTimeout("/tj_node/list_dir_files", {
+                                method: "POST", headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ dir_type: bm.tab, subfolder: bm.subfolder }),
+                            }, 8000);
+                            const d = await resp.json();
+                            if (d && d.success && d.exists === false) {
+                                tjMilRemoveBookmark(bm.tab, bm.subfolder);
+                                changed = true;
+                            }
+                        } catch (_) { /* 타임아웃/네트워크 오류 시엔 유지 (다음 세션에 재검사) */ }
+                    }
+                    if (changed) { renderBookmarkBar(); if (typeof updateBookmarkBtn === "function") updateBookmarkBtn(); }
+                }
+
+                let updateBookmarkBtn = null;   // navBar 의 북마크 토글 버튼이 채운다
+                box.appendChild(bookmarkBar);
                 box.appendChild(fileList);
 
                 // Footer
@@ -895,6 +1068,11 @@ app.registerExtension({
                                 cell.appendChild(removeBtn);
 
                                 const thumb = document.createElement("img");
+                                // 화면에 보이는 것부터 로드(브라우저 네이티브 지연 로딩).
+                                // 폴더에 파일이 많을 때 원격/고지연 환경에서 수백 개를 한 번에
+                                // 요청해 느려지는 것을 완화한다.
+                                thumb.loading = "lazy";
+                                thumb.decoding = "async";
                                 thumb.src = getImageSrc(f.path);
                                 thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
                                 thumb.onerror = function () { this.style.display = "none"; };
@@ -927,7 +1105,17 @@ app.registerExtension({
                             });
                         }
 
-                        async function doUpload(files) {
+                        async function doUpload(fileListArg) {
+                            // 이미지 파일만 업로드 (비-이미지는 걸러냄).
+                            const all = Array.from(fileListArg || []);
+                            const files = all.filter(f => tjMilIsImageFile(f.name));
+                            const skipped = all.length - files.length;
+                            if (files.length === 0) {
+                                uploadArea.textContent = skipped > 0
+                                    ? "이미지 파일만 업로드할 수 있습니다."
+                                    : "Click or drag files here to upload";
+                                return;
+                            }
                             uploadArea.textContent = "Uploading...";
                             for (const file of files) {
                                 const fd = new FormData();
@@ -943,7 +1131,9 @@ app.registerExtension({
                             }
                             updateSelectCount();
                             renderUploadedGrid();
-                            uploadArea.textContent = "Upload complete! Click or drag more files.";
+                            uploadArea.textContent = skipped > 0
+                                ? `업로드 완료 (이미지 아님 ${skipped}개 제외). 더 추가하려면 클릭/드래그.`
+                                : "Upload complete! Click or drag more files.";
                         }
 
                         fileList.appendChild(uploadArea);
@@ -967,11 +1157,13 @@ app.registerExtension({
                     fileList.appendChild(loadingEl);
 
                     try {
-                        const resp = await fetch("/tj_node/list_dir_files", {
+                        // 타임아웃을 걸어, 원격/고지연 환경에서 요청이 응답 없이 걸려버려도
+                        // "Loading..." 이 무한정 붙잡히지 않고 재시도 가능한 오류로 넘어가게 한다.
+                        const resp = await tjMilFetchTimeout("/tj_node/list_dir_files", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ dir_type: activeTab, subfolder: currentSub }),
-                        });
+                        }, 15000);
                         const data = await resp.json();
 
                         // 완전히 비우고 다시 그리기
@@ -993,11 +1185,61 @@ app.registerExtension({
                         }
 
                         const pathLabel = document.createElement("span");
-                        pathLabel.style.cssText = "color:#888;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;";
+                        pathLabel.style.cssText = "color:#888;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:40px;";
                         pathLabel.textContent = currentSub ? `/${activeTab}/${currentSub}` : `/${activeTab}`;
                         navBar.appendChild(pathLabel);
 
+                        // ── 현재 폴더 북마크 토글 (input/download/output 한정) ──
+                        const bmBtn = document.createElement("button");
+                        bmBtn.style.cssText = "height:22px;padding:0 8px;border-radius:3px;font-size:11px;cursor:pointer;flex-shrink:0;";
+                        updateBookmarkBtn = () => {
+                            const on = tjMilHasBookmark(activeTab, currentSub);
+                            bmBtn.textContent = on ? "★ 북마크됨" : "☆ 북마크";
+                            bmBtn.style.border = on ? "1px solid #ffcc33" : "1px solid #0a5";
+                            bmBtn.style.background = on ? "#332a0d" : "transparent";
+                            bmBtn.style.color = on ? "#ffcc33" : "#7fe0b0";
+                        };
+                        bmBtn.addEventListener("click", () => {
+                            if (tjMilHasBookmark(activeTab, currentSub)) tjMilRemoveBookmark(activeTab, currentSub);
+                            else tjMilAddBookmark(activeTab, currentSub);
+                            updateBookmarkBtn();
+                            renderBookmarkBar();
+                        });
+                        updateBookmarkBtn();
+                        navBar.appendChild(bmBtn);
+
+                        // ── 정렬 컨트롤 (이름/시간/종류 · 오름/내림; 폴더는 항상 최상위) ──
+                        const sort = tjMilGetSort();
+                        const sortSel = document.createElement("select");
+                        sortSel.style.cssText = "height:22px;border:1px solid #0088cc;border-radius:3px;background:#001a2e;color:#00bfff;font-size:11px;cursor:pointer;flex-shrink:0;";
+                        [["name", "이름"], ["time", "시간"], ["type", "종류"]].forEach(([v, t]) => {
+                            const o = document.createElement("option"); o.value = v; o.textContent = t;
+                            if (v === sort.key) o.selected = true; sortSel.appendChild(o);
+                        });
+                        sortSel.addEventListener("change", () => {
+                            tjMilSetSort({ key: sortSel.value, dir: tjMilGetSort().dir });
+                            loadTabContent();
+                        });
+                        navBar.appendChild(sortSel);
+
+                        const dirBtn = document.createElement("button");
+                        dirBtn.textContent = sort.dir === "desc" ? "▼ 내림" : "▲ 오름";
+                        dirBtn.style.cssText = "height:22px;padding:0 8px;border:1px solid #0088cc;border-radius:3px;background:transparent;color:#00bfff;font-size:11px;cursor:pointer;flex-shrink:0;";
+                        dirBtn.addEventListener("click", () => {
+                            const cur = tjMilGetSort();
+                            tjMilSetSort({ key: cur.key, dir: cur.dir === "desc" ? "asc" : "desc" });
+                            loadTabContent();
+                        });
+                        navBar.appendChild(dirBtn);
+
                         fileList.appendChild(navBar);
+
+                        // 북마크했던 폴더가 삭제됐으면 자동 해제
+                        if (data.exists === false && currentSub && tjMilHasBookmark(activeTab, currentSub)) {
+                            tjMilRemoveBookmark(activeTab, currentSub);
+                            updateBookmarkBtn();
+                            renderBookmarkBar();
+                        }
 
                         const hasFolders = data.folders && data.folders.length > 0;
                         const hasFiles = data.files && data.files.length > 0;
@@ -1012,7 +1254,10 @@ app.registerExtension({
 
                         // ── Select All / Deselect All ──
                         const cellList = [];
-                        let currentFiles = data.files || [];
+                        // 폴더와 파일 각각 같은 정렬 기준 적용. 폴더는 항상 파일보다 위에 그려진다.
+                        const activeSort = tjMilGetSort();
+                        let currentFiles = tjMilSortFiles(data.files || [], activeSort);
+                        const currentFolders = tjMilSortFolders(data.folders || [], activeSort);
 
                         if (hasFiles) {
                             const selectBar = document.createElement("div");
@@ -1044,9 +1289,9 @@ app.registerExtension({
                         const pickerGrid = document.createElement("div");
                         pickerGrid.style.cssText = "display:grid;grid-template-columns:repeat(5, 90px);grid-auto-rows:110px;gap:6px;";
 
-                        // ── 폴더 (우선) ──
+                        // ── 폴더 (항상 최상위, 파일과 같은 기준으로 정렬) ──
                         if (hasFolders) {
-                            data.folders.forEach(folder => {
+                            currentFolders.forEach(folder => {
                                 const cell = document.createElement("div");
                                 cell.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;border-radius:4px;cursor:pointer;border:2px solid transparent;position:relative;";
 
@@ -1087,6 +1332,11 @@ app.registerExtension({
                                 cell.appendChild(checkMark);
 
                                 const thumb = document.createElement("img");
+                                // 화면에 보이는 것부터 로드(브라우저 네이티브 지연 로딩).
+                                // 폴더에 파일이 많을 때 원격/고지연 환경에서 수백 개를 한 번에
+                                // 요청해 느려지는 것을 완화한다.
+                                thumb.loading = "lazy";
+                                thumb.decoding = "async";
                                 thumb.src = getImageSrc(f.path);
                                 thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
                                 thumb.onerror = function () {
@@ -1131,13 +1381,29 @@ app.registerExtension({
                         fileList.innerHTML = "";
                         const errEl = document.createElement("div");
                         errEl.style.cssText = "color:#f66;font-size:12px;padding:20px;text-align:center;";
-                        errEl.textContent = "Error: " + e.message;
+                        errEl.textContent = e.name === "AbortError"
+                            ? "요청 시간이 초과되었습니다 (네트워크가 느리거나 응답이 없습니다)."
+                            : "Error: " + e.message;
                         fileList.appendChild(errEl);
+
+                        const retryBtn = document.createElement("button");
+                        retryBtn.textContent = "다시 시도";
+                        retryBtn.style.cssText = "display:block;margin:8px auto 0;height:24px;padding:0 14px;border:1px solid #0088cc;border-radius:3px;background:transparent;color:#00bfff;font-size:11px;cursor:pointer;";
+                        retryBtn.addEventListener("click", () => loadTabContent());
+                        fileList.appendChild(retryBtn);
                     }
                 }
 
-                loadTabContent();
+                renderBookmarkBar();
+                const initialLoad = loadTabContent();
                 updateSelectCount();
+                // 북마크 정리는 메인 콘텐츠(썸네일 등) 로딩이 끝난 뒤, 유휴 시점에 실행해
+                // 커넥션을 다투지 않게 한다.
+                Promise.resolve(initialLoad).then(() => {
+                    const run = () => pruneDeadBookmarks();
+                    if (typeof requestIdleCallback === "function") requestIdleCallback(run, { timeout: 4000 });
+                    else setTimeout(run, 1200);
+                });
                 modal.appendChild(box);
                 modal.addEventListener("click", (e) => { if (e.target === modal) modal.remove(); });
                 document.body.appendChild(modal);

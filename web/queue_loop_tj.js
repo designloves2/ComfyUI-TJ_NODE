@@ -38,6 +38,55 @@ function intWidget(node, name, fallback = 0) {
     const value = Number(findWidget(node, name)?.value);
     return Number.isFinite(value) ? Math.floor(value) : fallback;
 }
+// 위젯이 다른 노드의 출력과 연결되어 있는지(위젯을 입력 슬롯으로 쓰는 중인지) 확인한다.
+function isWidgetConnected(node, name) {
+    const inp = node?.inputs?.find(i => i?.name === name);
+    return !!(inp && inp.link != null);
+}
+// 연결된 노드가 "JS 로 실시간 계산되는 값을 가진 노드"일 때, 실행(큐)을 한 번도
+// 안 해봤어도 그 노드의 현재 위젯 값을 즉시 읽어올 수 있게 하는 매핑.
+// 노드 타입 -> "그 출력값을 그대로 담고 있는 위젯 이름".
+const LIVE_VALUE_SOURCES = {
+    "TJ_IndexLoRALoaderCounter": "active_count",
+    "PrimitiveInt": "value",
+};
+// 연결된 링크를 거슬러 올라가 원본 노드의 "현재" 위젯 값을 읽는다. 워크플로우를
+// 실행하지 않아도(=onExecuted 가 아직 한 번도 안 왔어도) 즉시 값을 알 수 있다.
+function liveConnectedInt(node, name) {
+    try {
+        const inp = node?.inputs?.find(i => i?.name === name);
+        if (!inp || inp.link == null) return null;
+        const graph = node.graph || app.graph;
+        const link = graph?.links?.get ? graph.links.get(inp.link) : graph?.links?.[inp.link];
+        if (!link) return null;
+        const origin = graph.getNodeById ? graph.getNodeById(link.origin_id) : null;
+        if (!origin) return null;
+        const srcWidgetName = LIVE_VALUE_SOURCES[origin.type];
+        if (!srcWidgetName) return null;
+        const w = origin.widgets?.find(x => x?.name === srcWidgetName);
+        const v = Number(w?.value);
+        return Number.isFinite(v) ? Math.floor(v) : null;
+    } catch (_) {
+        return null;
+    }
+}
+// queue_count/start_index/end_index/step 은 다른 노드에 연결될 수 있다. 연결된 경우
+// 위젯의 .value 는 연결 전 타이핑 값이 그대로 남아있어 신뢰할 수 없다. 우선순위:
+//   1) 연결된 원본 노드에서 지금 이 순간의 값을 직접 읽는다(liveConnectedInt) —
+//      실행을 한 번도 안 했어도 정확하다(Index LoRA Loader Counter 등).
+//   2) 그것도 안 되면, 이전에 한 번이라도 실행되어 알고 있는 실제 값
+//      (_tj_queue_loop_last_known) 을 쓴다.
+//   3) 연결되지 않은 위젯은 항상 타이핑된 값을 그대로 쓴다.
+function effInt(node, name, fallback = 0) {
+    if (isWidgetConnected(node, name)) {
+        const live = liveConnectedInt(node, name);
+        if (live != null) return live;
+        const known = node._tj_queue_loop_last_known;
+        const v = Number(known?.[name]);
+        if (Number.isFinite(v)) return Math.floor(v);
+    }
+    return intWidget(node, name, fallback);
+}
 function boolWidget(node, name, fallback = false) {
     const w = findWidget(node, name);
     return w ? !!w.value : fallback;
@@ -146,22 +195,22 @@ function indexMode(node) {
     return String(findWidget(node, "index_loop_mode")?.value || "Index Loop");
 }
 function nextIndexValue(node, current) {
-    const start = Math.max(1, intWidget(node, "start_index", 1));
-    const end = Math.max(start, intWidget(node, "end_index", start));
-    const step = Math.max(1, intWidget(node, "step", 1));
+    const start = Math.max(1, effInt(node, "start_index", 1));
+    const end = Math.max(start, effInt(node, "end_index", start));
+    const step = Math.max(1, effInt(node, "step", 1));
     const next = Math.max(1, Number(current || 1)) + step;
     if (indexMode(node) === "Index Loop") return next > end ? start : next;
     return Math.min(next, end);
 }
 function resetToStart(node) {
-    const start = Math.max(1, intWidget(node, "start_index", 1));
+    const start = Math.max(1, effInt(node, "start_index", 1));
     setWidgetValue(node, "current_index", start);
     setWidgetValue(node, "current_queue", 0);
     node.properties = node.properties || {};
     node.properties.tj_queue_loop_running = false;
     node._tj_queue_loop_pending = null;
     resetTimer(node);
-    setStatus(node, `ready - 0/${intWidget(node, "queue_count", 1)}`, TJ_TEXT);
+    setStatus(node, `ready - 0/${effInt(node, "queue_count", 1)}`, TJ_TEXT);
 }
 function stopLoop(node, reason = "Stopped") {
     node.properties = node.properties || {};
@@ -173,16 +222,19 @@ function stopLoop(node, reason = "Stopped") {
 
 function startLoop(node) {
     node.properties = node.properties || {};
-    const start = Math.max(1, intWidget(node, "start_index", 1));
+    const start = Math.max(1, effInt(node, "start_index", 1));
 
-    // 연결된 IndexLoRALoader의 활성 LoRA 수를 자동으로 반영합니다.
+    // queue_count/start_index/end_index/step 이 다른 노드에 연결되어 있으면,
+    // 실제 값은 실행해봐야 알 수 있다(effInt 가 마지막 실행 결과를 우선 사용).
+    // 아직 한 번도 실행 안 됐다면 위젯 기본값으로 시작하고, 첫 실행 결과가 오면
+    // onExecuted 에서 실제 값으로 자동 보정된다.
 
     setWidgetValue(node, "current_index", start);
     setWidgetValue(node, "current_queue", 0);
     node.properties.tj_queue_loop_running = true;
     node._tj_queue_loop_pending = null;
     startTimer(node);
-    const total = Math.max(1, intWidget(node, "queue_count", 1));
+    const total = Math.max(1, effInt(node, "queue_count", 1));
     setStatus(node, `running - 1/${total}`, TJ_OK);
     setTimeout(() => queuePromptSafe(), 40);
 }
@@ -193,8 +245,9 @@ function continueAfterWorkflowFinished(node) {
     const info = node._tj_queue_loop_pending;
     node._tj_queue_loop_pending = null;
 
-    const total = Math.max(1, intWidget(node, "queue_count", Number(info.queue_count || 1)));
-    const queuePos = Math.max(0, Number(info.current_queue ?? intWidget(node, "current_queue", 0)));
+    // info(방금 실행에서 백엔드가 실제로 사용한 값)를 최우선으로 신뢰한다.
+    const total = Math.max(1, Number(info.queue_count) || effInt(node, "queue_count", 1));
+    const queuePos = Math.max(0, Number(info.current_queue ?? effInt(node, "current_queue", 0)));
     const nextQueuePos = queuePos + 1;
 
     if (nextQueuePos >= total) {
@@ -205,7 +258,7 @@ function continueAfterWorkflowFinished(node) {
         return;
     }
 
-    const current = Math.max(1, Number(info.index ?? intWidget(node, "current_index", intWidget(node, "start_index", 1))));
+    const current = Math.max(1, Number(info.index ?? effInt(node, "current_index", effInt(node, "start_index", 1))));
     const nextIndex = nextIndexValue(node, current);
     setWidgetValue(node, "current_index", nextIndex);
     setWidgetValue(node, "current_queue", nextQueuePos);
@@ -368,7 +421,7 @@ function installQueueLoop(node) {
     if (!findWidget(node, "tj_queue_loop_controls")) node.addCustomWidget(new QueueLoopControlsWidget(node));
     updateAutoSet(node);
     if (!node._tj_queue_loop_status) {
-        setStatus(node, `ready - 0/${intWidget(node, "queue_count", 1)}`, TJ_TEXT);
+        setStatus(node, `ready - 0/${effInt(node, "queue_count", 1)}`, TJ_TEXT);
     }
 
     // 최소 사이즈 강제 적용
@@ -408,6 +461,18 @@ app.registerExtension({
             const info = message?.tj_queue_loop?.[0];
             if (info) {
                 this._tj_queue_loop_pending = info;
+                // 방금 실행에서 백엔드가 실제로 계산한 값을 기억해둔다. queue_count/
+                // start_index/end_index/step 이 다른 노드에 연결되어 있으면 위젯의
+                // .value 를 신뢰할 수 없으므로(연결 전 타이핑 값이 남아있음),
+                // Reset/Start 등은 이 값을 우선 사용한다(effInt 참고).
+                this._tj_queue_loop_last_known = {
+                    queue_count: info.queue_count,
+                    start_index: info.start_index,
+                    end_index: info.end_index,
+                    step: info.step,
+                    current_index: info.index,
+                    current_queue: info.current_queue,
+                };
                 const total = Number(info.queue_count || intWidget(this, "queue_count", 1));
                 const pos = Number(info.current_queue || 0) + 1;
                 setStatus(this, `done - ${pos}/${total}`, this.properties?.tj_queue_loop_running ? TJ_OK : TJ_TEXT);
@@ -424,7 +489,17 @@ app.registerExtension({
             window.__TJ_QUEUE_LOOP_TIMER_TICK__ = true;
             setInterval(() => {
                 for (const n of graphNodes(app.graph)) {
-                    if (n?.type === NODE_TYPE && n.properties?.tj_queue_loop_running) markDirty(n);
+                    if (n?.type !== NODE_TYPE) continue;
+                    if (n.properties?.tj_queue_loop_running) { markDirty(n); continue; }
+                    // 유휴 상태에서도, queue_count 가 실시간 값 소스(Counter 등)에
+                    // 연결돼 있으면 "ready - 0/N" 의 N 을 계속 최신값으로 갱신한다.
+                    if (isWidgetConnected(n, "queue_count") && !n._tj_queue_loop_pending) {
+                        const total = Math.max(1, effInt(n, "queue_count", 1));
+                        const label = String(n._tj_queue_loop_status || "");
+                        if (label.startsWith("ready - 0/") && label !== `ready - 0/${total}`) {
+                            setStatus(n, `ready - 0/${total}`, TJ_TEXT);
+                        }
+                    }
                 }
             }, 1000);
         }
