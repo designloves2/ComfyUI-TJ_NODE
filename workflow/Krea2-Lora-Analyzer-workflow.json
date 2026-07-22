@@ -257,7 +257,7 @@
       ],
       "size": [
         320,
-        517
+        827
       ],
       "flags": {},
       "order": 0,
@@ -385,122 +385,6 @@
       "bgcolor": "#000000"
     },
     {
-      "id": 159,
-      "type": "Note",
-      "pos": [
-        2493.6716595292764,
-        894.9998659387364
-      ],
-      "size": [
-        378.041135734145,
-        107.03324077194566
-      ],
-      "flags": {},
-      "order": 1,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Enhancer 노드와 합쳐진 Ksampler입니다. Enhancer 모드를 사용하여 샘플링 할 수 있습니다."
-      ],
-      "color": "#d57b7b",
-      "bgcolor": "#3f3131"
-    },
-    {
-      "id": 160,
-      "type": "Note",
-      "pos": [
-        601.4655741030607,
-        -748.0918249992867
-      ],
-      "size": [
-        314.2123135233834,
-        96.53422177537982
-      ],
-      "flags": {},
-      "order": 2,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Queue를 워크플로워를 순차적으로 실행해주는 노드 입니다. RUN으로 동작하지 않으면 전체 반복시킬 queue를 queue_count에 입력하고 start로 실행하시면 됩니다.\n인덱스 넘버를 사용하실때는 인덱스 시작와 끝을 설정하시고 아웃풋 슬롯의 인덱스를 연결하여 사용 가능합니다. "
-      ],
-      "color": "#d57b7b",
-      "bgcolor": "#3f3131"
-    },
-    {
-      "id": 158,
-      "type": "Note",
-      "pos": [
-        2078.8297636406332,
-        -748.0918249992867
-      ],
-      "size": [
-        792.0152408318113,
-        108.08312344738306
-      ],
-      "flags": {},
-      "order": 3,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "LLM 분석용 이미지를 여러장 불러 올수 있습니다.\nQueue Loop (TJ)의 인덱스 번호를 받아서 순차적으로 이미지를 출력하여 LLM에 전달 할 수 있습니다.\nPrompt Studio (TJ)의 lock_in을 활성화 하면 노드를 bypass하지 않아도 마지막 캐시를 그대로 사용하여 LLM를 실행하지 않고 넘어 갈수 있습니다.\nSmart show (TJ)의 edit mode를 활성화 하면 입력이 무시되고 수정된 텍스트를 사용합니다. 비활성화시 입력으로 들어온 텍스트를 사용합니다."
-      ],
-      "color": "#d57b7b",
-      "bgcolor": "#3f3131"
-    },
-    {
-      "id": 161,
-      "type": "Note",
-      "pos": [
-        942.6748713575042,
-        -748.0918249992867
-      ],
-      "size": [
-        540.0000000000001,
-        96.53422177537982
-      ],
-      "flags": {},
-      "order": 4,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "Krea2 LoRA Analyzer (TJ)\nKrea2 Lara를 분석하여 가중치를 를 조절하여 새롭게 저장하거나 실시간으로 적용하여 사용할 수 있습니다.\n단순히 강도만 조절하는게 아닌 학습한 블럭을 컨트롤하여 조절이 가능합니다.\n"
-      ],
-      "color": "#d57b7b",
-      "bgcolor": "#3f3131"
-    },
-    {
       "id": 156,
       "type": "TJ_QueueLoop",
       "pos": [
@@ -512,7 +396,7 @@
         312
       ],
       "flags": {},
-      "order": 5,
+      "order": 1,
       "mode": 0,
       "inputs": [],
       "outputs": [
@@ -568,35 +452,6 @@
       ],
       "color": "#cf2a9e",
       "bgcolor": "#3e2536"
-    },
-    {
-      "id": 157,
-      "type": "Note",
-      "pos": [
-        2078.8297636406332,
-        736.5792183704218
-      ],
-      "size": [
-        400,
-        108.2184493138916
-      ],
-      "flags": {},
-      "order": 6,
-      "mode": 0,
-      "inputs": [],
-      "outputs": [],
-      "properties": {
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "version": "7.8",
-          "input_ue_unconnectable": {}
-        }
-      },
-      "widgets_values": [
-        "트리거 워드 입력+추가 프롬포트\nNagative 프롬포트를 활성화 여부를 결정하세요."
-      ],
-      "color": "#d57b7b",
-      "bgcolor": "#3f3131"
     },
     {
       "id": 147,
@@ -763,6 +618,164 @@
       "bgcolor": "#000000"
     },
     {
+      "id": 1,
+      "type": "Krea2LoRAAnalyzer",
+      "pos": [
+        942.6748713575042,
+        -589.2023323156866
+      ],
+      "size": [
+        540,
+        304
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 346
+        },
+        {
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": 343
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            347
+          ]
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "links": [
+            344
+          ]
+        },
+        {
+          "name": "analysis_text",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "analysis_json",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-tj_node",
+        "ver": "8aa125803b75d78c7fb1f5c6468358092a08ec38",
+        "tj_sections": {
+          "guide": false,
+          "controls": false,
+          "blocks": false
+        },
+        "Node name for S&R": "Krea2LoRAAnalyzer",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "Suzy_AITK_face\\Suzy_AITK_face.safetensors",
+        1,
+        false,
+        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}",
+        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}"
+      ],
+      "color": "#7612DA",
+      "bgcolor": "#000000"
+    },
+    {
+      "id": 2,
+      "type": "Krea2LoRAAnalyzer",
+      "pos": [
+        1510.104754636406,
+        -589.2023323156866
+      ],
+      "size": [
+        540,
+        304
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 347
+        },
+        {
+          "name": "clip",
+          "shape": 7,
+          "type": "CLIP",
+          "link": 344
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            348
+          ]
+        },
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "links": [
+            345
+          ]
+        },
+        {
+          "name": "analysis_text",
+          "type": "STRING",
+          "links": null
+        },
+        {
+          "name": "analysis_json",
+          "type": "STRING",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-tj_node",
+        "ver": "8aa125803b75d78c7fb1f5c6468358092a08ec38",
+        "tj_sections": {
+          "guide": false,
+          "controls": false,
+          "blocks": false
+        },
+        "Node name for S&R": "Krea2LoRAAnalyzer",
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "input_ue_unconnectable": {},
+          "version": "7.8"
+        }
+      },
+      "widgets_values": [
+        "KREA2\\Boobs_Size_Krea2_TJ_V3.safetensors",
+        1.5,
+        true,
+        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}",
+        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}"
+      ],
+      "color": "#7612DA",
+      "bgcolor": "#000000"
+    },
+    {
       "id": 148,
       "type": "f206efa0-398a-46b3-a545-cea6880e1876",
       "pos": [
@@ -863,162 +876,149 @@
       "bgcolor": "#000000"
     },
     {
-      "id": 2,
-      "type": "Krea2LoRAAnalyzer",
-      "pos": [
-        1510.104754636406,
-        -589.2023323156866
-      ],
-      "size": [
-        540,
-        304
-      ],
-      "flags": {},
-      "order": 11,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 347
-        },
-        {
-          "name": "clip",
-          "shape": 7,
-          "type": "CLIP",
-          "link": 344
-        }
-      ],
-      "outputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "links": [
-            348
-          ]
-        },
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "links": [
-            345
-          ]
-        },
-        {
-          "name": "analysis_text",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "analysis_json",
-          "type": "STRING",
-          "links": null
-        }
-      ],
-      "properties": {
-        "cnr_id": "comfyui-tj_node",
-        "ver": "8aa125803b75d78c7fb1f5c6468358092a08ec38",
-        "tj_sections": {
-          "guide": false,
-          "controls": false,
-          "blocks": false
-        },
-        "Node name for S&R": "Krea2LoRAAnalyzer",
-        "ue_properties": {
-          "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
-        }
-      },
-      "widgets_values": [
-        "KREA2\\Boobs_Size_Krea2_TJ_V3.safetensors",
-        1.5,
-        true,
-        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}",
-        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}"
-      ],
-      "color": "#7612DA",
-      "bgcolor": "#000000"
-    },
-    {
-      "id": 1,
-      "type": "Krea2LoRAAnalyzer",
+      "id": 161,
+      "type": "Note",
       "pos": [
         942.6748713575042,
-        -589.2023323156866
+        -748.0918249992867
       ],
       "size": [
-        540,
-        304
+        540.0000000000001,
+        96.53422177537982
       ],
-      "flags": {
-        "collapsed": false
-      },
-      "order": 9,
+      "flags": {},
+      "order": 2,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 346
-        },
-        {
-          "name": "clip",
-          "shape": 7,
-          "type": "CLIP",
-          "link": 343
-        }
-      ],
-      "outputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "links": [
-            347
-          ]
-        },
-        {
-          "name": "clip",
-          "type": "CLIP",
-          "links": [
-            344
-          ]
-        },
-        {
-          "name": "analysis_text",
-          "type": "STRING",
-          "links": null
-        },
-        {
-          "name": "analysis_json",
-          "type": "STRING",
-          "links": null
-        }
-      ],
+      "inputs": [],
+      "outputs": [],
       "properties": {
-        "cnr_id": "comfyui-tj_node",
-        "ver": "8aa125803b75d78c7fb1f5c6468358092a08ec38",
-        "tj_sections": {
-          "guide": false,
-          "controls": false,
-          "blocks": false
-        },
-        "Node name for S&R": "Krea2LoRAAnalyzer",
         "ue_properties": {
           "widget_ue_connectable": {},
-          "input_ue_unconnectable": {},
-          "version": "7.8"
+          "version": "7.8",
+          "input_ue_unconnectable": {}
         }
       },
       "widgets_values": [
-        "Suzy_AITK_face\\Suzy_AITK_face.safetensors",
-        1,
-        false,
-        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}",
-        "{\"0\":{\"enable\":true,\"strength\":1},\"1\":{\"enable\":true,\"strength\":1},\"2\":{\"enable\":true,\"strength\":1},\"3\":{\"enable\":true,\"strength\":1},\"4\":{\"enable\":true,\"strength\":1},\"5\":{\"enable\":true,\"strength\":1},\"6\":{\"enable\":true,\"strength\":1},\"7\":{\"enable\":true,\"strength\":1},\"8\":{\"enable\":true,\"strength\":1},\"9\":{\"enable\":true,\"strength\":1},\"10\":{\"enable\":true,\"strength\":1},\"11\":{\"enable\":true,\"strength\":1},\"12\":{\"enable\":true,\"strength\":1},\"13\":{\"enable\":true,\"strength\":1},\"14\":{\"enable\":true,\"strength\":1},\"15\":{\"enable\":true,\"strength\":1},\"16\":{\"enable\":true,\"strength\":1},\"17\":{\"enable\":true,\"strength\":1},\"18\":{\"enable\":true,\"strength\":1},\"19\":{\"enable\":true,\"strength\":1},\"20\":{\"enable\":true,\"strength\":1},\"21\":{\"enable\":true,\"strength\":1},\"22\":{\"enable\":true,\"strength\":1},\"23\":{\"enable\":true,\"strength\":1},\"24\":{\"enable\":true,\"strength\":1},\"25\":{\"enable\":true,\"strength\":1},\"26\":{\"enable\":true,\"strength\":1},\"27\":{\"enable\":true,\"strength\":1},\"28\":{\"enable\":true,\"strength\":1},\"29\":{\"enable\":true,\"strength\":1},\"30\":{\"enable\":true,\"strength\":1},\"31\":{\"enable\":true,\"strength\":1}}"
+        "Krea2 LoRA Analyzer (TJ)\nYou can analyse Krea2 LoRA, adjust the weights, and either save the new settings or apply them in real time.\nRather than simply adjusting the intensity, you can fine-tune the model by controlling the trained blocks.\n"
       ],
-      "color": "#7612DA",
-      "bgcolor": "#000000"
+      "color": "#d57b7b",
+      "bgcolor": "#3f3131"
+    },
+    {
+      "id": 160,
+      "type": "Note",
+      "pos": [
+        601.4655741030607,
+        -748.0918249992867
+      ],
+      "size": [
+        314.2123135233835,
+        96.53422177537982
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "The Queue node executes workflow steps sequentially. If it is not set to ‘RUN’, simply enter the number of iterations for the entire queue in ‘queue_count’ and run it using ‘start’.\nWhen using index numbers, you can set the start and end indices and link them to the output slot indices. "
+      ],
+      "color": "#d57b7b",
+      "bgcolor": "#3f3131"
+    },
+    {
+      "id": 158,
+      "type": "Note",
+      "pos": [
+        2078.8297636406332,
+        -748.0918249992867
+      ],
+      "size": [
+        792.0152408318113,
+        108.08312344738306
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "You can load multiple images for LLM analysis.\nBy retrieving the index number from Queue Loop (TJ), you can output the images sequentially and pass them to the LLM.\nIf you enable ‘lock_in’ in Prompt Studio (TJ), you can proceed without running the LLM, using the last cache as is, without having to bypass the node.\nIf you enable ‘edit mode’ in Smart Show (TJ), the input is ignored and the edited text is used. If disabled, the text entered as input is used.\n"
+      ],
+      "color": "#d57b7b",
+      "bgcolor": "#3f3131"
+    },
+    {
+      "id": 157,
+      "type": "Note",
+      "pos": [
+        2078.8297636406332,
+        736.5792183704218
+      ],
+      "size": [
+        400,
+        108.2184493138916
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "Enter trigger word + additional prompt\nDecide whether to enable negative prompts."
+      ],
+      "color": "#d57b7b",
+      "bgcolor": "#3f3131"
+    },
+    {
+      "id": 159,
+      "type": "Note",
+      "pos": [
+        2493.6716595292764,
+        894.9998659387364
+      ],
+      "size": [
+        378.041135734145,
+        107.03324077194566
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {
+        "ue_properties": {
+          "widget_ue_connectable": {},
+          "version": "7.8",
+          "input_ue_unconnectable": {}
+        }
+      },
+      "widgets_values": [
+        "This is a Ksampler combined with an Enhancer node. You can sample using Enhancer mode."
+      ],
+      "color": "#d57b7b",
+      "bgcolor": "#3f3131"
     }
   ],
   "links": [
@@ -2024,51 +2024,6 @@
             "bgcolor": "#000000"
           },
           {
-            "id": 110,
-            "type": "ShowText|pysssss",
-            "pos": [
-              -702.2975292443679,
-              857.1710454034237
-            ],
-            "size": [
-              325.05785911693954,
-              383.1403735146728
-            ],
-            "flags": {},
-            "order": 6,
-            "mode": 0,
-            "inputs": [
-              {
-                "localized_name": "text",
-                "name": "text",
-                "type": "STRING",
-                "link": 308
-              }
-            ],
-            "outputs": [
-              {
-                "localized_name": "STRING",
-                "name": "STRING",
-                "shape": 6,
-                "type": "STRING",
-                "links": null
-              }
-            ],
-            "properties": {
-              "cnr_id": "comfyui-custom-scripts",
-              "ver": "1.2.5",
-              "Node name for S&R": "ShowText|pysssss",
-              "ue_properties": {
-                "widget_ue_connectable": {},
-                "input_ue_unconnectable": {},
-                "version": "7.8"
-              }
-            },
-            "widgets_values": [
-              "korean woman, her huge breasts(boobs), topless, nude\nA photorealistic, sharp-focus portrait in 8k camera detail of a young woman with long, wavy dark brown hair cascading over her shoulders, standing indoors in a brightly lit bedroom with natural sunlight streaming through a window on the right, casting soft shadows across wooden flooring and a white bed behind her; she wears a form-fitting white strapless corset-style bodysuit with a deep V-neckline cinched at the center by a subtle bow, a fitted waistband with faint embroidered text reading “Amore” in cursive script, and short flared shorts that end above the knee, her arms relaxed at her sides with palms slightly open, smiling warmly at the camera with visible teeth, her body angled slightly toward the viewer, the background features a plain off-white wall to the left with a closed door and a small rectangular light switch plate, and a sheer curtain partially drawn beside the window, all rendered with lifelike skin texture, fabric sheen, and realistic lighting and shadows, shallow depth of field blurring the background slightly while keeping her face and upper torso in crisp focus."
-            ]
-          },
-          {
             "id": 51,
             "type": "CLIPTextEncode",
             "pos": [
@@ -2229,6 +2184,51 @@
             ],
             "color": "#7612DA",
             "bgcolor": "#000000"
+          },
+          {
+            "id": 110,
+            "type": "ShowText|pysssss",
+            "pos": [
+              -702.2975292443679,
+              857.1710454034237
+            ],
+            "size": [
+              325.05785911693954,
+              383.1403735146728
+            ],
+            "flags": {},
+            "order": 6,
+            "mode": 0,
+            "inputs": [
+              {
+                "localized_name": "text",
+                "name": "text",
+                "type": "STRING",
+                "link": 308
+              }
+            ],
+            "outputs": [
+              {
+                "localized_name": "STRING",
+                "name": "STRING",
+                "shape": 6,
+                "type": "STRING",
+                "links": null
+              }
+            ],
+            "properties": {
+              "cnr_id": "comfyui-custom-scripts",
+              "ver": "1.2.5",
+              "Node name for S&R": "ShowText|pysssss",
+              "ue_properties": {
+                "widget_ue_connectable": {},
+                "input_ue_unconnectable": {},
+                "version": "7.8"
+              }
+            },
+            "widgets_values": [
+              "korean woman, her huge breasts(boobs), topless, nude\nA photorealistic, sharp-focus portrait in 8k camera detail of a young woman with long, wavy dark brown hair cascading over her shoulders, standing indoors in a brightly lit bedroom with natural sunlight streaming through a window on the right, casting soft shadows across wooden flooring and a white bed behind her; she wears a form-fitting white strapless corset-style bodysuit with a deep V-neckline cinched at the center by a subtle bow, a fitted waistband with faint embroidered text reading “Amore” in cursive script, and short flared shorts that end above the knee, her arms relaxed at her sides with palms slightly open, smiling warmly at the camera with visible teeth, her body angled slightly toward the viewer, the background features a plain off-white wall to the left with a closed door and a small rectangular light switch plate, and a sheer curtain partially drawn beside the window, all rendered with lifelike skin texture, fabric sheen, and realistic lighting and shadows, shallow depth of field blurring the background slightly while keeping her face and upper torso in crisp focus."
+            ]
           }
         ],
         "groups": [],
@@ -2374,10 +2374,10 @@
   "extra": {
     "ue_links": [],
     "ds": {
-      "scale": 0.5772562710944996,
+      "scale": 0.5772562710945005,
       "offset": [
-        116.77088494265085,
-        1093.9749685342392
+        177.94216957175368,
+        1053.3973168493424
       ]
     },
     "links_added_by_ue": [],
