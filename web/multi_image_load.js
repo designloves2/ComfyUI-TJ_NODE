@@ -320,6 +320,35 @@ function getImageSrc(path) {
     return url;
 }
 
+// ── 썸네일 전용: 서버가 실제로 축소·캐시한 작은 이미지를 받아온다 ──
+// getImageSrc()(/view, 원본 그대로 + 매번 캐시버스터)는 그리드용 80px 썸네일에는
+// 과하다 — 원격/고지연 환경에서 폴더를 열 때마다 수백 장의 원본을 재다운로드해
+// 체감 프리즈의 원인이 됐다. /tj_node/thumbnail 은 (경로+수정시각+크기) 로 캐시되는
+// 작은 JPEG 을 돌려주고, 캐시버스터가 없어 브라우저 캐시도 그대로 재사용된다.
+function tjMilThumbUrl(dirType, subfolder, filename, size = 96) {
+    const qs = new URLSearchParams({
+        dir_type: dirType || "input",
+        subfolder: subfolder || "",
+        filename: filename || "",
+        size: String(size),
+    });
+    return `/tj_node/thumbnail?${qs.toString()}`;
+}
+// getImageSrc() 와 동일한 규칙으로 "input/..","output/.." 형식의 path 문자열을
+// 파싱해 썸네일 URL을 만든다 (노드에 이미 추가된 이미지 스트립용).
+function tjMilThumbUrlFromPath(path, size = 96) {
+    if (!path) return "";
+    const p = String(path).trim();
+    let dirType = "input";
+    let rest = p;
+    if (p.startsWith("output/")) { dirType = "output"; rest = p.substring(7); }
+    else if (p.startsWith("input/")) { dirType = "input"; rest = p.substring(6); }
+    const slashIdx = rest.lastIndexOf("/");
+    const subfolder = slashIdx !== -1 ? rest.substring(0, slashIdx) : "";
+    const filename = slashIdx !== -1 ? rest.substring(slashIdx + 1) : rest;
+    return tjMilThumbUrl(dirType, subfolder, filename, size);
+}
+
 // ── 정렬 설정 (localStorage 저장) ──
 const TJ_MIL_SORT_KEY = "tj_mil_sort_v1";
 function tjMilGetSort() {
@@ -632,7 +661,7 @@ app.registerExtension({
                     card.appendChild(delBtn);
 
                     const img = document.createElement("img");
-                    img.src = getImageSrc(p);
+                    img.src = tjMilThumbUrlFromPath(p);
                     img.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
                     img.draggable = false;
                     img.onerror = function () {
@@ -1073,7 +1102,7 @@ app.registerExtension({
                                 // 요청해 느려지는 것을 완화한다.
                                 thumb.loading = "lazy";
                                 thumb.decoding = "async";
-                                thumb.src = getImageSrc(f.path);
+                                thumb.src = tjMilThumbUrlFromPath(f.path);
                                 thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
                                 thumb.onerror = function () { this.style.display = "none"; };
 
@@ -1337,7 +1366,9 @@ app.registerExtension({
                                 // 요청해 느려지는 것을 완화한다.
                                 thumb.loading = "lazy";
                                 thumb.decoding = "async";
-                                thumb.src = getImageSrc(f.path);
+                                // dir_type/subfolder 는 이미 이 목록을 가져올 때 쓴 것과 동일 —
+                                // /view 대신 서버가 축소·캐시한 썸네일을 받아온다.
+                                thumb.src = tjMilThumbUrl(activeTab, currentSub, f.filename);
                                 thumb.style.cssText = "width:80px;height:80px;object-fit:cover;border-radius:3px;background:#222;";
                                 thumb.onerror = function () {
                                     this.style.display = "none";

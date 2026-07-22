@@ -5,10 +5,12 @@ import os
 import socket
 import ipaddress
 import shutil
+import hashlib
 import urllib.request
 import urllib.parse
 import folder_paths
 from aiohttp import web
+from PIL import Image
 import server
 
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tiff", ".tif"}
@@ -157,6 +159,117 @@ async def list_dir_files(request):
         return web.json_response({"success": True, "files": files, "folders": folders, "exists": True})
     except Exception as e:
         return web.json_response({"success": False, "error": str(e)})
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 썸네일 캐시 (Multi Image Loader 파일 피커 전용)
+#   /view 는 원본 파일을 그대로 서빙한다(리사이즈 없음). 그래서 그리드에 80px
+#   짜리로 그릴 이미지도 매번 전체 원본을 내려받았고, 프론트가 매 렌더마다
+#   t=Date.now() 캐시버스터를 붙여 브라우저 캐시도 못 썼다(정렬만 바꿔도
+#   폴더 전체를 재다운로드) — 원격/고지연 환경에서 체감 프리즈의 실제 원인.
+#   여기서는 실제로 작게 리사이즈한 JPEG 을 (경로+수정시각+크기) 로 디스크에
+#   캐시해, 한 번만 인코딩하고 이후엔 즉시 읽어서 돌려준다.
+# ──────────────────────────────────────────────────────────────────────────
+THUMB_CACHE_DIRNAME = "tj_thumbnails"
+THUMB_DEFAULT_SIZE = 96
+THUMB_MAX_FILES = 8000
+THUMB_MAX_BYTES = 300 * 1024 * 1024   # 300MB — 썸네일은 몇 KB 라 넉넉히
+
+
+def _thumb_cache_dir():
+    d = os.path.join(folder_paths.get_temp_directory(), THUMB_CACHE_DIRNAME)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _prune_thumb_cache(cache_dir):
+    try:
+        entries = []
+        total = 0
+        for f in os.listdir(cache_dir):
+            p = os.path.join(cache_dir, f)
+            if os.path.isfile(p):
+                st = os.stat(p)
+                entries.append((st.st_mtime, st.st_size, p))
+                total += st.st_size
+        if len(entries) <= THUMB_MAX_FILES and total <= THUMB_MAX_BYTES:
+            return
+        entries.sort()  # 오래된 것부터
+        i = 0
+        while entries and (len(entries) - i > THUMB_MAX_FILES or total > THUMB_MAX_BYTES) and i < len(entries) - 1:
+            _, size, path = entries[i]
+            try:
+                os.remove(path)
+                total -= size
+            except Exception:
+                pass
+            i += 1
+    except Exception:
+        pass
+
+
+@server.PromptServer.instance.routes.get("/tj_node/thumbnail")
+async def tj_thumbnail(request):
+    """(dir_type, subfolder, filename) 이미지의 축소 썸네일을 반환/캐시한다.
+    list_dir_files 와 동일한 샌드박스 헬퍼로 경로를 해석하므로 안전 속성이 같다."""
+    try:
+        q = request.rel_url.query
+        dir_type = q.get("dir_type", "input")
+        subfolder = q.get("subfolder", "")
+        filename = os.path.basename(q.get("filename", ""))  # 경로 조작 방지: 파일명만 사용
+        try:
+            size = max(32, min(256, int(q.get("size", THUMB_DEFAULT_SIZE))))
+        except ValueError:
+            size = THUMB_DEFAULT_SIZE
+
+        if not filename:
+            return web.Response(status=400, text="filename required")
+
+        base_dir = _resolve_base_dir(dir_type)
+        target_dir = _safe_resolve(base_dir, subfolder)
+        if target_dir is None:
+            return web.Response(status=400, text="Invalid subfolder path")
+
+        src_path = os.path.join(target_dir, filename)
+        real_target_dir = os.path.realpath(target_dir)
+        real_src = os.path.realpath(src_path)
+        try:
+            if os.path.commonpath([real_target_dir, real_src]) != real_target_dir:
+                return web.Response(status=403, text="Path traversal blocked")
+        except ValueError:
+            return web.Response(status=403, text="Path traversal blocked")
+
+        if not os.path.isfile(real_src):
+            return web.Response(status=404, text="File not found")
+        ext = os.path.splitext(real_src)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            return web.Response(status=403, text="Not an allowed image file")
+
+        try:
+            mtime = int(os.path.getmtime(real_src))
+        except OSError:
+            mtime = 0
+
+        cache_dir = _thumb_cache_dir()
+        key = hashlib.sha1(f"{real_src}|{mtime}|{size}".encode("utf-8")).hexdigest()[:24]
+        cache_path = os.path.join(cache_dir, f"{key}.jpg")
+
+        if not os.path.isfile(cache_path):
+            with Image.open(real_src) as img:
+                img = img.convert("RGB")
+                img.thumbnail((size, size), Image.LANCZOS)
+                img.save(cache_path, format="JPEG", quality=80)
+            _prune_thumb_cache(cache_dir)
+
+        with open(cache_path, "rb") as f:
+            data = f.read()
+        # 파일명에 mtime 이 들어간 캐시 키라 내용이 바뀌면 키도 바뀐다 —
+        # 브라우저에 영구 캐시를 지시해도 안전하다.
+        return web.Response(body=data, content_type="image/jpeg",
+                            headers={"Cache-Control": "public, max-age=31536000, immutable"})
+    except Exception as e:
+        return web.Response(status=500, text=str(e))
+
 
 @server.PromptServer.instance.routes.post("/tj_node/delete_files")
 async def delete_files(request):

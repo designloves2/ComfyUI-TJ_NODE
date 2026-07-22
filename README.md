@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.9.0
+# ✨ TJ_NODE v2.9.1
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -20,7 +20,7 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.9.0)
+# 🆕 Latest Additions (v2.9.1)
 
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
@@ -31,8 +31,10 @@ The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELO
   (input/output/download 한정, 삭제된 폴더는 자동으로 목록에서 제거)
 * **`FILENAMES`** 출력 슬롯 추가 — 로드된 이미지들의 원본 파일명(줄바꿈 구분)
 * 로컬 업로드는 **이미지 파일만** 허용 (서버측 검증 포함)
-* 원격/고지연 환경에서 썸네일 로딩이 멈추던 문제 수정(요청 타임아웃, 지연 로딩, 북마크
-  검증 세션당 1회 제한)
+* **원격/고지연 환경에서 파일 피커가 매우 느리던 문제 해결** — 썸네일을 원본 그대로
+  서빙하던 방식에서, 서버가 실제로 리사이즈한 작은 JPEG 을 디스크에 캐시해 내려주는
+  전용 엔드포인트로 교체(`Cache-Control: immutable` 로 브라우저도 재요청 없이 캐시
+  재사용). 실측 원본 95KB → 썸네일 3KB, 재조회 시 서버 0.003s·브라우저 1ms.
 
 ## 💾 Save With Original Names (TJ)
 
