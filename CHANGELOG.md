@@ -3,6 +3,30 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.9.1.1] - 2026-07-23
+
+### [Fixed]
+
+* **`/tj/shortcut/open` 원격/CSRF 코드 실행 취약점 (ltdrdata, Comfy-Org/ComfyUI-Manager#2924
+  리뷰 지적)** — 클라이언트가 보낸 경로를 존재 여부만 확인하고 `os.startfile()`/`open`/
+  `xdg-open`으로 바로 실행하던 라우트라, 인증 없는 원격 요청이나 다른 사이트의 CSRF로
+  로컬 임의 파일/실행 파일을 띄울 수 있었다. `/tj/shortcut/open`, `/tj/shortcut/browse`
+  양쪽에 루프백(loopback) + 동일 출처(Origin/Referer == Host) 가드를 추가해 원격 접근을
+  완전히 차단(옵트인 불가). 로컬에서 숏컷을 열면 무엇을 열었는지/왜 막혔는지 토스트
+  알림으로 표시.
+
+### [Changed]
+
+* **`✨ TJ_NODE SET` 플로팅 런처 레지스트리 최신화** — 실제 등록된 노드 대비 누락돼 있던
+  `Save With Original Names (TJ)`, `Index LoRA Loader Counter (TJ)`, `Resolution (TJ)`,
+  `Model Set Loader (TJ)`, `Index LoRA Loader (TJ)`, `LED Display (TJ)`,
+  `Universal Calculator (TJ)`, `Video Grid Comparer (TJ)`, `Send (TJ)`, `Send Point (TJ)`,
+  `Images Compare Sheet - Queue Loop (TJ)`, `Scene Maker Result - pipe(TJ)` 를 추가하고,
+  카테고리가 없던 LoRA Analyzer 4종과 `Enhanced KSampler (TJ)` 를 위해 **LoRA**/**Sampling**
+  탭을 신설. 실제 존재하지 않는 타입을 가리키던 `Z-Image ONE (TJ)`/`flux2 klein One (TJ)`
+  항목은 제거.
+
+---
 ## [2.9.1] - 2026-07-22
 
 ### [Fixed]
