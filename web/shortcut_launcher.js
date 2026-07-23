@@ -78,15 +78,30 @@ function tjShortcutAutoHeight(node) {
     return Math.max(86, titleAndPadding + count * (buttonH + gap) + settingsH + bottom);
 }
 
+function tjToast(severity, summary, detail) {
+    try {
+        app.extensionManager?.toast?.add({ severity, summary, detail, life: 4000 });
+    } catch (err) {
+        console.log(`[TJ Shortcut Launcher] ${summary}: ${detail || ""}`);
+    }
+}
+
 async function tjOpenShortcut(target) {
     try {
-        await api.fetchApi("/tj/shortcut/open", {
+        const res = await api.fetchApi("/tj/shortcut/open", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ target: target || "" })
         });
+        const data = await res.json().catch(() => ({}));
+        if (data.ok) {
+            tjToast("success", "Shortcut opened", data.message || "Opened locally.");
+        } else {
+            tjToast("error", "Shortcut blocked", data.message || data.error || "Could not open shortcut.");
+        }
     } catch (err) {
         console.error("[TJ Shortcut Launcher] open failed", err);
+        tjToast("error", "Shortcut failed", String(err));
     }
 }
 
