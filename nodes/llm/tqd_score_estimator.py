@@ -34,8 +34,10 @@ from ._llm_utils import (
 
 try:
     from server import PromptServer
+    from aiohttp import web
 except Exception:
     PromptServer = None
+    web = None
 
 try:
     import comfy.model_management as comfy_model_management
@@ -43,6 +45,42 @@ except Exception:
     comfy_model_management = None
 
 PROGRESS_EVENT = "tj-tqd-score-progress"
+
+
+def _settings_file_path() -> str:
+    """User's own ComfyUI/user directory (respects --user-directory), not the git-tracked
+    node folder — settings are per-installation config, not something to commit or ship."""
+    return os.path.join(folder_paths.get_user_directory(), "tj_node", "tqd_score_estimate_settings.json")
+
+
+async def _handle_load_settings(request):
+    path = _settings_file_path()
+    if not os.path.isfile(path):
+        return web.json_response({})
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return web.json_response(json.load(f))
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=500)
+
+
+async def _handle_save_settings(request):
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            raise TypeError("settings payload must be a JSON object")
+        path = _settings_file_path()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return web.json_response({"ok": True, "path": path})
+    except Exception as exc:
+        return web.json_response({"ok": False, "error": str(exc)}, status=400)
+
+
+if PromptServer is not None:
+    PromptServer.instance.routes.get("/tj/tqd_score_estimate/settings")(_handle_load_settings)
+    PromptServer.instance.routes.post("/tj/tqd_score_estimate/settings")(_handle_save_settings)
 
 
 def _check_interrupted() -> None:

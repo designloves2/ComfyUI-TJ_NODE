@@ -9,37 +9,51 @@ import { api } from "../../../scripts/api.js";
 const NODE_TYPE = "TJ_TQDScoreEstimate";
 const PROGRESS_EVENT = "tj-tqd-score-progress";
 const IMAGE_HEIGHT = 300;
-const SETTINGS_STORAGE_KEY = "tj_tqd_score_estimate_settings_v1";
+const SETTINGS_ENDPOINT = "/tj/tqd_score_estimate/settings";
 
-function loadSavedSettings() {
+// Saved as a real JSON file under ComfyUI/user/tj_node/ (server-side), not localStorage —
+// localStorage is per-browser/per-machine, so settings didn't follow between e.g. an office
+// PC and a home PC. A file on the ComfyUI user directory is at least per-installation and
+// can be copied/synced manually if the user wants it to follow them.
+async function loadSavedSettings() {
     try {
-        const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : null;
+        const res = await api.fetchApi(SETTINGS_ENDPOINT);
+        const data = await res.json();
+        return data && typeof data === "object" && !data.error ? data : null;
     } catch (err) {
         return null;
     }
 }
 
-function saveSettingsFromNode(node, settingWidgets) {
+async function saveSettingsFromNode(node, settingWidgets) {
     const data = {};
     settingWidgets.forEach((w) => { data[w.name] = w.value; });
     try {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(data));
-        return true;
+        const res = await api.fetchApi(SETTINGS_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        return !!result.ok;
     } catch (err) {
         return false;
     }
 }
 
-function applySavedSettings(node) {
-    const saved = loadSavedSettings();
+async function applySavedSettings(node) {
+    const saved = await loadSavedSettings();
     if (!saved) return;
+    // A workflow restore calls configure() right after nodeCreated — if that already landed
+    // before this fetch resolved, the workflow's own saved values must win, not our defaults.
+    if (node.__tjTqdConfigured) return;
     (node.widgets || []).forEach((w) => {
         if (Object.prototype.hasOwnProperty.call(saved, w.name)) {
             w.value = saved[w.name];
             w.callback?.call(w, w.value, app.canvas, node, null, null);
         }
     });
+    node.setDirtyCanvas?.(true, true);
 }
 
 function scoreColor(score) {
@@ -243,8 +257,9 @@ function openSettingsModal(node) {
     backdrop.querySelector(".tj-tqd-modal-done").addEventListener("click", () => backdrop.remove());
 
     const saveBtn = backdrop.querySelector(".tj-tqd-modal-save");
-    saveBtn.addEventListener("click", () => {
-        const ok = saveSettingsFromNode(node, settingWidgets);
+    saveBtn.addEventListener("click", async () => {
+        saveBtn.textContent = "저장 중...";
+        const ok = await saveSettingsFromNode(node, settingWidgets);
         saveBtn.textContent = ok ? "✓ Saved — new nodes will use this" : "저장 실패";
         saveBtn.classList.toggle("tj-tqd-saved", ok);
         setTimeout(() => {
@@ -279,10 +294,19 @@ function installTQDUI(node) {
     node.__tjTqdInstalled = true;
     installTQDStyle();
 
+    // Track whether this node gets configure()'d from a saved workflow — LiteGraph calls it
+    // synchronously right after nodeCreated when restoring a graph, always before our async
+    // settings fetch below can resolve. applySavedSettings checks this flag so a restored
+    // workflow's own values always win over the saved defaults.
+    node.__tjTqdConfigured = false;
+    const origConfigure = node.onConfigure;
+    node.onConfigure = function (...args) {
+        node.__tjTqdConfigured = true;
+        return origConfigure?.apply(this, args);
+    };
+
     // Applied here (nodeCreated) so a brand-new node picks up the saved defaults, but a
-    // node restored from a saved workflow is unaffected — LiteGraph calls configure()
-    // (which sets widget values from the workflow JSON) right after nodeCreated, so it
-    // simply overwrites whatever we set here with the workflow's own serialized values.
+    // node restored from a saved workflow is unaffected (see the configure() guard above).
     applySavedSettings(node);
 
     // Model backend / gguf / mmproj / sampling settings all move into the Settings
