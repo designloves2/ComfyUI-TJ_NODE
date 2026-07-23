@@ -215,10 +215,6 @@ TJ_NODE introduces the following systems to solve these problems.
 
 ---
 
-#스크린샷 : OVERVIEW WORKFLOW
-
----
-
 # ✨ Why TJ_NODE Exists
 
 TJ_NODE의 목표는 단순히 Workflow를 작동시키는 것이 아닙니다.
@@ -265,474 +261,76 @@ Wireless routing is used between sections.
 
 ---
 
-#스크린샷 : SECTION ARCHITECTURE
+# 🛠 LLM Workflow System
 
----
+CATEGORY: `✨ TJ_Node/LLM`
 
-# 🚀 What's New in v2.4.x
+GGUF/llama.cpp, ComfyUI TextGenerate, Ollama 세 가지 백엔드를 선택적으로 지원합니다.
+GPU 가속 설치는 아래 **🧠 LLM (GGUF) 노드 GPU 설치** 섹션, 필요 모델은 하단
+**📦 Required Models & Setup** 섹션을 참고하세요.
 
-## ✨ New: LoRA Analyzer 제품군 확장 (Klein 4B/9B, Z-Image)
-
-Krea2 Analyzer와 **동일한 UI/기능**을 다른 아키텍처로 확장했습니다.
-Same UI and features, now for more architectures.
-
-| 노드 | 블록 구조 | 총 블록 |
-|---|---|---|
-| `Krea2 LoRA Analyzer (TJ)` | main 28 + TxtFusion layerwise 2 + refiner 2 | **32** |
-| `Klein 4B LoRA Analyzer (TJ)` | double 5 + single 20 | **25** |
-| `Klein 9B LoRA Analyzer (TJ)` | double 8 + single 24 | **32** |
-| `Z-Image LoRA Analyzer (TJ)` | layers 30 (Turbo/Base 공통) | **30** |
-
-> 블록 수는 실제 LoRA 파일들을 교차 검증해 확정한 값입니다.
-
-**⚠ 아키텍처 불일치 자동 경고**
-4B/9B 처럼 구조만 다른 변형을 **잘못 고르면 초과 블록이 조용히 버려져** 분석이 틀리게 나옵니다.
-이제 이를 감지해 경고합니다 (노드 상태줄 + `analysis_text` + 콘솔).
-- 예) Klein **9B LoRA를 4B 노드**에 넣으면 → `⚠ Double up to 7 (this node supports 5)` 경고
-- 인식 블록이 0개면 → `⚠ 다른 아키텍처 LoRA일 수 있음` 안내
-
-Automatically warns when a LoRA doesn't fit the chosen node (e.g. a 9B LoRA in the 4B node),
-instead of silently ignoring the out-of-range blocks.
-
-**공통 기능** (4개 노드 전부):
-- 블록별 기여도 분석 + 실시간 효과 막대 (강도 조절 시 즉시 반영)
-- `🔍 원본 대비` 겹쳐보기, 🎯 핵심만 / ⚖️ 균형 / 🧹 약한블록 정리 원클릭
-- `use_original` 토글 — 설정 유지한 채 원본으로 큐 실행 (A/B 비교)
-- 한/영 UI 토글 🌐, 프리셋 저장/불러오기, 필터링 LoRA 저장
-
-**키 형식 무관 분석** — 학습 툴/옵션이 달라도 자동 인식:
-`lora_A/B`(dot) · `lora_down/up`(kohya) · `.lora.down.weight`(diffusers) · `lokr_w1/w2`(LoKr) · `.A/.B`(단축형)
-
----
-
-# 🚀 What's New in v2.3.0
-
-## ✨ New: Krea2 LoRA Analyzer (TJ)
-
-Krea2 모델용 LoRA를 **블록 단위(32 blocks)** 로 분석하고, 불필요한 블록을 비활성화하거나 강도를 조절한 뒤 **필터링된 LoRA를 저장**하는 신규 노드입니다.
-
-Analyze Krea2 LoRAs block-by-block, toggle/scale individual blocks, and export a filtered LoRA.
-
-- 블록 구조: Main 28 + TxtFusion Layerwise 2 + Refiner 2 = **32 blocks**
-- 블록별 기여도(impact) 시각화 — 임팩트 바 + 색상 (파랑 → 빨강)
-- 블록 ON/OFF + strength(-5~5) 개별 조절
-- 프리셋 저장/불러오기/삭제 (localStorage)
-- `🔍 Analyze` 버튼 — 워크플로우 실행 없이 즉시 분석
-- `💾 Save Filtered` — 필터링된 LoRA를 **loras 폴더 하위**로 안전 저장 (path traversal 차단)
-- 블록별 강도: 숫자 입력 + 슬라이더 + `‹`/`›` 0.05 미세조정 + `⟲` 개별 리셋 (모두 동기화)
-- **초보자 모드**: 색 그라데이션(파랑→빨강) + 원클릭 자동 조절(🎯 핵심만 / ⚖️ 균형 / 🧹 약한블록 정리)
-- **한/영 UI 토글** 🌐 (브라우저 언어 자동 감지, 선택 저장) — Bilingual KO/EN interface
-- 카테고리: `✨ TJ_Node/Lora Analyzer` (신규)
-
-> **💡 Idea credit / 아이디어 출처:** 블록 단위 LoRA 분석·필터링이라는 **아이디어**는
-> [shootthesound/comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora)
-> 에서 영감을 받았습니다. 해당 프로젝트에 감사드립니다. 🙏
-> 본 노드는 **Krea2 LoRA 파일을 직접 분석해 처음부터 구현**한 것으로, 원 프로젝트의
-> **코드를 복사하지 않았습니다** (Krea2 전용 32-블록 구조 + JS DOM UI + 전용 API).
-> The **idea** of block-wise LoRA analysis/filtering was inspired by
-> [comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora) —
-> thank you. This node was **built from scratch** by analyzing Krea2 LoRA files
-> directly and does **not** copy that project's code.
-
----
-
-## ✨ New: Universal Calculator (TJ)
-
-해상도(비율/메가픽셀)와 시간/프레임을 한 노드에서 양방향 계산하는 유틸리티 노드입니다.
-
-Bidirectional resolution (aspect/megapixel) + time/frame calculator in one node.
-
-- **`0 = 빈칸(자동)`** — 원하는 칸만 입력하면 나머지가 자동 계산 (예: `W 1080` + `2:3` → `H 1620`)
-- 비율 정수 표시 (GCD 약분, 예: `1080 × 1620 (2:3)`)
-- 시간/프레임도 동일 방식: `fps` 기준으로 seconds ↔ frame_count 자동 변환
-- 실시간 요약 패널 (해상도 / 시간)
-- 카테고리: `✨ TJ_Node/Utility`
-
----
-
-## 🔧 LLM 개선 v2.3.0
-
-- `Prompt Enhancer (TJ)` / `Prompt Studio (TJ)`: Qwen3.5 계열의 "Thinking Process" 노출 대응 — assistant prefill로 최종 프롬프트만 출력하도록 유도, `_strip_thinking_process_block()` 후처리 추가
-
----
-
-# 🚀 What's New in v2.2.0
-
-## ✨ New: Model Set Loader (TJ)
-
-Model / Clip / VAE를 각각 개별 드롭다운으로 선택하여 CheckpointLoaderSimple처럼 한 노드에서 MODEL + CLIP + VAE를 한 번에 출력하는 신규 노드입니다.
-
-Select Model, Clip, and VAE independently with individual dropdowns and output all three in a single node — just like CheckpointLoaderSimple.
-
-- Model: `diffusion_models / unet / GGUF` 자동 감지 및 로더 선택
-- Clip: `text_encoders / clip` + GGUF CLIP 자동 지원
-- VAE: `vae` 폴더 목록
-- `model_dtype` / `clip_dtype` 위젯으로 fp8/fp16/bf16 직접 선택 가능
-- 각 슬롯 `[none]` 선택 시 해당 출력만 None 반환 (부분 연결 지원)
-- **Auto Set** 내장 — MODEL ▶ / CLIP ▶ / VAE ▶ 출력이 Wireless Provider로 자동 등록
-- 카테고리: `✨ TJ_Node/Loaders`
-
----
-
-## ✨ TJ_Node/Loaders 카테고리 신설
-
-`TJ_MultiModelSelecter`와 `TJ_ModelSetLoader` 두 노드를 기존 Utility에서 분리하여 전용 **Loaders** 카테고리로 이동했습니다.
-
----
-
-## 🔧 Bug Fixes v2.2.0
-
-| 파일 | 수정 내용 |
-| --- | --- |
-| `ltx2_sampler.py` | `_sampler_names()` 내 `nodes` NameError 수정 (Critical) |
-| `flux2_klein.py` | `ImageScaleToTotalPixels`에 존재하지 않는 `resolution_steps` 파라미터 제거 |
-| `flux2_klein.py` | BasicGuider fallback 시 콘솔 경고 출력 추가 (negative conditioning 무시됨 알림) |
-| `scene_maker.py` | CLIPLoader type 하드코딩(`stable_diffusion`) 제거 → 실제 타입 목록 동적 탐색으로 교체 |
-| `save_primary.py` | 파일명 카운터 파싱 `ValueError` 방지 try/except 추가 |
-| `z_image_turbo.py` | LoRA 이름 목록 중복 항목 제거 |
-| `go_stop_tj.py` | `timeout_sec` 파라미터 추가 — 사용자 설정 가능 타임아웃 (0=무제한, 기본값) |
-| `multi_model_selecter.py` | `_connected_output_indices()` 최적화 활성화 — 연결된 슬롯만 로드, PROMPT 감지 실패 시 load_all fallback |
-
----
-
-# 🚀 What's New in v2.0.1
-
-TJ_NODE v2.x는 기존 Wireless Workflow Architecture를 유지하면서
-LLM Workflow / Prompt Workflow / Cover Expansion Architecture 영역까지 확장되었습니다.
-
-TJ_NODE v2.x expands the original wireless workflow architecture into:
-LLM workflow systems, prompt workflow pipelines, and cover expansion architecture.
-
----
-
-#스크린샷 : V2 WORKFLOW OVERVIEW
-
----
-
-## ✨ Credits / Acknowledgements
-
-Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
-
-- TooBusy Nodes - 너무바쁜베짱이
-  https://github.com/designloves2/toobusy<br>
-  https://www.youtube.com/@%EB%84%88%EB%AC%B4%EB%B0%94%EC%81%9C%EB%B2%A0%EC%A7%B1%EC%9D%B4<br>
-
-- comfyui-deno-custom-nodes
-  https://github.com/Deno2026/comfyui-deno-custom-nodes<br>
-  https://www.youtube.com/@Denoise-AI<br>
-  
-- RebelsPromptEnhancer node
-  https://github.com/designloves2/RebelsPromptEnhancer<br>
-  https://www.youtube.com/@realrebelai<br>
-
-- comfyUI-Realtime-Lora — shootthesound
-  https://github.com/shootthesound/comfyUI-Realtime-Lora<br>
-  Krea2 LoRA Analyzer (TJ)의 **블록 단위 분석·필터링 아이디어**에 영감을 준 프로젝트입니다.
-  코드는 복사하지 않았으며, Krea2 전용으로 직접 분석·구현했습니다. 감사합니다. 🙏<br>
-  Inspired the **idea** of block-wise LoRA analysis in Krea2 LoRA Analyzer (TJ).
-  No code was copied — built from scratch for Krea2. Thank you.<br>
-
-  
-
-Several nodes were heavily reworked and integrated into the TJ wireless workflow architecture.
-
----
 ## ✨ Prompt Studio (TJ)
 
-Prompt Studio (TJ)는 TJ_NODE v2.x의 통합 LLM Prompt Workflow Node입니다.
-Unified LLM prompt workflow node for TJ_NODE v2.x.
+`Prompt Enhancer`와 `Image to Prompt`를 하나로 합친 통합 LLM 프롬프트 노드입니다. 이미지가
+연결되면 자동으로 Image to Prompt 모드, 아니면 Prompt Enhancer 모드로 동작합니다(Auto).
+Unified prompt node that auto-switches between Prompt Enhancer and Image to Prompt
+depending on whether an image is connected.
 
----
+* 지원 모드: Auto / Prompt Enhancer / Image to Prompt
+* GGUF·llama.cpp 백엔드 + ComfyUI TextGenerate 백엔드 둘 다 지원
+* Embedded Get/Set 내장 — 그래프 연결 없이 Wireless 로 프롬프트 주고받기 가능
 
-지원 모드:
-Supported Modes:
+## ✨ Prompt Enhancer (TJ) / Image to Prompt (TJ)
 
-* Auto
-* Prompt Enhancer
-* Image to Prompt
+Prompt Studio 안에서도 쓰이는 두 개별 노드로도 직접 사용 가능합니다.
 
----
-
-핵심 기능:
-Core Features:
-
-* Automatic Image Detection
-* Unified Prompt Workflow UI
-* GGUF / llama.cpp backend support
-* ComfyUI TextGenerate backend support
-* Embedded Workflow Architecture
-* Prompt Enhancement Workflow
-* Image-based Prompt Generation
-
----
-
-추가 기능:
-Additional Features:
-
-* Prompt Enhancer 모드 세로 크기 기억
-* Image to Prompt 모드 자동 높이 리셋 유지
-* 가로 크기 공통 유지 구조
-
----
-
-#스크린샷 : PROMPT STUDIO
-#스크린샷 : IMAGE TO PROMPT
-
----
+* **Prompt Enhancer (TJ)** — 텍스트 프롬프트를 `model_format`(자연어/태그/KREA2 Prompt
+  Enhance 등) 규칙에 맞춰 재작성·보정
+* **Image to Prompt (TJ)** — 이미지를 Vision-LLM으로 분석해 캡션/태그/구조화된 프롬프트로
+  변환 (`vision_task` 로 목적 선택: 캡션, SD/Booru 태그, 포즈 분석, 컨텐츠 품질 체크 등)
 
 ## ✨ Prompt Show & Locker (TJ)
 
-STRING 기반 Prompt Inspect / Lock Workflow Node입니다.
-STRING-based prompt inspection and lock workflow node.
-
----
-
-핵심 기능:
-Core Features:
-
-* Prompt Visualization
-* Copy Button Animation
-* PAUSED Status UI
-* Stable Resize Lifecycle
-* TJ Theme Integration
-* Embedded Workflow Support
-
----
-
-Copy 버튼 UX:
-
-```text id="tjpsl1"
-Copy
- ↓
-Copied
- ↓
-Auto Restore
-```
-
----
-
-#스크린샷 : PROMPT SHOW LOCKER
-
----
+STRING 값을 확인하고 필요시 잠그는(lock) Inspect 노드. 워크플로우가 재실행돼도 잠긴 값은
+유지됩니다. Copy 버튼으로 클립보드 복사 가능.
 
 ## ✨ Scene Maker (TJ)
 
-Visual Beat 기반 Prompt Workflow Architecture Node입니다.
-Visual Beat-based prompt workflow architecture node.
+Visual Beat(장면 단위) 기반으로 여러 개의 프롬프트를 구성·관리하는 노드. Embedded Get/Set,
+Auto Set, 번역(KO/EN/JP/CN) 지원. `Scene Maker Result - pipe(TJ)` 로 결과를 pipe 형태로
+다른 노드에 전달 가능.
 
----
+## ✨ Ollama LLM Loader (TJ)
 
-지원 기능:
-Supported Features:
+로컬에서 실행 중인 Ollama 서버(`127.0.0.1`/`localhost` 한정, 원격 서버는 기본 차단)에 연결해
+텍스트/이미지 프롬프트를 생성하는 노드. 모델 목록 자동 조회, 생성 중단(Stop) 버튼, VRAM
+정책(ComfyUI 모델과의 우선순위) 설정 지원.
 
-* Embedded Get/Set
-* Auto Set
-* Translate Workflow
-* Clip Override
-* Visual Beat Reuse
-* Guide / Summary Refresh
+## ✨ LLM Content Quality Controller (TJ)
 
----
-
-지원 언어:
-Supported Languages:
-
-* KO
-* EN
-* JP
-* CN
-
----
-
-#스크린샷 : SCENE MAKER
-
----
+LLM의 리뷰 답변(OK/FAIL 류)을 보고 이후 그래프 실행을 통과/차단하는 게이트 노드. 리뷰가
+실패하면 사람이 수동으로 승인(Approve Once)하거나 취소할 때까지 대기.
 
 ## ✨ Z-Image Turbo (TJ)
 
-Prompt-driven Turbo Workflow Architecture Node입니다.
-Prompt-driven turbo workflow architecture node.
+Z-Image 모델 전용 프롬프트 기반 노드. Embedded Get/Set, Auto Set, Positive/Negative 숨김
+UI, 재로드에도 안정적인 프리뷰 유지.
+
+## 🧪 TQD Score Estimate (TJ) — 실험적, 테스트 중
+
+로컬 Vision-LLM으로 이미지를 채점해 Krea2 LoRA 학습용 TQD(Timestep-aware Quality
+Decoupling) 데이터셋(이미지+캡션+`tqd_scores.jsonl`)을 만드는 노드. 자세한 설명은 위
+**🆕 Latest Additions** 섹션과 [CHANGELOG.md](CHANGELOG.md) 참고.
 
 ---
 
-핵심 기능:
-Core Features:
+## ✨ Universal Calculator (TJ)
 
-* Embedded Get/Set
-* Auto Set
-* Global Prompt Input
-* Positive / Negative Hide
-* Compact Preview Architecture
-* Reload-safe Preview Lifecycle
-* Textarea Resize Support
+해상도(비율/메가픽셀)와 시간/프레임을 한 노드에서 양방향 계산하는 유틸리티 노드.
 
----
-
-#스크린샷 : Z IMAGE TURBO
-
----
-
-## ✨ LLM Workflow Layer
-
-TJ_NODE v2.x는 신규 LLM Workflow Layer를 제공합니다.
-TJ_NODE v2.x introduces a dedicated LLM workflow layer.
-
----
-
-신규 CATEGORY:
-New CATEGORY:
-
-```python id="tjllm1"
-CATEGORY = " ✨ TJ_Node/LLM"
-```
-
----
-
-지원 노드:
-Supported Nodes:
-
-* Prompt Studio (TJ)
-* Prompt Enhancer (TJ)
-* Image to Prompt (TJ)
-* Prompt Show & Locker (TJ)
-
----
-
-#스크린샷 : LLM WORKFLOW
-
----
-
-## ✨ Cover Expansion System
-
-TJ Cover System은 외부 노드를 TJ Workflow 구조로 확장합니다.
-TJ Cover System expands external nodes into TJ workflow architecture.
-
----
-
-핵심 기능:
-Core Features:
-
-* Embedded Get/Set
-* TJ Theme Injection
-* Widget Reorder
-* Output Label Sync
-* Auto Set Extension
-* External Node Expansion
-
----
-
-원본 노드를 직접 수정하지 않는 구조입니다.
-The original nodes remain untouched.
-
----
-
-#스크린샷 : COVER SYSTEM
-
----
-
-## ✨ Smart Converter (TJ) Expansion
-
-Smart Converter (TJ)는 v2.x에서 더욱 확장되었습니다.
-Smart Converter (TJ) has been expanded in v2.x.
-
----
-
-추가 지원 타입:
-Additional Supported Types:
-
-* BOOLEAN
-* LIST
-* DICT
-* JSON
-
----
-
-추가 기능:
-Additional Features:
-
-* Strict Mode
-* Safe Fallback Workflow
-* Status Output
-* Dynamic Conversion Lifecycle
-
----
-
-#스크린샷 : SMART CONVERTER V2
-
----
-
-## ✨ VHS Hotkey Remote Expansion
-
-TJ VHS Hotkey Remote 기능이 확장되었습니다.
-TJ VHS Hotkey Remote has been expanded.
-
----
-
-추가 기능:
-Additional Features:
-
-* Sync Preview
-* Improved Pause / Play Workflow
-* Stable Keyboard Control Lifecycle
-* VHS Preview Utility Expansion
-
----
-
-#스크린샷 : VHS REMOTE V2
-
----
-
-## ✨ Reload-safe Lifecycle Expansion
-
-TJ_NODE v2.x는 reconnect lifecycle 구조를 더욱 강화했습니다.
-TJ_NODE v2.x further improves reconnect lifecycle architecture.
-
----
-
-안정화 대상:
-Stabilized Systems:
-
-* Show Any (TJ)
-* Prompt Studio (TJ)
-* Scene Maker (TJ)
-* Z-Image Turbo (TJ)
-* Eclipse Bridge Workflow
-
----
-
-핵심 기능:
-Core Features:
-
-* Wireless Reconnect
-* Fake-Wire Rebuild
-* Provider Survival
-* Ghost Cleanup
-* Dynamic Provider Refresh
-* Cover Lifecycle Sync
-
----
-
-#스크린샷 : LIFECYCLE V2
-
----
-# 🚀 v1.0 Major Features
-
-| Feature                   | Description                     |
-| ------------------------- | ------------------------------- |
-| Wireless Fake-Wire System | 숨겨진 Wireless Routing 시스템  |
-| Embedded Get System       | 일반 노드 내부 Wireless Receive |
-| Multi Router Architecture | Section 기반 Workflow 분리      |
-| Realtime Hover Wire       | Hover 기반 Hidden Wire 표시     |
-| Preview Lifecycle         | Reload-safe Preview Restore     |
-| Save Pipeline System      | 구조적 Save Chain Architecture  |
-| Batch Workflow System     | Dynamic Batch & Routing         |
-| Eclipse Bridge            | Eclipse Workflow Compatibility  |
-| HTML5 Overlay UI          | Advanced Interactive UI Layer   |
-| Reload-Safe Lifecycle     | Provider Reconnect & Restore    |
-
----
-
-#스크린샷 : v1.0 FEATURE OVERVIEW
+* `0 = 빈칸(자동)` — 원하는 칸만 입력하면 나머지가 자동 계산 (예: `W 1080` + `2:3` → `H 1620`)
+* 비율 정수 표시(GCD 약분), 시간/프레임도 fps 기준 자동 변환
+* CATEGORY: `✨ TJ_Node/Utility`
 
 ---
 
@@ -783,11 +381,6 @@ This allows:
 
 ---
 
-#스크린샷 : FAKE WIRE STRUCTURE
-#스크린샷 : HOVER WIRE VIEW
-
----
-
 # ✨ Embedded Get System
 
 TJ_NODE의 핵심 기능 중 하나는 Embedded Get System입니다.
@@ -817,10 +410,6 @@ Benefits:
 * Local Wireless Receive
 * Better Workflow Readability
 * Easier Maintenance
-
----
-
-#스크린샷 : EMBEDDED GET EXAMPLE
 
 ---
 
@@ -858,10 +447,6 @@ Multi Router
 
 Auto Set ON 시 각 Output은 자동 Wireless Provider가 됩니다.
 When Auto Set is enabled, each output automatically becomes a wireless provider.
-
----
-
-#스크린샷 : MULTI ROUTER WORKFLOW
 
 ---
 
@@ -905,10 +490,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : SET NODE
-
----
-
 ## ✨ Get Node (TJ)
 
 Wireless Receive 노드입니다.
@@ -926,10 +507,6 @@ Core Features:
 * Fake-Wire Connection
 * Hover Wire Preview
 * Eclipse Provider Compatibility
-
----
-
-#스크린샷 : GET NODE
 
 ---
 
@@ -953,10 +530,6 @@ Features:
 
 ---
 
-#스크린샷 : MULTI GET
-
----
-
 ## ✨ Multi Router (TJ)
 
 TJ Workflow Architecture의 핵심 Branch 시스템입니다.
@@ -974,10 +547,6 @@ Core Features:
 * Auto Set Provider Generation
 * Wireless Branch Routing
 * Section Modularization
-
----
-
-#스크린샷 : MULTI ROUTER
 
 ---
 
@@ -1001,10 +570,6 @@ Core Features:
 * Thumbnail Grid
 * Auto Set Routing
 * Eclipse Metadata Sync
-
----
-
-#스크린샷 : BATCH WORKFLOW SYSTEM
 
 ---
 
@@ -1074,12 +639,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : MULTI IMAGE LOADER
-#스크린샷 : THUMBNAIL GRID
-#스크린샷 : URL DOWNLOAD
-
----
-
 ## ✨ Dynamic Image Batch (TJ)
 
 동적 IMAGE Batch 생성 노드입니다.
@@ -1107,10 +666,6 @@ Recommended Usage:
 * Multi Prompt Generation
 * Iterative Processing
 * Grouped Upscale Pipeline
-
----
-
-#스크린샷 : DYNAMIC IMAGE BATCH
 
 ---
 
@@ -1147,10 +702,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : ECLIPSE BATCH
-
----
-
 ## ✨ Batch to Multi Image Output (TJ)
 
 IMAGE Batch를 최대 64개의 IMAGE Output으로 분리합니다.
@@ -1179,10 +730,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : BATCH SPLIT
-
----
-
 # 🛠 Preview / Utility System
 
 TJ Preview System은 단순 Preview Node가 아닙니다.
@@ -1203,10 +750,6 @@ Core Features:
 * HTML5 Video Playback
 * Audio Controller
 * Interactive Overlay UI
-
----
-
-#스크린샷 : PREVIEW SYSTEM
 
 ---
 
@@ -1254,11 +797,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : SAVE PREVIEW IMAGE
-#스크린샷 : FULLSCREEN VIEWER
-
----
-
 ## ✨ Save & Preview Video (TJ)
 
 Video Workflow용 통합 Preview 시스템입니다.
@@ -1298,11 +836,6 @@ Recommended Usage:
 * Frame Inspection
 * Video Preview
 * Audio Sync Workflow
-
----
-
-#스크린샷 : VIDEO PREVIEW
-#스크린샷 : VIDEO PLAYER
 
 ---
 
@@ -1353,10 +886,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : SMART SHOW
-
----
-
 ## ✨ Prompt Text (TJ)
 
 Workflow용 Modular Prompt Architecture Node입니다.
@@ -1390,10 +919,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : PROMPT TEXT
-
----
-
 ## ✨ Text Concatenate (TJ)
 
 Dynamic Text Combine Node입니다.
@@ -1423,10 +948,6 @@ Recommended Usage:
 * Camera + Lighting Prompt
 * Modular Prompt Pipeline
 * Prompt Layer Architecture
-
----
-
-#스크린샷 : TEXT CONCATENATE
 
 ---
 
@@ -1463,10 +984,6 @@ Recommended Usage:
 * Human-in-the-loop Workflow
 * Conditional Generation Gate
 * Manual Quality Control Checkpoint
-
----
-
-#스크린샷 : GO STOP NODE
 
 ---
 
@@ -1531,10 +1048,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : MODEL SET LOADER
-
----
-
 ## ✨ Multi Model Selecter (TJ)
 
 최대 64개 슬롯의 동적 모델 선택기입니다. Model / Checkpoint / Clip / VAE를 동적 슬롯 구조로 선택하고 출력합니다.
@@ -1583,10 +1096,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : MULTI MODEL SELECTER
-
----
-
 ## ✨ Show Any (TJ)
 
 Lightweight universal workflow inspection node.
@@ -1632,11 +1141,6 @@ Recommended Usage:
 * Metadata Visualization
 * Wireless Provider Inspect
 * Smart Converter Status Check
-
----
-
-#스크린샷 : SHOW ANY
-#스크린샷 : SHOW ANY TENSOR SUMMARY
 
 ---
 
@@ -1694,11 +1198,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : SMART CONVERTER
-#스크린샷 : SMART CONVERTER STATUS
-
----
-
 ## ✨ Shortcut Launcher (TJ)
 
 Workflow 내부에서 폴더, 파일, URL을 즉시 실행하는 Utility Launcher Node입니다.
@@ -1728,11 +1227,6 @@ Recommended Usage:
 * Civitai Upload Page
 * Workflow Asset Folder
 * Documentation Shortcut
-
----
-
-#스크린샷 : SHORTCUT LAUNCHER
-#스크린샷 : SHORTCUT SETTINGS
 
 ---
 
@@ -1808,10 +1302,6 @@ Can be removed simply by deleting the JS file.
 
 ---
 
-#스크린샷 : VHS HOTKEY REMOTE
-#스크린샷 : VHS SHORTCUT CONTROL
-
-
 # 🛠 Save Pipeline System
 
 TJ Save Pipeline은 단순 Save Node 구조가 아닙니다.
@@ -1819,10 +1309,6 @@ TJ Save Pipeline is not just another save node structure.
 
 Workflow 결과를 구조적으로 유지하기 위한 Result Management Architecture입니다.
 It is a result management architecture for structurally organizing workflow outputs.
-
----
-
-#스크린샷 : SAVE PIPELINE SYSTEM
 
 ---
 
@@ -1859,10 +1345,6 @@ Recommended Usage:
 * Main Result Save
 * Generation Base Save
 * Workflow Save Start Point
-
----
-
-#스크린샷 : PRIMARY SAVE
 
 ---
 
@@ -1906,10 +1388,6 @@ main_compare.png
 
 ---
 
-#스크린샷 : SUFFIX SAVE
-
----
-
 ## ✨ Save Image (Eclipse Suffix-TJ)
 
 Eclipse Metadata 기반 Save Pipeline입니다.
@@ -1939,10 +1417,6 @@ Recommended Usage:
 * Dataset Pipeline
 * Metadata Tracking Workflow
 * Original Structure Preservation
-
----
-
-#스크린샷 : ECLIPSE SAVE PIPELINE
 
 ---
 
@@ -2002,10 +1476,6 @@ Wireless Routing Between Sections
 
 ---
 
-#스크린샷 : SECTION WORKFLOW
-
----
-
 # ✨ Recommended Workflow Design
 
 TJ Workflow에서는 다음 전략을 추천합니다.
@@ -2057,10 +1527,6 @@ Use Stable Provider Naming
 
 Provider 이름은 Routing Map 역할을 수행합니다.
 Provider names act as routing maps.
-
----
-
-#스크린샷 : RECOMMENDED ARCHITECTURE
 
 ---
 
@@ -2122,10 +1588,6 @@ Placing all nodes in one giant unstructured workflow.
 
 ---
 
-#스크린샷 : ANTI PATTERN WORKFLOW
-
----
-
 # ✨ Reload-Safe Workflow Architecture
 
 TJ_NODE는 Reload-safe Workflow를 매우 중요하게 설계합니다.
@@ -2161,10 +1623,6 @@ Avoid:
 ❌ Random Provider Rename
 ❌ Duplicate Providers
 ❌ Unstable Dynamic Branches
-
----
-
-#스크린샷 : RELOAD SAFE SYSTEM
 
 ---
 
@@ -2220,11 +1678,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : SNAPSHOT SYSTEM
-#스크린샷 : PREVIEW RESTORE
-
----
-
 # ✨ Wireless Lifecycle System
 
 TJ Wireless System은 단순 연결 시스템이 아닙니다.
@@ -2260,11 +1713,6 @@ Core Features:
 * Ghost Wire Cleanup
 * Hover Wire Sync
 * Realtime Registry Refresh
-
----
-
-#스크린샷 : PROVIDER REGISTRY
-#스크린샷 : WIRELESS LIFECYCLE
 
 ---
 
@@ -2343,11 +1791,6 @@ Recommended Usage:
 
 ---
 
-#스크린샷 : CONTEXT MENU
-#스크린샷 : SHOW ALL WIRES
-
----
-
 # ✨ TJ_NODE Identity
 
 TJ_NODE의 모든 노드는 통합된 Visual Identity를 공유합니다.
@@ -2387,10 +1830,6 @@ CATEGORY = " ✨ TJ_Node/Lora Analyzer"   # NEW: Krea2 LoRA Analyzer
 
 이 구조는 Workflow 안에서 TJ_NODE 영역을 즉시 식별할 수 있게 합니다.
 This structure allows TJ_NODE workflows to be instantly recognizable.
-
----
-
-#스크린샷 : TJ NODE VISUAL IDENTITY
 
 ---
 
@@ -2663,10 +2102,6 @@ TJ_NODE v1.0 MANUAL
 
 ---
 
-#스크린샷 : MANUAL OVERVIEW
-
----
-
 # ✨ Workflow Philosophy
 
 TJ_NODE는 단순 Utility Node Pack이 아닙니다.
@@ -2694,13 +2129,28 @@ Large Scale Workflow Architecture
 
 ---
 
-#스크린샷 : FINAL WORKFLOW SHOWCASE
-
----
-
 # ✨ Credits
 
 Created by TJ
+
+일부 TJ_NODE 시스템은 아래 프로젝트에서 받은 영감을 바탕으로 재구현·확장되었습니다.
+Some TJ_NODE systems were rebuilt and extended based on concepts inspired by:
+
+* **TooBusy Nodes** — 너무바쁜베짱이
+  [github.com/designloves2/toobusy](https://github.com/designloves2/toobusy) ·
+  [YouTube](https://www.youtube.com/@%EB%84%88%EB%AC%B4%EB%B0%94%EC%81%9C%EB%B2%A0%EC%A7%B1%EC%9D%B4)
+* **comfyui-deno-custom-nodes**
+  [github.com/Deno2026/comfyui-deno-custom-nodes](https://github.com/Deno2026/comfyui-deno-custom-nodes) ·
+  [YouTube](https://www.youtube.com/@Denoise-AI)
+* **RebelsPromptEnhancer**
+  [github.com/designloves2/RebelsPromptEnhancer](https://github.com/designloves2/RebelsPromptEnhancer) ·
+  [YouTube](https://www.youtube.com/@realrebelai)
+* **comfyUI-Realtime-Lora** — shootthesound
+  [github.com/shootthesound/comfyUI-Realtime-Lora](https://github.com/shootthesound/comfyUI-Realtime-Lora) —
+  LoRA Analyzer 제품군(Krea2/Klein/Z-Image)의 **블록 단위 분석·필터링 아이디어**에 영감을 준
+  프로젝트입니다. 코드는 복사하지 않았으며, 각 아키텍처 전용으로 직접 분석·구현했습니다. 감사합니다 🙏
+  Inspired the **idea** of block-wise LoRA analysis/filtering. No code was copied — built from
+  scratch for each supported architecture. Thank you.
 
 피드백과 버그 제보는 언제든 환영합니다.
 Feedback and bug reports are always welcome.
