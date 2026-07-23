@@ -3,6 +3,36 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [Unreleased]
+
+### [Added]
+
+* **`TQD Score Estimate (TJ)` — 실험적, 테스트 중.** 로컬 Vision-LLM(GGUF/llama.cpp 또는
+  ComfyUI TextGenerate 백엔드, Image to Prompt/Prompt Studio와 동일한 인프라 재사용)으로
+  이미지를 채점해 Krea2 LoRA 학습용 TQD 데이터셋(이미지+캡션+`tqd_scores.jsonl`)을
+  `output_dir` 한 폴더에 만든다. 논문 "Beyond the Golden Data: Resolving the Motion-Vision
+  Quality Dilemma via Timestep Selective Training" (arXiv:2603.25527) 의 Timestep-aware
+  Quality Decoupling 개념을 이미지 도메인(motion→structure, visual→detail)에 적용한
+  것으로, 실제 학습 코드는
+  [designloves2/musubi-tuner-gui (tj-custom 브랜치)](https://github.com/designloves2/musubi-tuner-gui/tree/tj-custom)에서
+  현재 테스트 중.
+  * 배치를 한 번에 넣지 않고 이미지 1장씩 순차 채점(로컬 VRAM 보호), 완료마다 노드에
+    즉시 미리보기+점수 표시(웹소켓 진행 이벤트, 이미지 사이에서만 하드 중단 가능).
+  * `image_file`/`structure_score`/`detail_score` 3개 키만 있는 순수 JSON Lines로 저장 —
+    krea2-trainer의 `_load_tqd_scores` 파서 계약(경로 없는 basename, `[0,1]` 범위, 중복
+    stem 금지)과 정확히 일치하도록 검증.
+  * 이미 채점된 이미지는 스킵(upsert), 이미지 수/점수 항목 수 불일치를 자동 검증해
+    학습 시작 시 크래시로 이어지는 걸 미리 경고.
+  * 파일명이 우연히 겹치지만 실제로는 다른 이미지면 perceptual 비교로 자동 번호를
+    붙여 별도 저장(캡션/점수 레코드도 실제 저장된 이름을 따라감).
+  * 채점 프롬프트는 LLM의 "관대함 편향"(기준점 없이 물으면 거의 항상 0.9+ 로 답하는
+    경향)과, `mu = 0.5 + 0.5*(structure-detail)` 학습 공식이 필요로 하는 "두 축의 상대적
+    격차"를 모두 고려해 설계 — 점수 구간표 + "두 축을 독립적으로 평가하라" 지시 포함.
+  * 모델 백엔드/GGUF/mmproj/샘플링 설정은 노드 내 ⚙ 설정 팝업으로 이동, "Save as
+    Default"로 이후 새로 만드는 노드에 자동 적용(로컬 브라우저 저장, 워크플로우에 이미
+    저장된 값은 그대로 우선).
+
+---
 ## [2.9.2] - 2026-07-23
 
 ### [Fixed]

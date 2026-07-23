@@ -25,6 +25,26 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
 
+## 🧪 TQD Score Estimate (TJ) — 실험적, 테스트 중
+
+로컬 Vision-LLM(Qwen3-VL/Qwen2.5-VL GGUF 등)으로 이미지를 채점해서 **Krea2 LoRA 학습용
+TQD(Timestep-aware Quality Decoupling) 데이터셋**을 만드는 노드입니다. `structure_score`
+(구도/자세)와 `detail_score`(얼굴/디테일)를 이미지별로 매겨서, 완벽하지 않은 데이터도
+버리지 않고 각 이미지가 강한 축에 맞는 diffusion timestep 구간에 집중적으로 노출시키는
+학습 방식(arXiv:2603.25527, "Beyond the Golden Data: Resolving the Motion-Vision Quality
+Dilemma via Timestep Selective Training")을 이미지 도메인에 맞게 적용한 것입니다.
+
+* Multi Image Loader (TJ)에서 배치를 받아 **이미지 1장씩 순차 채점**(로컬 VRAM 보호 — 절대
+  배치로 한 번에 넣지 않음), 완료마다 미리보기+점수를 노드에 바로 표시.
+* `output_dir` 한 곳에 이미지 원본 + 캡션(.txt) + `tqd_scores.jsonl`을 함께 저장.
+  `image_file`/`structure_score`/`detail_score` 3개 키만 있는 순수 JSON Lines 형식.
+* 이미 채점된 이미지는 스킵, 이미지 수와 점수 항목 수 불일치를 자동 검증(학습 시작 시
+  오류로 이어지는 걸 미리 방지).
+* 모든 모델/백엔드 설정은 노드 안의 ⚙ 버튼 팝업에서 관리, "Save as Default"로 다음에
+  새로 만드는 노드에도 자동 적용.
+* 이 노드가 만든 데이터셋은 [designloves2/musubi-tuner-gui (tj-custom 브랜치)](https://github.com/designloves2/musubi-tuner-gui/tree/tj-custom)에서
+  실제 Krea2 LoRA 학습에 사용하며 **현재 테스트 진행 중**입니다.
+
 ## 🔒 Shortcut Launcher (TJ) 보안 수정 (v2.9.2)
 
 `/tj/shortcut/open`이 원격/CSRF 요청으로 로컬 파일·프로그램을 실행할 수 있던 문제를

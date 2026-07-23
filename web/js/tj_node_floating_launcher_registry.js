@@ -77,6 +77,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "LLM", title: "Ollama LLM Loader (TJ)", type: "Ollama LLM Loader (TJ)" },
   { category: "LLM", title: "Prompt Show & Locker (TJ)", type: "Prompt Show & Locker (TJ)" },
   { category: "LLM", title: "LLM Content Quality Controller (TJ)", type: "LLM Content Quality Controller (TJ)" },
+  { category: "LLM", title: "TQD Score Estimate (TJ)", type: "TQD Score Estimate (TJ)" },
 
   // LoRA
   { category: "LoRA", title: "Krea2 LoRA Analyzer (TJ)", type: "Krea2 LoRA Analyzer (TJ)" },

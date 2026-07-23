@@ -64,6 +64,7 @@ from .nodes.llm import (
     TJ_SceneMakerResultPipe,
     TJ_OllamaLLMLoader,
     TJ_LLMContentQualityController,
+    TJ_TQDScoreEstimate,
 )
 
 # ── LoRA ──────────────────────────────────────────────────────────────────
@@ -139,6 +140,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SceneMakerResultPipe": TJ_SceneMakerResultPipe,
     "TJ_OllamaLLMLoader":   TJ_OllamaLLMLoader,
     "TJ_LLMContentQualityController": TJ_LLMContentQualityController,
+    "TJ_TQDScoreEstimate":  TJ_TQDScoreEstimate,
 
     # LoRA
     "Krea2LoRAAnalyzer":  Krea2LoRAAnalyzer,
@@ -212,6 +214,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SceneMakerResultPipe": "Scene Maker Result - pipe(TJ)",
     "TJ_OllamaLLMLoader":   "Ollama LLM Loader (TJ)",
     "TJ_LLMContentQualityController": "LLM Content Quality Controller (TJ)",
+    "TJ_TQDScoreEstimate":  "TQD Score Estimate (TJ)",
 
     # LoRA
     "Krea2LoRAAnalyzer":  "Krea2 LoRA Analyzer (TJ)",

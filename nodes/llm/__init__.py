@@ -6,3 +6,4 @@ from .prompt_studio import TJ_PromptStudio
 from .scene_maker import TJ_SceneMaker
 from .scene_maker_pipe import TJ_SceneMakerResultPipe
 from .local_llm import TJ_OllamaLLMLoader, TJ_LLMContentQualityController
+from .tqd_score_estimator import TJ_TQDScoreEstimate
