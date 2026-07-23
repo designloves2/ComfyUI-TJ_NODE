@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-tj_node"
-description = "Large Scale Wireless Workflow Architecture Toolkit for ComfyUI — wireless routing, batch/preview/save pipelines, LLM prompt workflow, and LoRA analysis nodes."
+description = "Large Scale Wireless Workflow Architecture Toolkit for ComfyUI — wireless routing, batch/preview/save pipelines, LLM prompt workflow, LoRA analysis, and Krea2 TQD dataset scoring."
 version = "2.9.2"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"

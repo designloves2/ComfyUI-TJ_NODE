@@ -20,10 +20,12 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.9.2)
+# 🆕 Latest Additions
 
-가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
-The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
+가장 최근에 추가된 노드들입니다 (일부는 아직 릴리즈 전 / 테스트 중 — 버전 태그는
+[CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
+The newest nodes in the pack — some are pre-release / still being tested (see
+[CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
 
 ## 🧪 TQD Score Estimate (TJ) — 실험적, 테스트 중
 
