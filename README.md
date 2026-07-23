@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.9.1
+# ✨ TJ_NODE v2.9.2
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -20,10 +20,15 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 
 ---
 
-# 🆕 Latest Additions (v2.9.1)
+# 🆕 Latest Additions (v2.9.2)
 
 가장 최근에 추가된 노드들입니다. 자세한 옵션은 하단 섹션 및 [CHANGELOG.md](CHANGELOG.md) 참고.
 The newest nodes in the pack. See the sections below and [CHANGELOG.md](CHANGELOG.md) for full detail.
+
+## 🔒 Shortcut Launcher (TJ) 보안 수정 (v2.9.2)
+
+`/tj/shortcut/open`이 원격/CSRF 요청으로 로컬 파일·프로그램을 실행할 수 있던 문제를
+수정. 이제 로컬(loopback) + 동일 출처 요청만 허용됩니다. 자세한 내용은 CHANGELOG 참고.
 
 ## 🖼 Multi Image Loader (TJ) 업데이트
 
