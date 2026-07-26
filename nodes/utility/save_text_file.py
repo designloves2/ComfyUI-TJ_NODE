@@ -8,6 +8,16 @@ import folder_paths
 
 from ._utility_utils import _tj_safe_output_dir, _tj_expand_datetime_aliases
 
+# Text-only allowlist — this node writes arbitrary node-graph text into files under
+# output/, so it must not accept an OS-launchable extension (.bat/.cmd/.sh/.desktop/...).
+# The write itself stays inside output/, but handing a workflow an easy way to plant a
+# launchable file there is worth denying outright rather than trusting callers to behave.
+_ALLOWED_TEXT_EXTENSIONS = {
+    ".txt", ".json", ".jsonl", ".ndjson", ".md", ".markdown", ".csv", ".tsv",
+    ".yaml", ".yml", ".xml", ".html", ".htm", ".log", ".ini", ".cfg", ".conf",
+    ".srt", ".ass", ".vtt", ".lrc", ".rst", ".prompt", ".caption",
+}
+
 
 class TJ_SaveTextFile:
     @classmethod
@@ -45,7 +55,12 @@ class TJ_SaveTextFile:
         if not ext.startswith("."):
             ext = "." + ext
         ext = re.sub(r"[\\/:*?\"<>|\s]+", "", ext)
-        return ext or ".txt"
+        ext = (ext or ".txt").lower()
+        # Reject anything not in the text-only allowlist (e.g. .bat/.cmd/.sh/.desktop) —
+        # falls back to .txt instead of erroring, since this is usually just a typo/default.
+        if ext not in _ALLOWED_TEXT_EXTENSIONS:
+            ext = ".txt"
+        return ext
 
     @staticmethod
     def _safe_name_part(value, fallback="text"):
