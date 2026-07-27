@@ -6,6 +6,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
     "llama-cpp-python",
+    "openpyxl",
 ]
 
 [project.urls]

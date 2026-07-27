@@ -7,6 +7,14 @@
 
 ### [Added]
 
+* **`Prompt Excel Logger (TJ)` / `Prompt Excel Loader (TJ)`.** 프롬프트/설정값/결과
+  이미지를 엑셀(xlsx)로 누적 기록하고 다시 불러오는 2노드 세트. Logger는 이미지 배치를
+  받아 이미지당 한 행(썸네일 포함, ID 자동 증가, 파일 잠김 시 3회 재시도)을 추가. Loader는
+  사진 라이브러리 앱 스타일의 썸네일 그리드로 행을 훑어보다가 클릭으로 선택(다음 실행에
+  반영), 더블클릭으로 상세 팝업을 열어 값을 수정하고 저장(해당 행만 openpyxl로 부분
+  업데이트, 전체 재작성 없음)할 수 있다. `TJ_PROMPT_PIPE` 소켓으로 8개 필드를 한 번에
+  전달 가능. 컬럼 순서(`HEADERS`)는 두 노드가 공유하는 단일 소스. `openpyxl` 의존성 추가.
+
 * **`TQD Score Estimate (TJ)` — 실험적, 테스트 중.** 로컬 Vision-LLM(GGUF/llama.cpp 또는
   ComfyUI TextGenerate 백엔드, Image to Prompt/Prompt Studio와 동일한 인프라 재사용)으로
   이미지를 채점해 Krea2 LoRA 학습용 TQD 데이터셋(이미지+캡션+`tqd_scores.jsonl`)을
