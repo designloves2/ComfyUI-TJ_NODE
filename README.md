@@ -27,15 +27,15 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
 
-## 📊 Prompt Excel Logger (TJ) / Prompt Excel Loader (TJ)
+## 📊 PromptDBSave(TJ) / PromptDBLoader(TJ)
 
 워크플로우에서 생성한 프롬프트/설정값/결과 이미지를 엑셀(xlsx)로 누적 기록하고, 다시
 불러와 재사용하기 위한 2노드 세트.
 
-* **Prompt Excel Logger (TJ)** — 이미지 배치를 받아 이미지마다 한 행씩(썸네일 포함) 엑셀에
+* **PromptDBSave(TJ)** — 이미지 배치를 받아 이미지마다 한 행씩(썸네일 포함) 엑셀에
   누적. ID 자동 증가, 파일 잠김 시 재시도, positive/negative/model/seed/steps/cfg/기타
   설정/원본 경로까지 기록.
-* **Prompt Excel Loader (TJ)** — 사진 라이브러리 앱처럼 썸네일 그리드로 기록된 행을
+* **PromptDBLoader(TJ)** — 사진 라이브러리 앱처럼 썸네일 그리드로 기록된 행을
   훑어보는 조회 노드. 클릭으로 선택(다음 실행에 반영), 더블클릭으로 상세 팝업을 열어
   값 수정 후 저장(해당 행만 갱신). `TJ_PROMPT_PIPE` 소켓으로 8개 값을 한 번에 다른 노드에
   전달 가능.

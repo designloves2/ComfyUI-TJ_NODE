@@ -44,8 +44,8 @@ from .nodes.utility import (
     TJ_UniversalCalculator,
     TJ_VideoGridComparer,
     TJ_Resolution,
-    TJ_PromptExcelLogger,
-    TJ_PromptExcelLoader,
+    TJ_PromptDBSave,
+    TJ_PromptDBLoader,
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
@@ -127,8 +127,8 @@ NODE_CLASS_MAPPINGS = {
     "TJ_UniversalCalculator": TJ_UniversalCalculator,
     "TJ_VideoGridComparer": TJ_VideoGridComparer,
     "TJ_Resolution":       TJ_Resolution,
-    "TJ_PromptExcelLogger": TJ_PromptExcelLogger,
-    "TJ_PromptExcelLoader": TJ_PromptExcelLoader,
+    "TJ_PromptDBSave": TJ_PromptDBSave,
+    "TJ_PromptDBLoader": TJ_PromptDBLoader,
 
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
@@ -203,8 +203,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_UniversalCalculator": "Universal Calculator (TJ)",
     "TJ_VideoGridComparer": "Video Grid Comparer (TJ)",
     "TJ_Resolution":       "Resolution (TJ)",
-    "TJ_PromptExcelLogger": "Prompt Excel Logger (TJ)",
-    "TJ_PromptExcelLoader": "Prompt Excel Loader (TJ)",
+    "TJ_PromptDBSave": "PromptDBSave(TJ)",
+    "TJ_PromptDBLoader": "PromptDBLoader(TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",

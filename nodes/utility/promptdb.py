@@ -1,10 +1,10 @@
-# nodes/utility/prompt_excel.py
-"""TJ_PromptExcel — log prompts/settings/thumbnails to an Excel workbook and browse
+# nodes/utility/promptdb.py
+"""TJ_PromptDB — log prompts/settings/thumbnails to an Excel workbook and browse
 them back into a workflow via a gallery-style loader node.
 
 Two nodes:
-  TJ_PromptExcelLogger — appends one row per image in the batch to excel_path
-  TJ_PromptExcelLoader — thumbnail-grid browser; outputs the selected row's fields
+  TJ_PromptDBSave — appends one row per image in the batch to excel_path
+  TJ_PromptDBLoader — thumbnail-grid browser; outputs the selected row's fields
 """
 
 import base64
@@ -110,7 +110,7 @@ def _tensor_to_pil(image_slice: Any) -> Image.Image:
     return Image.fromarray(arr)
 
 
-class TJ_PromptExcelLogger:
+class TJ_PromptDBSave:
     DESCRIPTION = "Appends one row per image (prompt/settings/thumbnail) to an Excel workbook."
 
     @classmethod
@@ -143,7 +143,7 @@ class TJ_PromptExcelLogger:
             negative_prompt="", model_name="", seed=0, steps=0, cfg=0.0,
             extra_settings="", source_path=""):
         if Workbook is None:
-            raise RuntimeError("openpyxl is required for TJ_PromptExcelLogger. pip install openpyxl")
+            raise RuntimeError("openpyxl is required for TJ_PromptDBSave. pip install openpyxl")
 
         path = _resolve_excel_path(excel_path)
         if not path:
@@ -189,8 +189,8 @@ class TJ_PromptExcelLogger:
         return (images,)
 
 
-class TJ_PromptExcelLoader:
-    DESCRIPTION = "Gallery browser for a TJ_PromptExcelLogger workbook — click a thumbnail to load its row."
+class TJ_PromptDBLoader:
+    DESCRIPTION = "Gallery browser for a TJ_PromptDBSave workbook — click a thumbnail to load its row."
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -212,13 +212,13 @@ class TJ_PromptExcelLoader:
 
     def load(self, excel_path, selected_id=-1):
         if load_workbook is None:
-            raise RuntimeError("openpyxl is required for TJ_PromptExcelLoader. pip install openpyxl")
+            raise RuntimeError("openpyxl is required for TJ_PromptDBLoader. pip install openpyxl")
 
         path = _resolve_excel_path(excel_path)
         if not path or not os.path.isfile(path):
             raise FileNotFoundError(f"Excel file not found: {path}")
         if int(selected_id) < 0:
-            raise RuntimeError("No row selected — click a thumbnail in the TJ_PromptExcelLoader grid first.")
+            raise RuntimeError("No row selected — click a thumbnail in the TJ_PromptDBLoader grid first.")
 
         wb = load_workbook(path, read_only=True, data_only=True)
         ws = wb.active
@@ -360,5 +360,5 @@ async def _handle_update_row(request):
 
 
 if PromptServer is not None:
-    PromptServer.instance.routes.post("/tj_node/prompt_excel/list_rows")(_handle_list_rows)
-    PromptServer.instance.routes.post("/tj_node/prompt_excel/update_row")(_handle_update_row)
+    PromptServer.instance.routes.post("/tj_node/promptdb/list_rows")(_handle_list_rows)
+    PromptServer.instance.routes.post("/tj_node/promptdb/update_row")(_handle_update_row)

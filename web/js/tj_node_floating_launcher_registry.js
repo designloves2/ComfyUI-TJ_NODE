@@ -46,8 +46,8 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Utility", title: "Universal Calculator (TJ)", type: "Universal Calculator (TJ)" },
   { category: "Utility", title: "Video Grid Comparer (TJ)", type: "Video Grid Comparer (TJ)" },
   { category: "Utility", title: "Resolution (TJ)", type: "Resolution (TJ)" },
-  { category: "Utility", title: "Prompt Excel Logger (TJ)", type: "Prompt Excel Logger (TJ)" },
-  { category: "Utility", title: "Prompt Excel Loader (TJ)", type: "Prompt Excel Loader (TJ)" },
+  { category: "Utility", title: "PromptDBSave(TJ)", type: "PromptDBSave(TJ)" },
+  { category: "Utility", title: "PromptDBLoader(TJ)", type: "PromptDBLoader(TJ)" },
 
   // Image
   { category: "Image", title: "Multi Image Loader (TJ)", type: "Multi Image Loader (TJ)" },

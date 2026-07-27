@@ -7,7 +7,7 @@
 
 ### [Added]
 
-* **`Prompt Excel Logger (TJ)` / `Prompt Excel Loader (TJ)`.** 프롬프트/설정값/결과
+* **`PromptDBSave(TJ)` / `PromptDBLoader(TJ)`.** 프롬프트/설정값/결과
   이미지를 엑셀(xlsx)로 누적 기록하고 다시 불러오는 2노드 세트. Logger는 이미지 배치를
   받아 이미지당 한 행(썸네일 포함, ID 자동 증가, 파일 잠김 시 3회 재시도)을 추가. Loader는
   사진 라이브러리 앱 스타일의 썸네일 그리드로 행을 훑어보다가 클릭으로 선택(다음 실행에
