@@ -1,2 +1,14 @@
+# Local Vision-LLM nodes (Image to Prompt, Prompt Studio, TQD Score Estimate).
+# The installer scripts special-case this one: building from source needs CMake and a C++
+# compiler, so they try prebuilt CUDA/Metal/CPU wheels first.
 llama-cpp-python
+
+# PromptDBSave / PromptDBLoader / PromptDBBridge — xlsx read/write with embedded thumbnails.
 openpyxl
+
+# Save & Preview Video and the utility fallbacks call imageio.v2.mimsave with the libx264
+# codec. Neither is part of ComfyUI's own requirements and both are imported without a
+# guard, so leaving them out makes those nodes die with ModuleNotFoundError on a clean
+# install. imageio-ffmpeg supplies the ffmpeg binary imageio needs to write mp4.
+imageio
+imageio-ffmpeg

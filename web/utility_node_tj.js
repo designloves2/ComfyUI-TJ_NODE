@@ -450,6 +450,12 @@ function attachTJGetReceiver(node, opts = {}) {
     }, 500);
 }
 
+// Exposed so other node scripts can reuse the receiver instead of copying it again — this
+// is what filters the get_name dropdown down to providers whose output type matches the
+// receiving input (`defaultType`). A node that only declares a get_name widget without
+// attaching this gets an unfiltered list showing every provider in the graph.
+window.TJ_NODE_attachGetReceiver = attachTJGetReceiver;
+
 function tjComputePackedImageGrid(count, drawW, drawH) {
     // Smart contain grid.
     // Goal:

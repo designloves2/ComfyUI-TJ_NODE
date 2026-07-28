@@ -14,4 +14,4 @@ from .led_display import TJ_LEDDisplay
 from .tj_universal_calculator import TJ_UniversalCalculator
 from .tj_resolution import TJ_Resolution
 from .video_grid_comparer import TJ_VideoGridComparer
-from .promptdb import TJ_PromptDBSave, TJ_PromptDBLoader
+from .promptdb import TJ_PromptDBSave, TJ_PromptDBLoader, TJ_PromptDBBridge

@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.9.2
+# ✨ TJ_NODE v2.10.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -33,12 +33,46 @@ The newest nodes in the pack — some are pre-release / still being tested (see
 불러와 재사용하기 위한 2노드 세트.
 
 * **PromptDBSave(TJ)** — 이미지 배치를 받아 이미지마다 한 행씩(썸네일 포함) 엑셀에
-  누적. ID 자동 증가, 파일 잠김 시 재시도, positive/negative/model/seed/steps/cfg/기타
-  설정/원본 경로까지 기록.
+  누적. ID 자동 증가, 파일 잠김 시 재시도, positive/negative/model/seed/steps/cfg/
+  sampler/scheduler/기타 설정/원본 경로까지 기록.
+* **자동 추출(`auto_extract`, 기본 켜짐)** — 실행 중인 워크플로우 그래프를 `images`
+  입력에서 거슬러 올라가 설정값을 스스로 채웁니다. 메인/리파이너가 함께 있으면
+  **EmptyLatentImage에서 시작하는(denoise 1.0) 샘플러**를 메인으로 판정해 주 컬럼에
+  기록하고, 리파이너는 `extra_settings`에 요약으로 덧붙입니다. 그래야 행끼리 값을
+  비교할 수 있습니다. 직접 **연결한** 입력은 항상 자동보다 우선하고, 자동으로 찾지
+  못한 항목은 위젯 기본값(steps 8 / cfg 1.0 / euler / simple)이 그대로 남습니다.
+* **SAVE / BYPASS 토글** — BYPASS로 두면 아무것도 기록하지 않고 이미지를 그대로
+  통과시킵니다. 노드를 그래프에서 뺄 필요 없이 기록만 잠시 끌 때 씁니다.
 * **PromptDBLoader(TJ)** — 사진 라이브러리 앱처럼 썸네일 그리드로 기록된 행을
   훑어보는 조회 노드. 클릭으로 선택(다음 실행에 반영), 더블클릭으로 상세 팝업을 열어
-  값 수정 후 저장(해당 행만 갱신). `TJ_PROMPT_PIPE` 소켓으로 8개 값을 한 번에 다른 노드에
-  전달 가능.
+  값 수정 후 저장(해당 행만 갱신)하거나 그 행을 삭제. `TJ_PROMPT_PIPE` 소켓으로 값
+  전체를 한 번에 다른 노드에 전달 가능.
+* 출력 슬롯은 **기본으로 접혀 있고**(`positive_prompt` / `pipe` 만 표시),
+  `▸ Show all outputs` 버튼으로 펼칩니다. **펼쳐서 연결한 뒤 다시 접으면 연결은 그대로
+  유지**되고(연결된 슬롯은 접혀도 남습니다) 안 쓰는 소켓만 사라집니다.
+* **PromptDBBridge(TJ)** — `pipe` 하나를 받아 11개 필드로 풀어주는 브릿지. Loader는
+  소켓 2개로 두고 캔버스를 가로지르는 선은 pipe 하나만 쓴 뒤, 값을 실제로 쓰는 위치
+  옆에서 펼치는 용도입니다. `pipe`를 그대로 다시 출력하므로 브릿지를 이어 붙일 수도
+  있습니다.
+* 세 노드 모두 TJ_NODE 무선 Set/Get을 지원합니다 — Save는 `get_name`(IMAGE 수신) /
+  `setnode_name`(송신), Loader와 Bridge는 `auto_set`으로 출력 전체를 이름으로 발행
+  (`PDB_*` / `PDBB_*`). `get_name` 목록은 타입이 맞는 프로바이더만 표시됩니다.
+* 상세 팝업에서 **썸네일을 직접 교체**할 수 있습니다. 이미지 선택 창은 Multi Image
+  Loader의 Add image와 같은 방식이며, 대상은 **output 폴더로 한정**됩니다(최신 파일
+  우선 정렬, 하위 폴더 탐색 가능). 교체하면 사이드카와 엑셀에 임베드된 이미지가 함께
+  갱신됩니다.
+* **라이브러리 관리** — 📚 pill을 누르면 활성화된 라이브러리만 나오는 빠른 전환
+  메뉴가, ⚙ 버튼을 누르면 가져오기·백업·순서 변경·활성/비활성 토글이 있는 설정
+  모달이 열립니다. 경로를 직접 입력할 일은 없습니다. 이름과 파일은 모두 중복 등록이
+  차단됩니다.
+* **백업** — 라이브러리 행의 ⬇ 버튼은 워크북과 썸네일을 묶은 `.zip`을 브라우저로
+  내려받습니다(임의 경로 쓰기가 아니라 다운로드).
+* **저장 위치는 `promptDB/` 폴더로 고정** — 이 노드가 읽고 쓰는 모든 xlsx는
+  커스텀 노드 폴더 아래 `promptDB/` 안에만 존재합니다. 하위 폴더는 자유롭게 만들 수
+  있고, 폴더 밖을 가리키는 경로는 거부됩니다. 예시로 `Anime Style.xlsx`,
+  `Photography.xlsx` 두 개가 들어 있습니다.
+* 썸네일은 `promptDB/_tj_thumbnails_tmp/<워크북 이름>/` 에 라이브러리별로 분리 보관되고,
+  사라졌을 경우 엑셀에 임베드된 이미지에서 자동 복구됩니다.
 * 두 노드가 컬럼 순서(`HEADERS`)를 공유하는 단일 소스 — 엑셀 파일 하나가 곧 카테고리.
 * CATEGORY: `✨ TJ_Node/Utility`, `openpyxl` 필요(자동 설치됨).
 

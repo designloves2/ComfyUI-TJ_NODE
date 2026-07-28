@@ -46,6 +46,7 @@ from .nodes.utility import (
     TJ_Resolution,
     TJ_PromptDBSave,
     TJ_PromptDBLoader,
+    TJ_PromptDBBridge,
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
@@ -129,6 +130,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_Resolution":       TJ_Resolution,
     "TJ_PromptDBSave": TJ_PromptDBSave,
     "TJ_PromptDBLoader": TJ_PromptDBLoader,
+    "TJ_PromptDBBridge": TJ_PromptDBBridge,
 
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
@@ -205,6 +207,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_Resolution":       "Resolution (TJ)",
     "TJ_PromptDBSave": "PromptDBSave(TJ)",
     "TJ_PromptDBLoader": "PromptDBLoader(TJ)",
+    "TJ_PromptDBBridge": "PromptDBBridge(TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",

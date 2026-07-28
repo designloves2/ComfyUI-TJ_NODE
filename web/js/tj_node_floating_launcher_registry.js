@@ -48,6 +48,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Utility", title: "Resolution (TJ)", type: "Resolution (TJ)" },
   { category: "Utility", title: "PromptDBSave(TJ)", type: "PromptDBSave(TJ)" },
   { category: "Utility", title: "PromptDBLoader(TJ)", type: "PromptDBLoader(TJ)" },
+  { category: "Utility", title: "PromptDBBridge(TJ)", type: "PromptDBBridge(TJ)" },
 
   // Image
   { category: "Image", title: "Multi Image Loader (TJ)", type: "Multi Image Loader (TJ)" },

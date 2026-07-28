@@ -1,0 +1,8 @@
+# This folder is the PromptDB sandbox: every workbook the node can read or write lives
+# here (see PROMPTDB_ROOT in nodes/utility/promptdb.py). Only the two starter libraries
+# ship with the repo — the user's own libraries, their subfolders, and the generated
+# thumbnail sidecars stay local.
+*
+!.gitignore
+!Anime Style.xlsx
+!Photography.xlsx

@@ -3,17 +3,67 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
-## [Unreleased]
+## [2.10.0] - 2026-07-28
 
 ### [Added]
 
-* **`PromptDBSave(TJ)` / `PromptDBLoader(TJ)`.** 프롬프트/설정값/결과
+* **`PromptDBSave(TJ)` / `PromptDBLoader(TJ)` / `PromptDBBridge(TJ)`.** 프롬프트/설정값/결과
   이미지를 엑셀(xlsx)로 누적 기록하고 다시 불러오는 2노드 세트. Logger는 이미지 배치를
   받아 이미지당 한 행(썸네일 포함, ID 자동 증가, 파일 잠김 시 3회 재시도)을 추가. Loader는
   사진 라이브러리 앱 스타일의 썸네일 그리드로 행을 훑어보다가 클릭으로 선택(다음 실행에
   반영), 더블클릭으로 상세 팝업을 열어 값을 수정하고 저장(해당 행만 openpyxl로 부분
-  업데이트, 전체 재작성 없음)할 수 있다. `TJ_PROMPT_PIPE` 소켓으로 8개 필드를 한 번에
-  전달 가능. 컬럼 순서(`HEADERS`)는 두 노드가 공유하는 단일 소스. `openpyxl` 의존성 추가.
+  업데이트, 전체 재작성 없음)하거나 그 행을 삭제할 수 있다. `TJ_PROMPT_PIPE` 소켓으로
+  전체 필드를 한 번에 전달 가능. 컬럼 순서(`HEADERS`)는 두 노드가 공유하는 단일 소스.
+  `openpyxl` 의존성 추가.
+  * **Sampler/Scheduler 컬럼**을 기존 11개 컬럼 뒤에 추가 — 앞쪽 컬럼 위치가 밀리지
+    않으므로 이전에 만든 워크북도 그대로 읽힌다(헤더는 다음 저장 때 자동 보강).
+  * **자동 추출(`auto_extract`, 기본 켜짐).** `PROMPT`/`UNIQUE_ID` 히든 입력으로 실행
+    중인 그래프를 받아 `images` 링크를 거슬러 올라가며 설정값을 채운다. 샘플러 판별은
+    클래스 이름이 아니라 입력 구성(`seed`+`steps`+`cfg` 또는 `sampler_name`+`scheduler`)
+    으로 하므로 서드파티 샘플러도 인식된다. 메인/리파이너가 섞여 있으면
+    EmptyLatentImage에서 시작하는(denoise 1.0) 샘플러를 메인으로 보고 주 컬럼에 기록,
+    리파이너는 `extra_settings`에 요약을 덧붙인다 — 리파이너 값이 주 컬럼에 들어가면
+    행끼리 비교가 불가능해지기 때문. 연결된 입력 > 자동 추출 > 위젯 기본값 순으로 우선.
+  * **`PromptDBBridge(TJ)` 추가.** `pipe` 하나를 받아 11개 필드로 분해하는 브릿지.
+    Loader 출력을 2개(`positive_prompt`/`pipe`)로 유지한 채 캔버스를 가로지르는 선은
+    하나만 쓰고, 값을 소비하는 위치 옆에서 펼친다. `pipe`를 통과 출력으로 다시 내보내
+    체이닝도 가능. dict 가 아닌 값이 들어와도 예외 없이 기본값을 반환한다.
+  * **무선 Set/Get 적용.** Save = `get_name`(IMAGE 수신) + `setnode_name`(송신),
+    Loader/Bridge = `auto_set`(출력 전체를 `PDB_*` / `PDBB_*` 이름으로 발행).
+    `get_name`은 위젯 선언만으로는 동작하지 않는다 — `TJ_NODE_attachGetReceiver` 를
+    붙여야 타입 필터가 걸리고 실제 연결이 된다. 이를 위해 `utility_node_tj.js` 에
+    3중 복제되어 있던 `attachTJGetReceiver` 를 `window.TJ_NODE_attachGetReceiver` 로
+    노출해 재사용했다(4번째 복사 대신).
+  * **위젯은 반드시 맨 뒤에 추가할 것.** ComfyUI 는 위젯 값을 순서대로 복원하므로
+    중간 삽입은 기존 워크플로우의 값을 한 칸씩 밀어버린다(실제 발생:
+    `positive_prompt=128`, `steps="euler"`, `auto_set=-1`).
+  * **SAVE / BYPASS 토글.** BYPASS면 어떤 검증도 하지 않고 이미지를 그대로 반환한다
+    (설정이 덜 된 경로 때문에 통과 실행이 실패하지 않도록 최우선으로 분기).
+  * **Loader 출력 슬롯을 기본으로 접어둔다.** `positive_prompt`/`pipe`만 남기고 나머지는
+    버튼으로 펼친다. 접기는 워크플로우 링크 복원이 끝난 뒤에 적용한다 — LiteGraph가
+    직렬화된 링크를 슬롯 인덱스로 다시 붙이기 때문에, 그전에 순서를 바꾸면 엉뚱한
+    소켓에 연결된다. 연결된 슬롯은 접어도 계속 보인다.
+  * **상세 팝업에서 썸네일 수동 교체.** 이미지 선택 UI는 Multi Image Loader의 Add image
+    방식(`/tj_node/list_dir_files` + `/tj_node/thumbnail`)을 따르되 **output 디렉터리로
+    한정**한다. filename은 basename으로 축약하고 subfolder는 realpath+commonpath로
+    검사해 폴더 밖을 가리킬 수 없게 했다. 교체 시 사이드카와 시트 임베드 이미지를 함께
+    갱신한다.
+  * **경로 샌드박스.** 이 노드가 읽고 쓰는 모든 xlsx는 `<custom_node>/promptDB` 안으로
+    제한된다(하위 폴더는 허용). `realpath` 이후 `commonpath`로 검사하고, 경로 변수
+    (`~`/`%VAR%`/`$VAR`), 점으로만 된 경로 요소, 제어문자, `.xlsx` 아닌 확장자를 거부.
+    라이브러리 설정은 읽을 때·쓸 때 모두 재검증하고 루트 기준 상대경로로 저장한다.
+  * **로컬 API에 동일 출처 검사 추가.** loopback 검사만으로는 사용자 브라우저에 열린
+    악성 페이지의 CSRF를 막지 못한다(그 요청은 실제로 로컬에서 온다).
+  * **인앱 파일 브라우저 / 입력창.** ComfyUI 임베디드 파이썬에는 tkinter가 없어
+    네이티브 파일 대화상자를 쓸 수 없고, `window.prompt`는 await 이후 호출되면 Chrome이
+    억제해 `null`을 반환한다(라이브러리 가져오기가 조용히 실패하던 원인). 둘 다 자체
+    모달로 대체.
+  * **썸네일을 라이브러리별로 분리** (`_tj_thumbnails_tmp/<워크북 이름>/`). 행 ID는
+    워크북마다 1부터 다시 시작하므로, 폴더를 공유하면 같은 폴더의 다른 라이브러리
+    썸네일을 덮어쓰거나 지우고 엉뚱한 이미지를 보여준다. 기존 파일은 소유가 명확한
+    것만 자동 이관하고, 사이드카가 없으면 엑셀에 임베드된 이미지에서 복구한다.
+  * openpyxl `read_only` 워크북을 닫지 않아 Windows에서 파일이 잠기던 문제 수정 —
+    갤러리로 조회한 뒤 같은 파일에 저장하면 실패할 수 있었다.
 
 * **`TQD Score Estimate (TJ)` — 실험적, 테스트 중.** 로컬 Vision-LLM(GGUF/llama.cpp 또는
   ComfyUI TextGenerate 백엔드, Image to Prompt/Prompt Studio와 동일한 인프라 재사용)으로
@@ -39,6 +89,13 @@
   * 모델 백엔드/GGUF/mmproj/샘플링 설정은 노드 내 ⚙ 설정 팝업으로 이동, "Save as
     Default"로 이후 새로 만드는 노드에 자동 적용(로컬 브라우저 저장, 워크플로우에 이미
     저장된 값은 그대로 우선).
+
+### [Fixed]
+
+* **`imageio` / `imageio-ffmpeg` 의존성 누락.** Save & Preview Video 와 유틸리티
+  폴백이 `imageio.v2.mimsave` 를 가드 없이 호출하는데, 둘 다 ComfyUI 자체 requirements
+  에 없어서 클린 설치 환경에서는 `ModuleNotFoundError` 로 죽었다. mp4 인코딩에 필요한
+  ffmpeg 바이너리를 제공하는 `imageio-ffmpeg` 와 함께 requirements/pyproject 에 추가.
 
 ---
 ## [2.9.2] - 2026-07-23

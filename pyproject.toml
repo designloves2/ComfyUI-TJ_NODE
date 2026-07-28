@@ -1,12 +1,14 @@
 [project]
 name = "comfyui-tj_node"
 description = "Large Scale Wireless Workflow Architecture Toolkit for ComfyUI — wireless routing, batch/preview/save pipelines, LLM prompt workflow, LoRA analysis, and Krea2 TQD dataset scoring."
-version = "2.9.2"
+version = "2.10.0"
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
     "llama-cpp-python",
     "openpyxl",
+    "imageio",
+    "imageio-ffmpeg",
 ]
 
 [project.urls]
