@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.10.0
+# ✨ TJ_NODE v2.10.1
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -47,13 +47,13 @@ The newest nodes in the pack — some are pre-release / still being tested (see
   훑어보는 조회 노드. 클릭으로 선택(다음 실행에 반영), 더블클릭으로 상세 팝업을 열어
   값 수정 후 저장(해당 행만 갱신)하거나 그 행을 삭제. `TJ_PROMPT_PIPE` 소켓으로 값
   전체를 한 번에 다른 노드에 전달 가능.
-* 출력 슬롯은 **기본으로 접혀 있고**(`positive_prompt` / `pipe` 만 표시),
-  `▸ Show all outputs` 버튼으로 펼칩니다. **펼쳐서 연결한 뒤 다시 접으면 연결은 그대로
-  유지**되고(연결된 슬롯은 접혀도 남습니다) 안 쓰는 소켓만 사라집니다.
-* **PromptDBBridge(TJ)** — `pipe` 하나를 받아 11개 필드로 풀어주는 브릿지. Loader는
-  소켓 2개로 두고 캔버스를 가로지르는 선은 pipe 하나만 쓴 뒤, 값을 실제로 쓰는 위치
-  옆에서 펼치는 용도입니다. `pipe`를 그대로 다시 출력하므로 브릿지를 이어 붙일 수도
-  있습니다.
+* 출력은 **`positive_prompt` 와 `pipe` 두 개뿐**입니다. 나머지는 아래 브릿지가
+  담당합니다.
+* **PromptDBBridge(TJ)** — `pipe` 하나를 받아 11개 필드로 풀어주는 브릿지. 캔버스를
+  가로지르는 선은 pipe 하나만 쓰고, 값을 실제로 쓰는 위치 옆에서 펼치는 용도입니다.
+  `pipe`를 그대로 다시 출력하므로 브릿지를 이어 붙일 수도 있습니다.
+  `sampler_name`·`scheduler`·`model_name` 은 와일드카드 타입이라 KSampler 나 체크포인트
+  로더의 **COMBO 입력에 바로 연결**됩니다(STRING 이면 연결 자체가 막힙니다).
 * 세 노드 모두 TJ_NODE 무선 Set/Get을 지원합니다 — Save는 `get_name`(IMAGE 수신) /
   `setnode_name`(송신), Loader와 Bridge는 `auto_set`으로 출력 전체를 이름으로 발행
   (`PDB_*` / `PDBB_*`). `get_name` 목록은 타입이 맞는 프로바이더만 표시됩니다.

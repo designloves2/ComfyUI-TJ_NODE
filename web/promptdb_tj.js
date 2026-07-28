@@ -1112,78 +1112,12 @@ function openDetailModal(node, row, onSaved, onDeleted) {
     });
 }
 
-// positive_prompt (the thing you almost always want) and pipe (the bundled all-in-one
-// output) stay on the node at all times; the rest can be tucked away behind a toggle so
-// the node isn't a wall of sockets by default. Existing links are kept valid across the
-// toggle by rewriting each link's origin_slot to match the output's new array position
-// (LiteGraph indexes a link's origin by slot index, not by the output's name/object).
-function installOutputToggle(node) {
-    if (node.__tjPdbOutputToggleInstalled) return;
-    node.__tjPdbOutputToggleInstalled = true;
-
-    const ALWAYS_KEEP = new Set(["positive_prompt", "pipe"]);
-    const fullNames = node.outputs.map((o) => o.name);
-    const START_HIDDEN = true;   // a wall of 11 sockets by default helps nobody
-    // Stable template of the ORIGINAL output objects, captured once — never rebuilt from
-    // node.outputs itself. A previous version looked up output objects from the current
-    // (possibly already-filtered) node.outputs, so toggling hidden -> shown a second time
-    // couldn't find the objects for names that were hidden and pushed `undefined` into
-    // node.outputs instead — that's what made the outputs/button vanish and the node's
-    // computeSize() (called right after, to resize the node) start returning garbage,
-    // which is what actually drove the height toward infinity, not a resize loop.
-    const template = new Map(node.outputs.map((o) => [o.name, o]));
-    node.__tjPdbOutputsHidden = START_HIDDEN;
-
-    function rebuild() {
-        const oldNameBySlot = node.outputs.map((o) => o.name);
-
-        // Never hide an output that's currently connected — even if it's not in
-        // ALWAYS_KEEP — so toggling never silently drops a wired-up connection.
-        const finalNames = node.__tjPdbOutputsHidden
-            ? fullNames.filter((n) => ALWAYS_KEEP.has(n) || (template.get(n)?.links && template.get(n).links.length))
-            : fullNames.slice();
-
-        node.outputs = finalNames.map((n) => template.get(n));
-
-        const graphLinks = app.graph.links || {};
-        for (const linkId in graphLinks) {
-            const link = graphLinks[linkId];
-            if (!link || link.origin_id !== node.id) continue;
-            const newSlot = finalNames.indexOf(oldNameBySlot[link.origin_slot]);
-            if (newSlot >= 0) link.origin_slot = newSlot;
-        }
-
-        // auto_sets is keyed by slot index, so collapsing/expanding outputs invalidates it.
-        node.__tjPdbUpdateAutoSets?.();
-    }
-
-    const label = () => (node.__tjPdbOutputsHidden ? "▸ Show all outputs" : "▾ Hide extra outputs");
-    const btn = node.addWidget("button", label(), null, () => {
-        node.__tjPdbOutputsHidden = !node.__tjPdbOutputsHidden;
-        rebuild();
-        btn.name = label();
-        // Grow to fit if the widget list needs more room now; never shrink a height the
-        // user deliberately dragged taller just because a widget was toggled off.
-        const computed = node.computeSize();
-        if (Number.isFinite(computed[1]) && computed[1] > node.size[1]) {
-            node.setSize([node.size[0], computed[1]]);
-        }
-        app.graph.setDirtyCanvas(true, true);
-    });
-    btn.serialize = false;
-
-    // Collapse on creation, but only AFTER configure() has restored the workflow's links.
-    // LiteGraph reconnects serialized links by slot index, so reordering outputs any earlier
-    // would reattach them to the wrong sockets. rebuild() keeps every connected output
-    // visible, so a restored workflow still shows exactly the sockets it was using.
-    if (START_HIDDEN) {
-        setTimeout(() => {
-            rebuild();
-            btn.name = label();
-            app.graph.setDirtyCanvas(true, true);
-        }, 60);
-    }
-}
+// The Loader deliberately exposes only positive_prompt and pipe (see RETURN_TYPES in
+// promptdb.py). An output-collapsing toggle used to live here and had to go: hiding an
+// output removes it from node.outputs, which renumbers the slot indices serialised into
+// the prompt, while the backend still resolves them against RETURN_TYPES — a link from
+// the collapsed pipe was sent as slot 1 and read as negative_prompt. Use
+// PromptDBBridge(TJ) to fan the pipe back out instead.
 
 // ── Auto Set ────────────────────────────────────────────────────────────────
 // Registers each output as a wireless provider (properties.auto_sets[slot] = name), so a
@@ -1276,7 +1210,6 @@ function installUI(node) {
     if (node.__tjPdbInstalled) return;
     node.__tjPdbInstalled = true;
     installStyle();
-    installOutputToggle(node);
     installAutoSet(node);
 
     const selectedWidget = getW(node, "selected_id");

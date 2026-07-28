@@ -3,6 +3,26 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.10.1] - 2026-07-28
+
+### [Fixed]
+
+* **접힌 출력이 실행을 깨뜨리던 문제 — Loader 출력을 2개로 고정.** 출력을 숨기면
+  프론트엔드 `outputs` 배열에서 슬롯이 제거되면서 워크플로우에 직렬화되는 슬롯 인덱스가
+  바뀌는데, 백엔드는 그 인덱스를 원래 `RETURN_TYPES` 기준으로 해석한다. 접힌 상태의
+  `pipe`(화면상 슬롯 1)가 서버에서는 `negative_prompt` 로 읽혀
+  `Return type mismatch: received_type(STRING) mismatch input_type(TJ_PROMPT_PIPE)` 로
+  실행이 실패했다. 화면에서는 정상 연결로 보여서 원인을 찾기 어려운 형태였다.
+  → `TJ_PromptDBLoader` 의 실제 출력을 `positive_prompt` / `pipe` 두 개로 고정하고
+  접기 토글을 제거. 슬롯 번호가 항상 일치하므로 이 부류의 버그가 원천 차단된다.
+  나머지 필드는 `PromptDBBridge(TJ)` 로 받는다.
+* **Bridge 의 `sampler_name` / `scheduler` / `model_name` 타입.** 연결 대상인
+  KSampler 의 `sampler_name`·`scheduler` 와 체크포인트 로더의 `ckpt_name` 은 COMBO
+  입력인데 STRING 으로 선언해 두어 LiteGraph 가 연결을 거부했다 — 이 노드의 존재 이유인
+  연결이 막혀 있었다. `core/tj_types.any_type` 와일드카드로 변경(백엔드의
+  `received_type != input_type` 검사도 통과하며, 기존 STRING 소비자에도 그대로 붙는다).
+
+---
 ## [2.10.0] - 2026-07-28
 
 ### [Added]

@@ -24,6 +24,17 @@ from PIL import Image
 import folder_paths
 
 try:
+    from ...core.tj_types import any_type
+except ImportError:
+    # Loaded outside the package (test harnesses import this file by path), so the relative
+    # import has no parent. Same tiny wildcard other nodes in this pack declare locally.
+    class AnyType(str):
+        def __ne__(self, _other: object) -> bool:
+            return False
+
+    any_type = AnyType("*")
+
+try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.drawing.image import Image as XLImage
     from openpyxl.styles import Font
@@ -751,11 +762,19 @@ class TJ_PromptDBLoader:
             },
         }
 
-    # sampler_name/scheduler are appended AFTER source_path (not inserted earlier in the
-    # tuple) so existing saved workflows that link by slot index only see "pipe" shift by
-    # two slots — every other already-connected output keeps its original index.
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT", "INT", "FLOAT", "STRING", "STRING", "STRING", "STRING", TJ_PROMPT_PIPE)
-    RETURN_NAMES = ("positive_prompt", "negative_prompt", "model_name", "seed", "steps", "cfg", "extra_settings", "source_path", "sampler_name", "scheduler", "pipe")
+    # Deliberately just two sockets. Everything else comes out of PromptDBBridge(TJ), which
+    # you place next to whatever consumes the values — one wire crosses the canvas instead
+    # of ten.
+    #
+    # An earlier version exposed all eleven and let the UI collapse them. That was broken:
+    # hiding an output removes it from the frontend's `outputs` array, which renumbers the
+    # slots that get serialised into the prompt, while the backend still resolves those
+    # indices against RETURN_TYPES. A link from the collapsed "pipe" (visually slot 1) was
+    # sent as slot 1 and read server-side as negative_prompt — "Return type mismatch:
+    # received_type(STRING) mismatch input_type(TJ_PROMPT_PIPE)". Keeping the real socket
+    # list short and constant removes that whole class of bug.
+    RETURN_TYPES = ("STRING", TJ_PROMPT_PIPE)
+    RETURN_NAMES = ("positive_prompt", "pipe")
     FUNCTION = "load"
     CATEGORY = " ✨ TJ_Node/Utility"
 
@@ -788,7 +807,7 @@ class TJ_PromptDBLoader:
                         "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler_name, "scheduler": scheduler,
                         "extra_settings": extra, "source_path": source,
                     }
-                    return (positive, negative, model, seed, steps, cfg, extra, source, sampler_name, scheduler, pipe)
+                    return (positive, pipe)
 
         raise RuntimeError(f"Row ID {selected_id} not found in {path} (was it deleted from the sheet?).")
 
@@ -817,10 +836,14 @@ class TJ_PromptDBBridge:
             },
         }
 
-    # Field order mirrors TJ_PromptDBLoader's outputs so the two read the same way, with
-    # `pipe` passed through last for chaining another bridge.
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT", "INT", "FLOAT",
-                    "STRING", "STRING", "STRING", "STRING", TJ_PROMPT_PIPE)
+    # sampler_name / scheduler / model_name are wildcards, not STRING. Their real consumers
+    # (KSampler.sampler_name, KSampler.scheduler, a checkpoint loader's ckpt_name) are COMBO
+    # inputs, and LiteGraph refuses STRING -> COMBO, so typing them as STRING made exactly
+    # the connections this node exists for impossible. AnyType also satisfies the backend's
+    # `received_type != input_type` check, and still connects to plain STRING consumers.
+    # `pipe` is passed through last so bridges can be chained.
+    RETURN_TYPES = ("STRING", "STRING", any_type, "INT", "INT", "FLOAT",
+                    "STRING", "STRING", any_type, any_type, TJ_PROMPT_PIPE)
     RETURN_NAMES = ("positive_prompt", "negative_prompt", "model_name", "seed", "steps", "cfg",
                     "extra_settings", "source_path", "sampler_name", "scheduler", "pipe")
     FUNCTION = "unpack"
