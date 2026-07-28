@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.10.1
+# ✨ TJ_NODE v2.10.2
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -34,7 +34,7 @@ The newest nodes in the pack — some are pre-release / still being tested (see
 
 * **PromptDBSave(TJ)** — 이미지 배치를 받아 이미지마다 한 행씩(썸네일 포함) 엑셀에
   누적. ID 자동 증가, 파일 잠김 시 재시도, positive/negative/model/seed/steps/cfg/
-  sampler/scheduler/기타 설정/원본 경로까지 기록.
+  sampler/scheduler/기타 설정/메모까지 기록.
 * **자동 추출(`auto_extract`, 기본 켜짐)** — 실행 중인 워크플로우 그래프를 `images`
   입력에서 거슬러 올라가 설정값을 스스로 채웁니다. 메인/리파이너가 함께 있으면
   **EmptyLatentImage에서 시작하는(denoise 1.0) 샘플러**를 메인으로 판정해 주 컬럼에
@@ -52,8 +52,11 @@ The newest nodes in the pack — some are pre-release / still being tested (see
 * **PromptDBBridge(TJ)** — `pipe` 하나를 받아 11개 필드로 풀어주는 브릿지. 캔버스를
   가로지르는 선은 pipe 하나만 쓰고, 값을 실제로 쓰는 위치 옆에서 펼치는 용도입니다.
   `pipe`를 그대로 다시 출력하므로 브릿지를 이어 붙일 수도 있습니다.
-  `sampler_name`·`scheduler`·`model_name` 은 와일드카드 타입이라 KSampler 나 체크포인트
-  로더의 **COMBO 입력에 바로 연결**됩니다(STRING 이면 연결 자체가 막힙니다).
+  `sampler_name`·`scheduler`·`model_name`·`note` 는 와일드카드 타입이라 KSampler 나
+  체크포인트 로더의 **COMBO 입력에 바로 연결**됩니다(STRING 이면 연결 자체가 막힙니다).
+  `note`는 원래 "원본 경로"(source_path)였던 자유 메모 칸으로, 사용자가 출력하고 싶은
+  아무 값이나 넣는 용도입니다 — 엑셀 컬럼 이름도 "메모"로 바뀌었습니다(기존 파일은
+  다음 저장 때 라벨만 자동으로 갱신, 데이터는 그대로).
 * 세 노드 모두 TJ_NODE 무선 Set/Get을 지원합니다 — Save는 `get_name`(IMAGE 수신) /
   `setnode_name`(송신), Loader와 Bridge는 `auto_set`으로 출력 전체를 이름으로 발행
   (`PDB_*` / `PDBB_*`). `get_name` 목록은 타입이 맞는 프로바이더만 표시됩니다.

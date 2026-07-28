@@ -57,9 +57,9 @@ TJ_PROMPT_PIPE = "TJ_PROMPT_PIPE"
 # list) so workbooks created before this field existed keep reading correctly — their
 # existing columns never shift position.
 HEADERS = ["ID", "날짜", "Positive Prompt", "Negative Prompt", "Model", "Seed", "Steps", "CFG",
-           "기타 설정", "썸네일", "원본 경로", "Sampler", "Scheduler"]
+           "기타 설정", "썸네일", "메모", "Sampler", "Scheduler"]
 (COL_ID, COL_DATE, COL_POS, COL_NEG, COL_MODEL, COL_SEED, COL_STEPS, COL_CFG, COL_EXTRA, COL_THUMB,
- COL_SRC, COL_SAMPLER, COL_SCHEDULER) = range(1, 14)
+ COL_NOTE, COL_SAMPLER, COL_SCHEDULER) = range(1, 14)
 
 # Pushed after a successful write so any open PromptDBLoader looking at the same workbook
 # can refresh itself — otherwise the gallery keeps showing a stale list until the user
@@ -284,16 +284,29 @@ def _recover_missing_thumbnails(excel_path: str) -> int:
     return recovered
 
 
+# Header labels that were renamed after workbooks already existed. Only the label changed —
+# same column, same data — so these are relabelled in place rather than migrated.
+_RENAMED_HEADERS = {COL_NOTE: {"원본 경로"}}
+
+
+def _sync_headers(ws) -> None:
+    """Brings an existing sheet's header row up to date with HEADERS.
+
+    Runs on every write path, not just when the Save node appends: someone who only ever
+    edits rows in the gallery would otherwise keep seeing the old column label in Excel.
+    Row data is never touched.
+    """
+    for col in (COL_SAMPLER, COL_SCHEDULER, COL_NOTE):
+        current = ws.cell(row=1, column=col).value
+        if current is None or current in _RENAMED_HEADERS.get(col, set()):
+            ws.cell(row=1, column=col, value=HEADERS[col - 1]).font = Font(bold=True)
+
+
 def _open_or_create_workbook(excel_path: str):
     if os.path.isfile(excel_path):
         wb = load_workbook(excel_path)
         ws = wb.active
-        # Backfill headers for columns added after this workbook was first created
-        # (e.g. Sampler/Scheduler) — existing rows are untouched, only the header row.
-        if ws.cell(row=1, column=COL_SAMPLER).value is None:
-            ws.cell(row=1, column=COL_SAMPLER, value=HEADERS[COL_SAMPLER - 1]).font = Font(bold=True)
-        if ws.cell(row=1, column=COL_SCHEDULER).value is None:
-            ws.cell(row=1, column=COL_SCHEDULER, value=HEADERS[COL_SCHEDULER - 1]).font = Font(bold=True)
+        _sync_headers(ws)
         return wb, ws
     os.makedirs(os.path.dirname(excel_path) or ".", exist_ok=True)
     wb = Workbook()
@@ -304,7 +317,7 @@ def _open_or_create_workbook(excel_path: str):
         cell.font = Font(bold=True)
     ws.freeze_panes = "A2"
     widths = {COL_ID: 6, COL_DATE: 12, COL_POS: 42, COL_NEG: 32, COL_MODEL: 18,
-              COL_SEED: 10, COL_STEPS: 8, COL_CFG: 8, COL_EXTRA: 24, COL_THUMB: 10, COL_SRC: 32,
+              COL_SEED: 10, COL_STEPS: 8, COL_CFG: 8, COL_EXTRA: 24, COL_THUMB: 10, COL_NOTE: 32,
               COL_SAMPLER: 16, COL_SCHEDULER: 14}
     for col, w in widths.items():
         ws.column_dimensions[get_column_letter(col)].width = w
@@ -613,7 +626,9 @@ class TJ_PromptDBSave:
                 "sampler_name": ("STRING", {"default": "euler"}),
                 "scheduler": ("STRING", {"default": "simple"}),
                 "extra_settings": ("STRING", {"multiline": True, "default": ""}),
-                "source_path": ("STRING", {"default": ""}),
+                # Free-form note. Was "source_path" (an image path nothing ever filled
+                # in); it is now whatever the user wants to carry alongside the row.
+                "note": ("STRING", {"multiline": True, "default": ""}),
                 # TJ_NODE's embedded Set/Get — handled entirely by web/set_getnode_tj.js,
                 # which keys off these exact widget names:
                 #   get_name      — receive `images` wirelessly from a named provider
@@ -646,7 +661,7 @@ class TJ_PromptDBSave:
     # the sheet for a disconnected socket instead of the promised 8 / 1.0 / euler / simple.
     def log(self, images, positive_prompt, excel_path, thumbnail_size, mode=True, auto_extract=True,
             negative_prompt="", model_name="", seed=0, steps=8, cfg=1.0,
-            sampler_name="euler", scheduler="simple", extra_settings="", source_path="",
+            sampler_name="euler", scheduler="simple", extra_settings="", note="",
             get_name="(none)", setnode_name="PromptDB", prompt=None, unique_id=None):
         # BYPASS: hand the images straight back, touching nothing. Deliberately checked
         # before any validation so an unconfigured excel_path can't fail a bypassed run.
@@ -722,7 +737,7 @@ class TJ_PromptDBSave:
             ws.cell(row=row_idx, column=COL_STEPS, value=int(steps))
             ws.cell(row=row_idx, column=COL_CFG, value=float(cfg))
             ws.cell(row=row_idx, column=COL_EXTRA, value=str(extra_settings or ""))
-            ws.cell(row=row_idx, column=COL_SRC, value=str(source_path or ""))
+            ws.cell(row=row_idx, column=COL_NOTE, value=str(note or ""))
             ws.cell(row=row_idx, column=COL_SAMPLER, value=str(sampler_name or ""))
             ws.cell(row=row_idx, column=COL_SCHEDULER, value=str(scheduler or ""))
 
@@ -799,13 +814,13 @@ class TJ_PromptDBLoader:
                     steps = int(row[COL_STEPS - 1] or 0)
                     cfg = float(row[COL_CFG - 1] or 0.0)
                     extra = str(row[COL_EXTRA - 1] or "")
-                    source = str(row[COL_SRC - 1] or "")
+                    note_text = str(row[COL_NOTE - 1] or "")
                     sampler_name = str(row[COL_SAMPLER - 1] or "") if len(row) >= COL_SAMPLER else ""
                     scheduler = str(row[COL_SCHEDULER - 1] or "") if len(row) >= COL_SCHEDULER else ""
                     pipe = {
                         "positive_prompt": positive, "negative_prompt": negative, "model_name": model,
                         "seed": seed, "steps": steps, "cfg": cfg, "sampler_name": sampler_name, "scheduler": scheduler,
-                        "extra_settings": extra, "source_path": source,
+                        "extra_settings": extra, "note": note_text,
                     }
                     return (positive, pipe)
 
@@ -843,9 +858,9 @@ class TJ_PromptDBBridge:
     # `received_type != input_type` check, and still connects to plain STRING consumers.
     # `pipe` is passed through last so bridges can be chained.
     RETURN_TYPES = ("STRING", "STRING", any_type, "INT", "INT", "FLOAT",
-                    "STRING", "STRING", any_type, any_type, TJ_PROMPT_PIPE)
+                    "STRING", any_type, any_type, any_type, TJ_PROMPT_PIPE)
     RETURN_NAMES = ("positive_prompt", "negative_prompt", "model_name", "seed", "steps", "cfg",
-                    "extra_settings", "source_path", "sampler_name", "scheduler", "pipe")
+                    "extra_settings", "note", "sampler_name", "scheduler", "pipe")
     FUNCTION = "unpack"
     CATEGORY = " ✨ TJ_Node/Utility"
 
@@ -868,7 +883,7 @@ class TJ_PromptDBBridge:
         return (
             text("positive_prompt"), text("negative_prompt"), text("model_name"),
             number("seed", int, 0), number("steps", int, 0), number("cfg", float, 0.0),
-            text("extra_settings"), text("source_path"),
+            text("extra_settings"), text("note"),
             text("sampler_name"), text("scheduler"),
             data,
         )
@@ -955,7 +970,7 @@ async def _handle_list_rows(request):
                         "steps": row[COL_STEPS - 1],
                         "cfg": row[COL_CFG - 1],
                         "extra_settings": str(row[COL_EXTRA - 1] or ""),
-                        "source_path": str(row[COL_SRC - 1] or ""),
+                        "note": str(row[COL_NOTE - 1] or ""),
                         "sampler_name": str(row[COL_SAMPLER - 1] or "") if len(row) >= COL_SAMPLER else "",
                         "scheduler": str(row[COL_SCHEDULER - 1] or "") if len(row) >= COL_SCHEDULER else "",
                         "thumbnail": _thumbnail_data_uri(os.path.join(thumb_dir, f"row_{row_id}.png")),
@@ -1005,7 +1020,7 @@ async def _handle_update_row(request):
         field_col = {
             "positive_prompt": COL_POS, "negative_prompt": COL_NEG, "model_name": COL_MODEL,
             "seed": COL_SEED, "steps": COL_STEPS, "cfg": COL_CFG,
-            "extra_settings": COL_EXTRA, "source_path": COL_SRC,
+            "extra_settings": COL_EXTRA, "note": COL_NOTE,
             "sampler_name": COL_SAMPLER, "scheduler": COL_SCHEDULER,
         }
         for key, col in field_col.items():
@@ -1022,6 +1037,7 @@ async def _handle_update_row(request):
                 value = str(value or "")
             ws.cell(row=target_row, column=col, value=value)
 
+        _sync_headers(ws)
         _save_with_retry(wb, path)
         _notify_updated(path)
         return web.json_response({"ok": True})
@@ -1251,6 +1267,7 @@ async def _handle_delete_row(request):
         ws.delete_rows(target)
         thumb_dir = _thumb_dir_for(path)
         _reanchor_thumbnails(ws, thumb_dir)
+        _sync_headers(ws)
         _save_with_retry(wb, path)
 
         # Only remove the sidecar image after the sheet saved — otherwise a failed save
@@ -1326,6 +1343,7 @@ async def _handle_set_thumbnail(request):
 
         # Rewrite every anchor so the sheet's embedded copy matches the sidecar again.
         _reanchor_thumbnails(ws, thumb_dir)
+        _sync_headers(ws)
         _save_with_retry(wb, path)
         _notify_updated(path)
         return web.json_response({

@@ -1027,7 +1027,7 @@ function openDetailModal(node, row, onSaved, onDeleted) {
             </div>
             <div class="tj-pdb-field"><label>Extra Settings</label><textarea id="tj-pdb-f-extra">${row.extra_settings || ""}</textarea></div>
             <div class="tj-pdb-divider"></div>
-            <div class="tj-pdb-field"><label>Source Path</label><input id="tj-pdb-f-src" type="text" value="${escapeAttr(row.source_path)}" /></div>
+            <div class="tj-pdb-field"><label>메모 / Note</label><textarea id="tj-pdb-f-note">${row.note || ""}</textarea></div>
           </div>
         </div>
         <div class="tj-pdb-modal-foot">
@@ -1096,7 +1096,7 @@ function openDetailModal(node, row, onSaved, onDeleted) {
             sampler_name: backdrop.querySelector("#tj-pdb-f-sampler").value,
             scheduler: backdrop.querySelector("#tj-pdb-f-scheduler").value,
             extra_settings: backdrop.querySelector("#tj-pdb-f-extra").value,
-            source_path: backdrop.querySelector("#tj-pdb-f-src").value,
+            note: backdrop.querySelector("#tj-pdb-f-note").value,
         };
         const result = await updateRow(node.__tjPdbExcelPath, row.id, fields);
         if (result.ok) {
