@@ -7,5 +7,6 @@ from .save_original_names import TJ_SaveWithOriginalNames
 from .dynamic_batch_eclipse import DynamicImageBatchEclipse
 from .save_eclipse_subsequent import TJ_SaveImage_EclipseSubsequent
 from .batch_to_multi_output import TJ_BatchToMultiOutput
+from .batch_to_minimax_h3 import TJ_BatchToMinimaxH3
 from .save_preview_image import TJ_SaveAndPreviewImage
 from .images_compare_sheet_queue_loop import TJ_ImagesCompareSheetQueueLoop

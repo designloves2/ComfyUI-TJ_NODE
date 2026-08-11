@@ -401,6 +401,27 @@ function openSystemPromptDialog(node) {
     deleteBtn.style.cssText = "background:#221111;color:#fff;border:1px solid #7a3333;border-radius:5px;padding:8px 12px;cursor:pointer;";
     presetRow.appendChild(select); presetRow.appendChild(loadBtn); presetRow.appendChild(refreshBtn); presetRow.appendChild(deleteBtn);
 
+    // User presets live in localStorage — export/import lets them travel between
+    // browsers/machines instead of being stuck on whichever browser saved them.
+    const cfgRow = document.createElement("div");
+    cfgRow.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:10px;";
+    const cfgLabel = document.createElement("div");
+    cfgLabel.textContent = "User presets:";
+    cfgLabel.style.cssText = "color:#888;font-size:12px;margin-right:auto;";
+    const exportBtn = document.createElement("button");
+    exportBtn.textContent = "⬇ Export";
+    exportBtn.title = "Download all User Presets as a JSON file (for backup / other browsers)";
+    exportBtn.style.cssText = "background:#222;color:#fff;border:1px solid #444;border-radius:5px;padding:6px 10px;font-size:12px;cursor:pointer;";
+    const importBtn = document.createElement("button");
+    importBtn.textContent = "⬆ Import";
+    importBtn.title = "Load User Presets from a previously exported JSON file";
+    importBtn.style.cssText = "background:#222;color:#fff;border:1px solid #444;border-radius:5px;padding:6px 10px;font-size:12px;cursor:pointer;";
+    const importFile = document.createElement("input");
+    importFile.type = "file";
+    importFile.accept = "application/json,.json";
+    importFile.style.display = "none";
+    cfgRow.appendChild(cfgLabel); cfgRow.appendChild(exportBtn); cfgRow.appendChild(importBtn); cfgRow.appendChild(importFile);
+
     const desc = document.createElement("div");
     desc.style.cssText = "color:#aaa;font-size:12px;margin-bottom:10px;min-height:16px;";
 
@@ -517,6 +538,52 @@ function openSystemPromptDialog(node) {
         writeCustomPresets(items);
         rebuildPresetList();
     };
+    exportBtn.onclick = () => {
+        const items = readCustomPresets();
+        if (!items.length) { alert("No user presets to export yet."); return; }
+        const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const ts = new Date().toISOString().replace(/[:.]/g, "-");
+        a.href = url;
+        a.download = `tj_ollama_system_prompts_backup_${ts}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    };
+    importBtn.onclick = () => importFile.click();
+    importFile.onchange = () => {
+        const file = importFile.files && importFile.files[0];
+        importFile.value = "";
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            let incoming;
+            try { incoming = JSON.parse(String(reader.result || "[]")); }
+            catch (_) { alert("Not a valid JSON file."); return; }
+            if (!Array.isArray(incoming)) { alert("Expected a JSON array of presets."); return; }
+            const existing = readCustomPresets();
+            const existingLabels = new Set(existing.map(p => p.label));
+            let added = 0, skipped = 0;
+            for (const raw of incoming) {
+                if (!raw || typeof raw.text !== "string" || !String(raw.label || "").trim()) { skipped++; continue; }
+                let label = String(raw.label).trim();
+                if (existingLabels.has(label)) {
+                    let n = 1;
+                    while (existingLabels.has(`${label}_${n}`)) n++;
+                    label = `${label}_${n}`;
+                }
+                existingLabels.add(label);
+                existing.push({ label, description: raw.description || "custom", text: raw.text });
+                added++;
+            }
+            writeCustomPresets(existing);
+            rebuildPresetList();
+            alert(`Imported ${added} preset(s)${skipped ? `, skipped ${skipped} invalid entr${skipped === 1 ? "y" : "ies"}` : ""}.`);
+        };
+        reader.readAsText(file);
+    };
     cancel.onclick = () => overlay.remove();
     clear.onclick = () => { textarea.value = ""; updateStats(); };
     apply.onclick = () => {
@@ -529,7 +596,7 @@ function openSystemPromptDialog(node) {
     };
     textarea.addEventListener("input", updateStats);
 
-    wrap.appendChild(title); wrap.appendChild(presetRow); wrap.appendChild(desc); wrap.appendChild(textarea); wrap.appendChild(saveRow); wrap.appendChild(stats); wrap.appendChild(actions); box.appendChild(wrap);
+    wrap.appendChild(title); wrap.appendChild(presetRow); wrap.appendChild(cfgRow); wrap.appendChild(desc); wrap.appendChild(textarea); wrap.appendChild(saveRow); wrap.appendChild(stats); wrap.appendChild(actions); box.appendChild(wrap);
     rebuildPresetList();
     updateStats();
     textarea.focus();

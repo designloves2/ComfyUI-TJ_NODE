@@ -53,7 +53,10 @@ function installStyle() {
         transition:border-color 150ms ease, box-shadow 150ms ease;
       }
       .tj-pdb-cell-img { position:relative; aspect-ratio:1/1; flex:0 0 auto; background:#0d0a12; border-radius:6px; overflow:hidden; }
-      .tj-pdb-cell-img img { width:100%; height:100%; object-fit:cover; display:block; }
+      /* object-position:top, not the object-fit:cover default of center — a tall (e.g. 2:3)
+         render was getting its middle shown and both ends clipped; anchoring to the top
+         keeps the part of the image people look at first (faces, framing) visible. */
+      .tj-pdb-cell-img img { width:100%; height:100%; object-fit:cover; object-position:top; display:block; }
       .tj-pdb-cell-id {
         position:absolute; top:4px; left:4px; font-size:9px; font-weight:800; color:#fff;
         background:rgba(0,0,0,.55); border-radius:5px; padding:1px 5px;
@@ -86,16 +89,26 @@ function installStyle() {
       .tj-pdb-modal-title { font-size:14px; font-weight:900; color:#e3d3ff; }
       .tj-pdb-modal-close { border:0; background:rgba(255,255,255,.08); color:#fff; border-radius:8px; width:26px; height:26px; cursor:pointer; font-size:14px; }
       /* align-items:flex-start is required — the default "stretch" would otherwise force
-         .tj-pdb-modal-img to match its taller sibling's height, silently overriding its
-         aspect-ratio:1/1 and stretching the image tall/narrow instead of square. */
+         .tj-pdb-modal-img to match its taller form-column sibling's height, growing the
+         frame well past the image's own natural height. */
       .tj-pdb-modal-body { display:flex; align-items:flex-start; gap:16px; padding:16px 18px; overflow-y:auto; }
       .tj-pdb-modal-imgcol { flex:0 0 220px; display:flex; flex-direction:column; gap:8px; align-self:flex-start; }
-      .tj-pdb-modal-img { width:220px; aspect-ratio:1/1; border-radius:10px; overflow:hidden; background:rgba(255,255,255,.05); }
+      /* No forced aspect-ratio here on purpose — a 2:3 render was showing up center-cropped
+         to a square. Width is capped, height follows the image's own ratio (object-fit:
+         contain on the <img>, not cover), so the whole frame is visible uncropped. */
+      .tj-pdb-modal-img { width:220px; max-height:70vh; border-radius:10px; overflow:hidden; background:rgba(255,255,255,.05); }
       .tj-pdb-thumb-replace {
         border:1px solid rgba(155,110,255,.4); background:#241a38; color:#d9c6ff;
         border-radius:8px; padding:7px 10px; font-size:11px; font-weight:700; cursor:pointer;
       }
       .tj-pdb-thumb-replace:hover { background:#3a2758; }
+      .tj-pdb-thumb-sizerow {
+        display:flex; align-items:center; gap:6px; font-size:10.5px; color:#b9a8e0;
+      }
+      .tj-pdb-thumb-sizerow input {
+        width:64px; box-sizing:border-box; background:#0a0713; color:#eee;
+        border:1px solid rgba(155,88,239,.35); border-radius:6px; padding:4px 6px; font-size:11px; outline:none;
+      }
 
       /* ── output-only image picker (thumbnail replacement) ─────────────── */
       .tj-pdb-pick-modal { width:min(720px,94vw); }
@@ -130,7 +143,7 @@ function installStyle() {
         font-size:9.5px; color:#c9c1da; text-align:center;
         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
       }
-      .tj-pdb-modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
+      .tj-pdb-modal-img img { width:100%; height:auto; max-height:70vh; object-fit:contain; display:block; }
       .tj-pdb-modal-form { flex:1; min-width:0; display:flex; flex-direction:column; gap:10px; }
       .tj-pdb-field label { display:block; font-size:10.5px; font-weight:800; color:#b9a8e0; margin-bottom:4px; text-transform:uppercase; letter-spacing:.3px; }
       .tj-pdb-field textarea, .tj-pdb-field input {
@@ -153,6 +166,11 @@ function installStyle() {
         color:#ffb3ae; border-radius:9px; padding:7px 14px; font-weight:800; font-size:11.5px; cursor:pointer;
       }
       .tj-pdb-modal-delete:hover { background:rgba(224,90,90,.28); border-color:#e05a5a; }
+      .tj-pdb-modal-move {
+        border:1px solid rgba(155,110,255,.4); background:#241a38; color:#d9c6ff;
+        border-radius:9px; padding:7px 14px; font-weight:800; font-size:11.5px; cursor:pointer;
+      }
+      .tj-pdb-modal-move:hover { background:#3a2758; }
       .tj-pdb-modal-save.tj-pdb-danger {
         background:linear-gradient(135deg,#c0392b,#7d1d13); border-color:#e05a5a;
       }
@@ -170,11 +188,18 @@ function installStyle() {
 
       .tj-pdb-lib-modal { width:min(560px,92vw); }
       .tj-pdb-lib-body { padding:10px 18px 18px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; max-height:60vh; }
+      .tj-pdb-lib-toprow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px; }
+      .tj-pdb-lib-toprow-spacer { flex:1 1 auto; }
       .tj-pdb-lib-import {
         align-self:flex-start; border:1px solid ${TJ_ACCENT}; background:rgba(118,18,218,.18); color:#e3d3ff;
-        border-radius:9px; padding:7px 14px; font-weight:800; font-size:12px; cursor:pointer; margin-bottom:4px;
+        border-radius:9px; padding:7px 14px; font-weight:800; font-size:12px; cursor:pointer;
       }
       .tj-pdb-lib-import:hover { background:rgba(118,18,218,.32); }
+      .tj-pdb-lib-cfg-export, .tj-pdb-lib-cfg-import {
+        border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.05); color:#bbb;
+        border-radius:9px; padding:7px 12px; font-weight:700; font-size:11px; cursor:pointer; white-space:nowrap;
+      }
+      .tj-pdb-lib-cfg-export:hover, .tj-pdb-lib-cfg-import:hover { background:rgba(118,18,218,.22); border-color:${TJ_ACCENT}; color:#e3d3ff; }
       .tj-pdb-lib-row {
         display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
         background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.06); cursor:pointer;
@@ -190,11 +215,11 @@ function installStyle() {
       .tj-pdb-lib-info { flex:1; min-width:0; }
       .tj-pdb-lib-info .tj-pdb-lib-title { font-weight:800; color:#eee; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .tj-pdb-lib-info .tj-pdb-lib-count { font-size:10px; color:#8a8299; margin-top:1px; }
-      .tj-pdb-lib-export, .tj-pdb-lib-del {
+      .tj-pdb-lib-rename, .tj-pdb-lib-export, .tj-pdb-lib-del {
         flex:none; width:24px; height:24px; border-radius:7px; border:1px solid rgba(255,255,255,.15);
         background:rgba(255,255,255,.05); color:#bbb; cursor:pointer; font-size:12px;
       }
-      .tj-pdb-lib-export:hover { background:rgba(118,18,218,.3); border-color:${TJ_ACCENT}; color:#e3d3ff; }
+      .tj-pdb-lib-rename:hover, .tj-pdb-lib-export:hover { background:rgba(118,18,218,.3); border-color:${TJ_ACCENT}; color:#e3d3ff; }
       .tj-pdb-lib-del:hover { background:rgba(224,90,90,.25); border-color:#e05a5a; color:#ffb3ae; }
       .tj-pdb-lib-empty2 { text-align:center; color:#666; font-size:11.5px; padding:20px 10px; }
 
@@ -288,9 +313,15 @@ function truncate(text, max) {
 
 function cellHTML(row) {
     const thumb = row.thumbnail ? `<img src="${row.thumbnail}" loading="lazy" />` : "";
-    const caption = truncate(row.positive_prompt, 90) || "(no prompt)";
+    // A note doubles as a card title when the user bothers to write one — it's their own
+    // label for the row, more useful at a glance than the (often long, generic-sounding)
+    // start of the prompt. Falls back to the prompt when there's no note, same as before.
+    const noteText = String(row.note || "").trim();
+    const captionSource = noteText || row.positive_prompt;
+    const caption = truncate(captionSource, 90) || "(no prompt)";
+    const tooltipSource = noteText ? `${noteText}\n\n${row.positive_prompt || ""}` : row.positive_prompt;
     return `
-      <div class="tj-pdb-cell" data-id="${row.id}" title="${escapeAttr(row.positive_prompt)}">
+      <div class="tj-pdb-cell" data-id="${row.id}" title="${escapeAttr(tooltipSource)}">
         <div class="tj-pdb-cell-img">${thumb}<span class="tj-pdb-cell-id">#${row.id}</span></div>
         <div class="tj-pdb-cell-caption">${escapeHTML(caption)}</div>
       </div>`;
@@ -617,6 +648,19 @@ function pickOutputImage() {
     });
 }
 
+async function moveRow(excelPath, id, destPath) {
+    try {
+        const res = await api.fetchApi("/tj_node/promptdb/move_row", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ excel_path: excelPath, id, dest_path: destPath }),
+        });
+        return await res.json();
+    } catch (err) {
+        return { ok: false, error: String(err) };
+    }
+}
+
 async function setRowThumbnail(excelPath, id, pick, thumbnailSize) {
     try {
         const res = await api.fetchApi("/tj_node/promptdb/set_thumbnail", {
@@ -625,7 +669,7 @@ async function setRowThumbnail(excelPath, id, pick, thumbnailSize) {
             body: JSON.stringify({
                 excel_path: excelPath, id,
                 subfolder: pick.subfolder, filename: pick.filename,
-                thumbnail_size: thumbnailSize || 128,
+                thumbnail_size: thumbnailSize || 256,
             }),
         });
         return await res.json();
@@ -803,6 +847,7 @@ function libraryRowHTML(lib, activePath) {
           <div class="tj-pdb-lib-title">${escapeHTML(lib.name)}</div>
           <div class="tj-pdb-lib-count">${lib.count ?? 0}개 행 · ${escapeHTML(lib.path)}</div>
         </div>
+        <button class="tj-pdb-lib-rename" title="이름 변경 (파일은 그대로)">✎</button>
         <button class="tj-pdb-lib-export" title="백업 다운로드 (.zip — 워크북 + 썸네일)">⬇</button>
         <button class="tj-pdb-lib-del" title="삭제">✕</button>
       </div>`;
@@ -873,7 +918,13 @@ export function openLibraryModal(activePath, onPick) {
           <button class="tj-pdb-modal-close">✕</button>
         </div>
         <div class="tj-pdb-lib-body">
-          <button class="tj-pdb-lib-import">＋ Import library (.xlsx)</button>
+          <div class="tj-pdb-lib-toprow">
+            <button class="tj-pdb-lib-import">＋ Import library (.xlsx)</button>
+            <span class="tj-pdb-lib-toprow-spacer"></span>
+            <button class="tj-pdb-lib-cfg-export" title="등록된 라이브러리 목록을 JSON 파일로 백업">⬇ 설정 내보내기</button>
+            <button class="tj-pdb-lib-cfg-import" title="JSON 백업 파일에서 등록 목록 복원(병합)">⬆ 설정 가져오기</button>
+            <input type="file" class="tj-pdb-lib-cfg-file" accept="application/json" style="display:none" />
+          </div>
           <div class="tj-pdb-lib-list"></div>
         </div>
       </div>`;
@@ -914,6 +965,7 @@ export function openLibraryModal(activePath, onPick) {
     listEl.addEventListener("click", async (e) => {
         if (e.target.closest(".tj-pdb-lib-toggle")) return;
         const delBtn = e.target.closest(".tj-pdb-lib-del");
+        const renameBtn = e.target.closest(".tj-pdb-lib-rename");
         const exportBtn = e.target.closest(".tj-pdb-lib-export");
         const row = e.target.closest(".tj-pdb-lib-row");
         if (!row) return;
@@ -921,6 +973,18 @@ export function openLibraryModal(activePath, onPick) {
         const lib = libraries.find((l) => String(l.id) === id);
         if (delBtn) {
             libraries = libraries.filter((l) => String(l.id) !== id);
+            saveLibraries(libraries);
+            render();
+            return;
+        }
+        if (renameBtn && lib) {
+            // Renaming the registration only — the .xlsx file itself is untouched. Same
+            // uniqueness rule as import: two libraries can't share a display name, since
+            // the pill/quick-switch menu identify a library by name alone.
+            const others = libraries.filter((l) => String(l.id) !== id);
+            const newName = await askUniqueLibraryName(lib.name, others);
+            if (!newName || newName === lib.name) return;
+            lib.name = newName;
             saveLibraries(libraries);
             render();
             return;
@@ -983,6 +1047,71 @@ export function openLibraryModal(activePath, onPick) {
         render();
     });
 
+    // Backs up / restores the REGISTRATION LIST ONLY (name + path + active) — a small JSON
+    // file, not the workbooks themselves. Registering libraries one at a time doesn't scale
+    // as the collection grows, and there was no way to recover the list if it ever got
+    // cleared, so it's worth being able to snapshot and restore in one click.
+    backdrop.querySelector(".tj-pdb-lib-cfg-export").addEventListener("click", async () => {
+        const current = await fetchLibraries();
+        const payload = current.map((l) => ({ name: l.name, path: l.path, active: l.active !== false }));
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+        a.href = url;
+        a.download = `promptdb_libraries_backup_${stamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    });
+
+    const cfgFileInput = backdrop.querySelector(".tj-pdb-lib-cfg-file");
+    backdrop.querySelector(".tj-pdb-lib-cfg-import").addEventListener("click", () => cfgFileInput.click());
+    cfgFileInput.addEventListener("change", async () => {
+        const file = cfgFileInput.files?.[0];
+        cfgFileInput.value = "";
+        if (!file) return;
+        let entries;
+        try {
+            entries = JSON.parse(await file.text());
+            if (!Array.isArray(entries)) throw new Error("not an array");
+        } catch (err) {
+            await notify("올바른 백업 JSON 파일이 아닙니다.");
+            return;
+        }
+
+        // Merge, never overwrite: existing registrations survive an import untouched.
+        // A path already registered is skipped (the live workbook wins over a stale
+        // backup's name); a name collision gets the same _1/_2 auto-suffix import uses.
+        const current = await fetchLibraries();
+        let added = 0, skippedPath = 0, skippedInvalid = 0;
+        for (const raw of entries) {
+            const path = String(raw?.path || "").trim();
+            const name = String(raw?.name || "").trim();
+            if (!path || !name) { skippedInvalid++; continue; }
+            if (current.some((l) => sameLibraryPath(l.path, path))) { skippedPath++; continue; }
+            let finalName = name, tries = 1;
+            while (current.some((l) => sameLibraryName(l.name, finalName))) finalName = `${name}_${tries++}`;
+            current.push({ id: `${Date.now()}_${added}`, name: finalName, path, active: raw?.active !== false });
+            added++;
+        }
+        let actuallyAdded = added;
+        if (added) {
+            await saveLibraries(current);
+            // The backend re-validates every path against the promptDB sandbox and drops
+            // anything outside it (e.g. a hand-edited backup with an absolute path from
+            // another machine) — re-read so the count reflects what was actually kept.
+            actuallyAdded = (await fetchLibraries()).length - (current.length - added);
+        }
+        const rejectedBySandbox = added - actuallyAdded;
+        await notify(`가져오기 완료: ${actuallyAdded}개 추가` +
+            (skippedPath ? `, ${skippedPath}개는 이미 등록됨(건너뜀)` : "") +
+            (skippedInvalid ? `, ${skippedInvalid}개는 형식 오류(건너뜀)` : "") +
+            (rejectedBySandbox > 0 ? `, ${rejectedBySandbox}개는 경로가 promptDB 폴더 밖이라 거부됨` : ""));
+        render();
+    });
+
     render();
 }
 
@@ -999,7 +1128,7 @@ async function updateRow(excelPath, id, fields) {
     }
 }
 
-function openDetailModal(node, row, onSaved, onDeleted) {
+function openDetailModal(node, row, onSaved, onDeleted, onMoved) {
     const backdrop = document.createElement("div");
     backdrop.className = "tj-pdb-backdrop";
     backdrop.innerHTML = `
@@ -1011,6 +1140,11 @@ function openDetailModal(node, row, onSaved, onDeleted) {
         <div class="tj-pdb-modal-body">
           <div class="tj-pdb-modal-imgcol">
             <div class="tj-pdb-modal-img">${row.thumbnail ? `<img src="${row.thumbnail}" />` : ""}</div>
+            <div class="tj-pdb-thumb-sizerow">
+              <label for="tj-pdb-f-thumbsize">크기</label>
+              <input id="tj-pdb-f-thumbsize" type="number" min="16" max="512" step="8" value="256" />
+              <span>px</span>
+            </div>
             <button class="tj-pdb-thumb-replace" title="output 폴더의 이미지로 교체">🖼 썸네일 교체</button>
           </div>
           <div class="tj-pdb-modal-form">
@@ -1032,6 +1166,7 @@ function openDetailModal(node, row, onSaved, onDeleted) {
         </div>
         <div class="tj-pdb-modal-foot">
           <button class="tj-pdb-modal-delete" title="이 기록을 엑셀에서 삭제">🗑 Delete</button>
+          <button class="tj-pdb-modal-move" title="이 기록을 다른 라이브러리로 옮기기">➡ 라이브러리 이동</button>
           <div class="tj-pdb-modal-error"></div>
           <button class="tj-pdb-modal-cancel">Cancel</button>
           <button class="tj-pdb-modal-save">Save</button>
@@ -1054,7 +1189,9 @@ function openDetailModal(node, row, onSaved, onDeleted) {
         if (!pick) return;
         errEl.textContent = "";
         replaceBtn.textContent = "교체 중...";
-        const result = await setRowThumbnail(node.__tjPdbExcelPath, row.id, pick);
+        const sizeInput = backdrop.querySelector("#tj-pdb-f-thumbsize");
+        const size = Math.max(16, Math.min(512, Number(sizeInput.value) || 256));
+        const result = await setRowThumbnail(node.__tjPdbExcelPath, row.id, pick, size);
         replaceBtn.textContent = "🖼 썸네일 교체";
         if (!result.ok) {
             errEl.textContent = result.error || "썸네일 교체 실패";
@@ -1064,6 +1201,23 @@ function openDetailModal(node, row, onSaved, onDeleted) {
         backdrop.querySelector(".tj-pdb-modal-img").innerHTML =
             result.thumbnail ? `<img src="${result.thumbnail}" />` : "";
         onSaved?.(row);   // repaint the grid so the card shows the new image immediately
+    });
+
+    const moveBtn = backdrop.querySelector(".tj-pdb-modal-move");
+    moveBtn.addEventListener("click", () => {
+        openLibraryModal(node.__tjPdbExcelPath, async (destPath) => {
+            if (sameLibraryPath(destPath, node.__tjPdbExcelPath)) return;
+            errEl.textContent = "";
+            moveBtn.textContent = "이동 중...";
+            const result = await moveRow(node.__tjPdbExcelPath, row.id, destPath);
+            moveBtn.textContent = "➡ 라이브러리 이동";
+            if (!result.ok) {
+                errEl.textContent = result.error || "이동 실패";
+                return;
+            }
+            onMoved?.(row.id);
+            close();
+        });
     });
 
     const deleteBtn = backdrop.querySelector(".tj-pdb-modal-delete");
@@ -1254,11 +1408,19 @@ function installUI(node) {
     search.className = "tj-pdb-search";
     search.type = "text";
     search.placeholder = "🔍 프롬프트 검색...";
+    const sortBtn = document.createElement("button");
+    sortBtn.className = "tj-pdb-icon-btn";
+    // Newest-first (▼) matches what the backend already returns rows in, so that's the
+    // starting state — flipping it doesn't need an extra round trip, just a client-side sort.
+    node.__tjPdbSortDir = "desc";
+    sortBtn.textContent = "▼";
+    sortBtn.title = "정렬: ID 내림차순 (클릭하여 전환)";
     const refreshBtn = document.createElement("button");
     refreshBtn.className = "tj-pdb-icon-btn";
     refreshBtn.textContent = "⟳";
     refreshBtn.title = "Refresh";
     toolbar.appendChild(search);
+    toolbar.appendChild(sortBtn);
     toolbar.appendChild(refreshBtn);
     wrap.appendChild(toolbar);
 
@@ -1306,12 +1468,18 @@ function installUI(node) {
 
     function getVisibleRows() {
         const q = search.value.trim().toLowerCase();
-        if (!q) return node.__tjPdbRows;
-        return node.__tjPdbRows.filter((r) =>
+        const filtered = !q ? node.__tjPdbRows : node.__tjPdbRows.filter((r) =>
             String(r.positive_prompt || "").toLowerCase().includes(q) ||
             String(r.model_name || "").toLowerCase().includes(q) ||
-            String(r.negative_prompt || "").toLowerCase().includes(q)
+            String(r.negative_prompt || "").toLowerCase().includes(q) ||
+            String(r.note || "").toLowerCase().includes(q)
         );
+        // node.__tjPdbRows already comes back id-descending from the backend — only actually
+        // re-sort (and copy the array) for ascending, so the common case stays a no-op.
+        if (node.__tjPdbSortDir === "asc") {
+            return filtered.slice().sort((a, b) => a.id - b.id);
+        }
+        return filtered;
     }
 
     function renderGrid() {
@@ -1342,6 +1510,12 @@ function installUI(node) {
             // Clear the selection if the row that was deleted is the one wired to outputs,
             // so the node can't keep referencing an id that no longer exists in the sheet.
             if (Number(selectedWidget?.value) === deletedId) selectRow(-1);
+            renderGrid();
+        }, (movedId) => {
+            // Moved rows leave this workbook the same way deleted ones do — gone from the
+            // local list, selection cleared if it was the one wired to outputs.
+            node.__tjPdbRows = node.__tjPdbRows.filter((r) => r.id !== movedId);
+            if (Number(selectedWidget?.value) === movedId) selectRow(-1);
             renderGrid();
         });
         selectRow(row.id);
@@ -1380,6 +1554,14 @@ function installUI(node) {
     }
 
     refreshBtn.addEventListener("click", refresh);
+
+    sortBtn.addEventListener("click", () => {
+        node.__tjPdbSortDir = node.__tjPdbSortDir === "asc" ? "desc" : "asc";
+        const asc = node.__tjPdbSortDir === "asc";
+        sortBtn.textContent = asc ? "▲" : "▼";
+        sortBtn.title = asc ? "정렬: ID 오름차순 (클릭하여 전환)" : "정렬: ID 내림차순 (클릭하여 전환)";
+        renderGrid();
+    });
 
     // Auto-refresh when the workbook this node is showing gets written to — a run that logs
     // a new row should appear straight away instead of needing a manual ⟳. Scoped by path so

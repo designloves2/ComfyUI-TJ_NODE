@@ -66,6 +66,13 @@ HEADERS = ["ID", "날짜", "Positive Prompt", "Negative Prompt", "Model", "Seed"
 # remembers to hit ⟳ after every run.
 UPDATED_EVENT = "tj_promptdb_updated"
 
+# The gallery sidecar (row_<id>.png) and the picture embedded in the sheet are sized
+# independently. Gallery thumbnails default to 256px because that's what looks decent in
+# the grid; the workbook doesn't need that — the embedded picture is only there so a plain
+# .xlsx opened in Excel still shows something, and every embed adds to the file's size. Cap
+# it lower so a workbook with hundreds of rows doesn't balloon.
+EXCEL_EMBED_MAX_PX = 128
+
 THUMB_SUBDIR = "_tj_thumbnails_tmp"
 SAVE_RETRIES = 3
 SAVE_RETRY_DELAY = 0.6
@@ -608,7 +615,10 @@ class TJ_PromptDBSave:
                 "images": ("IMAGE",),
                 "positive_prompt": ("STRING", {"multiline": True, "default": ""}),
                 "excel_path": ("STRING", {"default": ""}),
-                "thumbnail_size": ("INT", {"default": 128, "min": 16, "max": 512, "step": 8}),
+                # This is the GALLERY thumbnail size (the sidecar row_<id>.png). The picture
+                # embedded in the .xlsx itself is capped separately at EXCEL_EMBED_MAX_PX —
+                # a bigger gallery thumbnail doesn't need to bloat the workbook.
+                "thumbnail_size": ("INT", {"default": 256, "min": 16, "max": 512, "step": 8}),
                 # BYPASS lets the node stay wired in the graph while writing nothing —
                 # images pass straight through, so downstream nodes are unaffected.
                 "mode": ("BOOLEAN", {"default": True, "label_on": "SAVE", "label_off": "BYPASS"}),
@@ -741,12 +751,14 @@ class TJ_PromptDBSave:
             ws.cell(row=row_idx, column=COL_SAMPLER, value=str(sampler_name or ""))
             ws.cell(row=row_idx, column=COL_SCHEDULER, value=str(scheduler or ""))
 
-            ws.row_dimensions[row_idx].height = max(15, thumb_px * 0.75)
             try:
-                xl_img = XLImage(thumb_path)
-                xl_img.width, xl_img.height = pil.width, pil.height
+                embed = _embed_pil(thumb_path)
+                ws.row_dimensions[row_idx].height = max(15, embed.height * 0.75)
+                xl_img = XLImage(embed)
+                xl_img.width, xl_img.height = embed.width, embed.height
                 ws.add_image(xl_img, f"{get_column_letter(COL_THUMB)}{row_idx}")
             except Exception:
+                ws.row_dimensions[row_idx].height = max(15, thumb_px * 0.75)
                 pass  # thumbnail embed is best-effort; the row's data is what matters
 
         _save_with_retry(wb, path)
@@ -1216,6 +1228,31 @@ async def _handle_browse_mkdir(request):
         return web.json_response({"ok": False, "error": str(exc)}, status=500)
 
 
+def _embed_pil(source_path: str, cap: int = EXCEL_EMBED_MAX_PX):
+    """Opens a sidecar thumbnail and returns a PIL image sized for embedding in the sheet.
+
+    Never upscales — a sidecar already smaller than `cap` (e.g. a manually-set small
+    thumbnail_size) is embedded as-is.
+
+    openpyxl's Image._data() has a fast path for png/jpeg/gif that does NOT re-encode: it
+    just seeks the ORIGINAL file handle back to 0 and copies those bytes verbatim. Handing
+    it a resized-in-place PIL Image (still pointing at the on-disk source file, or with that
+    handle closed) either silently embeds the un-resized original or raises
+    `'NoneType' object has no attribute 'seek'` once the handle is closed — resizing had no
+    effect on what actually gets saved either way. Re-encoding into a fresh in-memory
+    buffer and reopening from THAT buffer gives the image a `.fp` that genuinely contains
+    the resized bytes, so the fast path copies the right data.
+    """
+    with Image.open(source_path) as src:
+        im = src.copy()
+        if max(im.size) > cap:
+            im.thumbnail((cap, cap), Image.Resampling.LANCZOS)
+    buf = BytesIO()
+    im.save(buf, format="PNG")
+    buf.seek(0)
+    return Image.open(buf)
+
+
 def _reanchor_thumbnails(ws, thumb_dir: str) -> None:
     """Rebuilds every embedded thumbnail from the sidecar files, in current row order.
 
@@ -1233,10 +1270,9 @@ def _reanchor_thumbnails(ws, thumb_dir: str) -> None:
         if not os.path.isfile(thumb_path):
             continue
         try:
-            with Image.open(thumb_path) as im:
-                width, height = im.size
-            xl_img = XLImage(thumb_path)
-            xl_img.width, xl_img.height = width, height
+            embed = _embed_pil(thumb_path)
+            xl_img = XLImage(embed)
+            xl_img.width, xl_img.height = embed.width, embed.height
             ws.add_image(xl_img, f"{get_column_letter(COL_THUMB)}{row[0].row}")
         except Exception:
             pass  # a missing/corrupt thumbnail must not block the delete
@@ -1283,6 +1319,94 @@ async def _handle_delete_row(request):
         return web.json_response({"ok": False, "error": str(exc)}, status=400)
 
 
+_ROW_FIELD_COLS = {
+    "positive_prompt": COL_POS, "negative_prompt": COL_NEG, "model_name": COL_MODEL,
+    "seed": COL_SEED, "steps": COL_STEPS, "cfg": COL_CFG, "extra_settings": COL_EXTRA,
+    "note": COL_NOTE, "sampler_name": COL_SAMPLER, "scheduler": COL_SCHEDULER,
+}
+
+
+async def _handle_move_row(request):
+    """Moves one row (data + thumbnail) from one workbook to another.
+
+    Lets a card get filed under the right library after the fact — e.g. logged into a
+    general bucket, then sorted into a themed one once it's clear which prompt it matches.
+    Appended to the destination with a fresh id (ids are per-workbook) before being removed
+    from the source, and only removed from the source once the destination save actually
+    succeeds, so a mid-operation failure leaves the row present somewhere rather than lost.
+    """
+    blocked = _local_only(request)
+    if blocked is not None:
+        return blocked
+    try:
+        payload = await request.json()
+        src_path = _resolve_excel_path(payload.get("excel_path", ""))
+        dest_path = _resolve_excel_path(payload.get("dest_path", ""))
+        row_id = int(payload.get("id", -1))
+        if not os.path.isfile(src_path):
+            return web.json_response({"ok": False, "error": "Source file not found"}, status=404)
+        if os.path.normcase(src_path) == os.path.normcase(dest_path):
+            return web.json_response({"ok": False, "error": "Source and destination are the same library"}, status=400)
+
+        src_wb = load_workbook(src_path)
+        src_ws = src_wb.active
+        src_row = None
+        for row in src_ws.iter_rows(min_row=2):
+            if row[COL_ID - 1].value == row_id:
+                src_row = row
+                break
+        if src_row is None:
+            src_wb.close()
+            return web.json_response({"ok": False, "error": f"Row ID {row_id} not found"}, status=404)
+
+        fields = {name: src_row[col - 1].value for name, col in _ROW_FIELD_COLS.items()}
+        date_value = src_row[COL_DATE - 1].value
+        src_thumb = os.path.join(_thumb_dir_for(src_path), f"row_{row_id}.png")
+
+        # Append to the destination first — the source is only touched after this succeeds.
+        dest_wb, dest_ws = _open_or_create_workbook(dest_path)
+        new_id = _next_id(dest_ws)
+        dest_row_idx = dest_ws.max_row + 1
+        dest_ws.cell(row=dest_row_idx, column=COL_ID, value=new_id)
+        dest_ws.cell(row=dest_row_idx, column=COL_DATE, value=date_value or "")
+        for name, col in _ROW_FIELD_COLS.items():
+            value = fields[name]
+            if name == "seed" or name == "steps":
+                value = int(value or 0)
+            elif name == "cfg":
+                value = float(value or 0.0)
+            else:
+                value = str(value or "")
+            dest_ws.cell(row=dest_row_idx, column=col, value=value)
+
+        dest_thumb_dir = _thumb_dir_for(dest_path)
+        if os.path.isfile(src_thumb):
+            os.makedirs(dest_thumb_dir, exist_ok=True)
+            with Image.open(src_thumb) as im:
+                im.convert("RGB").save(os.path.join(dest_thumb_dir, f"row_{new_id}.png"), format="PNG")
+        _reanchor_thumbnails(dest_ws, dest_thumb_dir)
+        _sync_headers(dest_ws)
+        _save_with_retry(dest_wb, dest_path)
+
+        # Destination is durably saved — now remove the row from the source.
+        src_target_row = src_row[0].row
+        src_ws.delete_rows(src_target_row)
+        src_thumb_dir = _thumb_dir_for(src_path)
+        _reanchor_thumbnails(src_ws, src_thumb_dir)
+        _sync_headers(src_ws)
+        _save_with_retry(src_wb, src_path)
+        try:
+            os.remove(src_thumb)
+        except OSError:
+            pass
+
+        _notify_updated(src_path)
+        _notify_updated(dest_path)
+        return web.json_response({"ok": True, "new_id": new_id})
+    except Exception as exc:
+        return web.json_response({"ok": False, "error": str(exc)}, status=400)
+
+
 def _resolve_in_output(subfolder: str, filename: str) -> str:
     """Resolve an image inside ComfyUI's output directory, or raise ValueError.
 
@@ -1321,9 +1445,9 @@ async def _handle_set_thumbnail(request):
         row_id = int(payload.get("id", -1))
         src = _resolve_in_output(payload.get("subfolder", ""), payload.get("filename", ""))
         try:
-            size = max(16, min(512, int(payload.get("thumbnail_size", 128))))
+            size = max(16, min(512, int(payload.get("thumbnail_size", 256))))
         except (TypeError, ValueError):
-            size = 128
+            size = 256
 
         if not os.path.isfile(path):
             return web.json_response({"ok": False, "error": "Excel file not found"}, status=404)
@@ -1415,6 +1539,7 @@ if PromptServer is not None:
     PromptServer.instance.routes.post("/tj_node/promptdb/list_rows")(_handle_list_rows)
     PromptServer.instance.routes.post("/tj_node/promptdb/update_row")(_handle_update_row)
     PromptServer.instance.routes.post("/tj_node/promptdb/delete_row")(_handle_delete_row)
+    PromptServer.instance.routes.post("/tj_node/promptdb/move_row")(_handle_move_row)
     PromptServer.instance.routes.post("/tj_node/promptdb/set_thumbnail")(_handle_set_thumbnail)
     PromptServer.instance.routes.get("/tj_node/promptdb/libraries")(_handle_get_libraries)
     PromptServer.instance.routes.post("/tj_node/promptdb/libraries")(_handle_save_libraries)

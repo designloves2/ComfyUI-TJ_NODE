@@ -158,20 +158,23 @@ def _enhanced_txtfusion_forward(txtfusion, x, mask=None, transformer_options=Non
     return (reference_out.detach().float() + post_delta * token_scale).to(candidate_out.dtype)
 
 
-def _krea2_wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options=None, **kwargs):
-    transformer_options = transformer_options or {}
+def _krea2_wrapper(executor, *args, **kwargs):
+    transformer_options = kwargs.get("transformer_options")
+    if transformer_options is None:
+        transformer_options = next((a for a in args if isinstance(a, dict)), {})
+
     cfg = transformer_options.get(WRAPPER_KEY, {})
     if not cfg or not cfg.get("enabled", True) or cfg.get("_active", False):
-        return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
+        return executor(*args, **kwargs)
 
     dm = executor.class_obj
     if not _is_krea2_dm(dm):
-        return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
+        return executor(*args, **kwargs)
 
     strength = _bounded_float(cfg.get("strength", 1.0), 1.0, 0.0, 2.0)
     text_scale = _bounded_float(cfg.get("text_scale", 1.0), 1.0, 0.25, 4.0)
     if strength == 0.0 and text_scale == 1.0:
-        return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
+        return executor(*args, **kwargs)
 
     txtfusion = dm.txtfusion
     if hasattr(txtfusion, "_tj_original_forward"):
@@ -198,7 +201,7 @@ def _krea2_wrapper(executor, x, timesteps, context, attention_mask=None, transfo
         txtmlp_module, original_txtmlp_forward = _install_txtmlp_scale(dm.txtmlp, text_scale)
         if strength != 0.0:
             txtfusion.forward = enhanced_forward
-        return executor(x, timesteps, context, attention_mask, transformer_options, **kwargs)
+        return executor(*args, **kwargs)
     finally:
         cfg["_active"] = False
         txtfusion.forward = original_forward

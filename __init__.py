@@ -12,6 +12,7 @@ from .nodes.etc import (
     TJ_SmartConverter,
     TJShortcutLauncher,
     TimeSegmentListNode,
+    TJ_MultiSwitch,
 )
 
 # ── Image ─────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ from .nodes.image import (
     TJ_BatchToMultiOutput,
     TJ_SaveAndPreviewImage,
     TJ_ImagesCompareSheetQueueLoop,
+    TJ_BatchToMinimaxH3,
 )
 
 # ── Utility ───────────────────────────────────────────────────────────────
@@ -99,6 +101,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SmartConverter":    TJ_SmartConverter,
     "TJShortcutLauncher":   TJShortcutLauncher,
     "TimeSegmentListNode":  TimeSegmentListNode,
+    "TJ_MultiSwitch":       TJ_MultiSwitch,
 
     # Image
     "TJ_MultiImageLoader":              TJ_MultiImageLoader,
@@ -111,6 +114,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_BatchToMultiOutput":            TJ_BatchToMultiOutput,
     "TJ_SaveAndPreviewImage":           TJ_SaveAndPreviewImage,
     "TJ_ImagesCompareSheetQueueLoop":    TJ_ImagesCompareSheetQueueLoop,
+    "TJ_BatchToMinimaxH3":              TJ_BatchToMinimaxH3,
 
     # Utility
     "TJ_PromptText":        TJ_PromptText,
@@ -176,6 +180,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SmartConverter":    "Smart Converter (TJ)",
     "TJShortcutLauncher":   "Shortcut Launcher (TJ)",
     "TimeSegmentListNode":  "Time Segment List (TJ)",
+    "TJ_MultiSwitch":       "Multi Switch (TJ)",
 
     # Image
     "TJ_MultiImageLoader":              "Multi Image Loader (TJ)",
@@ -188,6 +193,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_BatchToMultiOutput":            "Batch to Multi Image Output(TJ)",
     "TJ_SaveAndPreviewImage":           "Save & Preview Image (TJ)",
     "TJ_ImagesCompareSheetQueueLoop":    "Images Compare Sheet - Queue Loop (TJ)",
+    "TJ_BatchToMinimaxH3":              "Batch to MinimaxH3 (TJ)",
 
     # Utility
     "TJ_PromptText":        "Prompt Text (TJ)",

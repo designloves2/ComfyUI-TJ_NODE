@@ -207,6 +207,12 @@ def _strip_thinking_tags(text):
         r"\[THINK(?:ING)?\].*?\[/THINK(?:ING)?\]",
     ):
         text = re.sub(pat, "", text, flags=re.DOTALL | re.IGNORECASE)
+    # 일부 GGUF 모델/핸들러 조합이 채팅 템플릿의 channel/message 제어 토큰을
+    # 소비하지 않고 그대로(때로는 파이프 한쪽이 빠진 채) 텍스트로 흘려보내는 경우가
+    # 있어 (예: "<|channel>thought\n<channel|>..."). 원문에 남지 않도록 방어적으로 제거.
+    text = re.sub(r"^\s*<\|?channel\|?>\s*\w+\s*<\|?channel\|?>\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"<\|channel\|>.*?<\|message\|>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<\|(?:start|end|message|channel)\|>", "", text, flags=re.IGNORECASE)
     return text
 
 

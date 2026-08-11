@@ -28,6 +28,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Wireless", title: "Multi Get Node (TJ)", type: "Multi Get Node (TJ)" },
   { category: "Wireless", title: "Send (TJ)", type: "Send (TJ)" },
   { category: "Wireless", title: "Send Point (TJ)", type: "Send Point (TJ)" },
+  { category: "Wireless", title: "Multi Switch (TJ)", type: "Multi Switch (TJ)" },
 
   // Utility
   { category: "Utility", title: "Queue Loop (TJ)", type: "Queue Loop (TJ)" },
@@ -55,6 +56,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "Save Image(Primary-TJ)", type: "Save Image(Primary-TJ)" },
   { category: "Image", title: "Save With Original Names (TJ)", type: "Save With Original Names (TJ)" },
   { category: "Image", title: "Batch to Multi Image Output(TJ)", type: "Batch to Multi Image Output(TJ)" },
+  { category: "Image", title: "Batch to MinimaxH3 (TJ)", type: "Batch to MinimaxH3 (TJ)" },
   { category: "Image", title: "Save & Preview Image (TJ)", type: "Save & Preview Image (TJ)" },
   { category: "Image", title: "Save Image(Suffix-TJ)", type: "Save Image(Suffix-TJ)" },
   { category: "Image", title: "Save Image(Eclipse Suffix-TJ)", type: "Save Image(Eclipse Suffix-TJ)" },
