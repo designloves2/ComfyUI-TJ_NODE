@@ -235,20 +235,54 @@ function lockAllGroupTypes(node) {
 // 큐 직전 그래프 프루닝
 // ────────────────────────────────────────────────────────────
 
-function collectSwitchInfo(graph) {
-    const info = new Map(); // nodeId(string) -> { numGroups, toggleMode, globalSwitch, perGroup: {g: "A"|"B"} }
+// 서브그래프에 중첩된 노드는 app.graphToPrompt() 가 "parentId:innerId" 형태의
+// 합성 id 로 평탄화해서 넘긴다(중첩 깊이만큼 여러 번 이어짐, 예: "247:249").
+// live LiteGraph 노드 객체를 그 합성 id 로 되찾을 때 쓴다 — 최상위 그래프에서
+// 시작해 ":" 로 나눈 각 조각을 그 레벨의 _nodes 에서 찾고, 서브그래프 노드면
+// 그 .subgraph 로 한 단계씩 내려간다.
+function resolveNodeById(graph, compositeId) {
+    const parts = String(compositeId).split(":");
+    let currentGraph = graph;
+    let node = null;
+    for (const part of parts) {
+        node = currentGraph?._nodes?.find((n) => String(n.id) === part);
+        if (!node) return null;
+        currentGraph = node.subgraph;
+    }
+    return node;
+}
+
+// 그래프(및 그 안의 서브그래프들)에 TJ_MultiSwitch 가 하나라도 있는지 재귀적으로 확인.
+// installQueueHook() 이 최상위 app.graph._nodes 만 보면 서브그래프 안에 숨은
+// 스위치를 놓쳐서 프루닝 파이프라인 자체가 통째로 스킵된다(실제로 겪은 버그).
+function graphHasSwitchRecursive(graph, depth = 0) {
+    if (!graph?._nodes || depth > 8) return false;
     for (const n of graph._nodes) {
-        if (!n || n.type !== NODE_TYPE) continue;
-        const numGroups = n.properties?.num_groups || 1;
-        const toggleMode = n.widgets?.find((w) => w.name === "toggle_mode")?.value || "Global";
+        if (n?.type === NODE_TYPE) return true;
+        if (n?.subgraph && graphHasSwitchRecursive(n.subgraph, depth + 1)) return true;
+    }
+    return false;
+}
+
+// app.graphToPrompt() 가 이미 평탄화해서 넘겨준 output 딕셔너리에서 직접 읽는다
+// (live 그래프를 훑지 않음) — 이러면 서브그래프에 중첩된 TJ_MultiSwitch 도
+// 합성 id("247:249") 그대로 자연스럽게 잡힌다. output[id].inputs 에는 위젯
+// 값(toggle_mode/global_switch/num_groups/switch_N 등)도 그대로 직렬화되어 있다.
+function collectSwitchInfo(output) {
+    const info = new Map(); // nodeId(string, 합성 id 가능) -> { numGroups, toggleMode, globalSwitch, perGroup: {g: "A"|"B"} }
+    for (const [id, data] of Object.entries(output || {})) {
+        if (!data || data.class_type !== NODE_TYPE) continue;
+        const inputs = data.inputs || {};
+        const numGroups = Number(inputs.num_groups) || 1;
+        const toggleMode = inputs.toggle_mode || "Global";
         // 토글 위젯: true == "A", false == "B"
-        const globalSwitchOn = n.widgets?.find((w) => w.name === "global_switch")?.value !== false;
+        const globalSwitchOn = inputs.global_switch !== false;
         const perGroup = {};
         for (let g = 1; g <= numGroups; g++) {
-            const w = n.widgets?.find((w) => w.name === `switch_${g}`);
-            perGroup[g] = w ? w.value !== false : true;
+            const v = inputs[`switch_${g}`];
+            perGroup[g] = v !== false;
         }
-        info.set(String(n.id), { numGroups, toggleMode, globalSwitchOn, perGroup });
+        info.set(id, { numGroups, toggleMode, globalSwitchOn, perGroup });
     }
     return info;
 }
@@ -317,7 +351,7 @@ function pruneDeadSwitchOutputs(graph, output, switchInfo, keep) {
             const data = output[id];
             if (!data) continue;
             const inputs = data.inputs || {};
-            const node = graph.getNodeById(Number(id));
+            const node = resolveNodeById(graph, id);
             const requiredNames = new Set(Object.keys(node?.constructor?.nodeData?.input?.required || {}));
             for (const [key, v] of Object.entries(inputs)) {
                 if (!Array.isArray(v) || !deadSlots.has(`${v[0]}:${v[1]}`)) continue;
@@ -337,14 +371,14 @@ function pruneDeadSwitchOutputs(graph, output, switchInfo, keep) {
 
 async function buildPrunedPrompt() {
     const graph = app.graph;
-    const switchInfo = collectSwitchInfo(graph);
     const p = await app.graphToPrompt();
     const output = p.output || {};
+    const switchInfo = collectSwitchInfo(output);
 
     if (switchInfo.size === 0) return p; // TJ_MultiSwitch 없으면 그대로
 
     const roots = Object.keys(output).filter((id) => {
-        const n = graph.getNodeById(Number(id));
+        const n = resolveNodeById(graph, id);
         return n?.constructor?.nodeData?.output_node === true;
     });
 
@@ -383,7 +417,7 @@ function installQueueHook() {
 
     const origQueuePrompt = app.queuePrompt.bind(app);
     app.queuePrompt = async function (number, batchCount = 1) {
-        const hasSwitch = app.graph._nodes.some((n) => n?.type === NODE_TYPE);
+        const hasSwitch = graphHasSwitchRecursive(app.graph);
         if (!hasSwitch) return origQueuePrompt(number, batchCount);
 
         for (let i = 0; i < batchCount; i++) {

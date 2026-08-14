@@ -336,12 +336,62 @@ function attachTJGetReceiver(node, opts = {}) {
 function escapeHtml(text) {
     return String(text ?? "").replace(/[&<>\"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 }
+// 프리셋은 브라우저가 아니라 **서버**(ComfyUI user 디렉터리)에 저장한다.
+// localStorage 에 두면 "집 서버에서 등록한 프리셋이 원격 접속 브라우저에는 안 보이는"
+// 문제가 생긴다 — 저장 주체가 브라우저였기 때문. ComfyUI 내장 /userdata API 를 쓰면
+// 서버에 남고 어느 브라우저로 접속해도 같은 목록이 보인다.
+const PRESET_USERDATA_FILE = "tj_node/ollama_system_prompts.json";
+function presetUserdataUrl() {
+    return `/userdata/${encodeURIComponent(PRESET_USERDATA_FILE)}`;
+}
+
+// 호출부가 전부 동기라서 메모리 캐시를 진실의 사본으로 두고, 서버와는 비동기로 동기화한다.
+let _presetCache = [];
+let _presetLoaded = false;
+
+function normalizePresets(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(x => x && x.label && typeof x.text === "string");
+}
 function readCustomPresets() {
-    try { return JSON.parse(localStorage.getItem(PROMPT_PRESET_KEY) || "[]").filter(x => x && x.label && x.text); }
-    catch (_) { return []; }
+    return _presetCache;
 }
 function writeCustomPresets(items) {
-    try { localStorage.setItem(PROMPT_PRESET_KEY, JSON.stringify(items || [])); } catch (_) {}
+    _presetCache = normalizePresets(items);
+    // 서버 저장은 비동기 — 실패해도 UI 흐름은 막지 않고 콘솔에만 남긴다.
+    api.fetchApi(presetUserdataUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(_presetCache, null, 2),
+    }).catch(err => console.warn("[TJ_NODE] system prompt preset save failed", err));
+}
+function readLegacyLocalPresets() {
+    try { return normalizePresets(JSON.parse(localStorage.getItem(PROMPT_PRESET_KEY) || "[]")); }
+    catch (_) { return []; }
+}
+async function loadCustomPresets({ force = false } = {}) {
+    if (_presetLoaded && !force) return _presetCache;
+    try {
+        const res = await api.fetchApi(presetUserdataUrl());
+        if (res.ok) {
+            _presetCache = normalizePresets(await res.json());
+            _presetLoaded = true;
+            return _presetCache;
+        }
+        if (res.status !== 404) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+        console.warn("[TJ_NODE] system prompt preset load failed", err);
+        _presetLoaded = true;
+        return _presetCache;
+    }
+    // 서버에 아직 파일이 없다(404) — 예전 localStorage 프리셋이 있으면 한 번만 옮겨준다.
+    const legacy = readLegacyLocalPresets();
+    _presetLoaded = true;
+    if (legacy.length) {
+        writeCustomPresets(legacy);
+        console.info(`[TJ_NODE] migrated ${legacy.length} system prompt preset(s) from browser storage to the server`);
+    }
+    return _presetCache;
 }
 function showTJModal(className, width = 720) {
     const overlay = document.createElement("div");
@@ -401,8 +451,8 @@ function openSystemPromptDialog(node) {
     deleteBtn.style.cssText = "background:#221111;color:#fff;border:1px solid #7a3333;border-radius:5px;padding:8px 12px;cursor:pointer;";
     presetRow.appendChild(select); presetRow.appendChild(loadBtn); presetRow.appendChild(refreshBtn); presetRow.appendChild(deleteBtn);
 
-    // User presets live in localStorage — export/import lets them travel between
-    // browsers/machines instead of being stuck on whichever browser saved them.
+    // 프리셋은 서버에 저장되므로 어느 브라우저로 접속해도 같은 목록이 보인다.
+    // Export/Import 는 백업·복원과 다른 ComfyUI 서버로 옮길 때 쓴다.
     const cfgRow = document.createElement("div");
     cfgRow.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:10px;";
     const cfgLabel = document.createElement("div");
@@ -410,7 +460,7 @@ function openSystemPromptDialog(node) {
     cfgLabel.style.cssText = "color:#888;font-size:12px;margin-right:auto;";
     const exportBtn = document.createElement("button");
     exportBtn.textContent = "⬇ Export";
-    exportBtn.title = "Download all User Presets as a JSON file (for backup / other browsers)";
+    exportBtn.title = "Download all User Presets as a JSON file (backup / move to another ComfyUI server)";
     exportBtn.style.cssText = "background:#222;color:#fff;border:1px solid #444;border-radius:5px;padding:6px 10px;font-size:12px;cursor:pointer;";
     const importBtn = document.createElement("button");
     importBtn.textContent = "⬆ Import";
@@ -507,7 +557,8 @@ function openSystemPromptDialog(node) {
 
     select.onchange = updatePresetDescription;
     loadBtn.onclick = () => { const p = currentPreset(); if (p) { textarea.value = p.text || ""; updateStats(); } };
-    refreshBtn.onclick = () => rebuildPresetList();
+    // 서버에서 다시 읽어온다 — 다른 브라우저/기기에서 추가한 프리셋을 가져올 때 쓴다.
+    refreshBtn.onclick = () => loadCustomPresets({ force: true }).then(() => rebuildPresetList());
     savePresetBtn.onclick = () => {
         const label = String(nameInput.value || "").trim() || "My System Prompt";
         const items = readCustomPresets();
@@ -597,7 +648,8 @@ function openSystemPromptDialog(node) {
     textarea.addEventListener("input", updateStats);
 
     wrap.appendChild(title); wrap.appendChild(presetRow); wrap.appendChild(cfgRow); wrap.appendChild(desc); wrap.appendChild(textarea); wrap.appendChild(saveRow); wrap.appendChild(stats); wrap.appendChild(actions); box.appendChild(wrap);
-    rebuildPresetList();
+    rebuildPresetList();          // 캐시에 있는 것으로 먼저 그리고,
+    loadCustomPresets().then(() => rebuildPresetList());  // 서버 응답이 오면 다시 그린다.
     updateStats();
     textarea.focus();
 }

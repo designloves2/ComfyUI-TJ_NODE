@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.11.0
+# ✨ TJ_NODE v2.11.1
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,34 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 🔀 Multi Switch (TJ) — v2.11.0
+
+A/B 두 입력 중 하나를 고르는 스위치. 핵심은 **선택되지 않은 쪽에 연결된 상위 노드 체인을
+아예 실행하지 않는다**는 것 — 큐 전송 직전 프론트엔드가 prompt JSON에서 미선택 브랜치를
+통째로 잘라내므로, 모델 로드처럼 무거운 노드가 A/B 양쪽에 물려 있어도 선택 안 된 쪽은
+VRAM에 올라가지도 않는다. 단순 Bypass와 다르다.
+
+- 그룹 = `{A_n, B_n}` 입력 2개 + `output_n` 출력 1개, 최대 12그룹
+- `[+ Group]` / `[- Group]` 버튼, 우클릭 → `🗑 Delete Group...`로 임의 그룹 삭제(연결 유지한 채 재번호)
+- `toggle_mode`: `Global`(전체 공유) / `Per-Group`(그룹별 개별 스위치)
+- 선택된 쪽이 미연결이면 그 그룹만 조용히 통과 처리 — 에러 없음
+- 서브그래프 안에 넣어도 정상 동작 (합성 노드 ID 처리)
+
+A/B switch whose unselected branch is pruned out of the queued prompt entirely, so heavy
+upstream nodes on the other side never load. Up to 12 groups, Global / Per-Group modes.
+
+## 🎬 Batch to MinimaxH3 (TJ) — v2.11.0
+
+`Batch to Multi Image Output (TJ)`의 파생 노드. 출력 상한을 12로 낮추고, **배치 수량을
+초과하는 출력은 검정 이미지 대신 `None`을 반환**한다.
+
+`MiniMax H3 Reference to Video` 같은 Autogrow 계열 노드는 `None`을 "그 슬롯 미연결"로
+처리하도록 설계돼 있어서, 배치 3장을 넣고 출력 9개를 연결해도 나머지 6개는 조용히 빈 슬롯이
+된다(검정 프레임이 레퍼런스로 들어가지 않는다).
+
+> ⚠️ `PreviewImage`처럼 `None`을 받지 못하는 단일값 소비 노드에 직접 연결하면 그쪽에서
+> 에러가 난다. 여러 optional 슬롯을 묶어 받는 노드 전용이다.
 
 ## 📊 PromptDBSave(TJ) / PromptDBLoader(TJ)
 
@@ -63,11 +91,25 @@ The newest nodes in the pack — some are pre-release / still being tested (see
 * 상세 팝업에서 **썸네일을 직접 교체**할 수 있습니다. 이미지 선택 창은 Multi Image
   Loader의 Add image와 같은 방식이며, 대상은 **output 폴더로 한정**됩니다(최신 파일
   우선 정렬, 하위 폴더 탐색 가능). 교체하면 사이드카와 엑셀에 임베드된 이미지가 함께
-  갱신됩니다.
+  갱신됩니다. 교체 시 **크기를 직접 지정**할 수 있습니다(v2.11.0 — 이전에는 고정 크기).
+* **카드를 다른 라이브러리로 이동** (v2.11.0) — 상세 팝업의 `➡ 라이브러리 이동`으로
+  행과 썸네일을 통째로 다른 워크북으로 옮깁니다. 대상에 먼저 기록한 뒤 원본을 지우는
+  순서라, 중간에 실패해도 데이터가 사라지지 않습니다.
+* **썸네일 크기 분리** (v2.11.0) — 갤러리에 보이는 썸네일(기본 256px)과 엑셀에 임베드되는
+  이미지(128px 상한)를 따로 관리합니다. 보기는 크게, 파일 크기는 작게. 원본보다 크게
+  늘리지는 않습니다.
+* **메모를 카드 제목으로** (v2.11.0) — `note`에 내용이 있으면 썸네일 카드 아래에 프롬프트
+  대신 메모가 표시됩니다(비어 있으면 기존처럼 프롬프트). 검색 대상에도 메모가 포함됩니다.
+* **정렬 토글** (v2.11.0) — 갤러리 그리드를 오름차순/내림차순으로 전환합니다.
+* **이미지 표시** (v2.11.0) — 상세보기는 원본 비율 그대로 보여줍니다(정사각형 크롭 없음).
+  그리드 카드 썸네일은 정사각형을 유지하되 **상단 기준**으로 잘라서, 인물 사진에서 얼굴이
+  잘리지 않습니다.
 * **라이브러리 관리** — 📚 pill을 누르면 활성화된 라이브러리만 나오는 빠른 전환
   메뉴가, ⚙ 버튼을 누르면 가져오기·백업·순서 변경·활성/비활성 토글이 있는 설정
   모달이 열립니다. 경로를 직접 입력할 일은 없습니다. 이름과 파일은 모두 중복 등록이
-  차단됩니다.
+  차단됩니다. **등록된 라이브러리 이름 변경**(파일명은 그대로)과, 등록 목록 전체를
+  JSON으로 **내보내기/가져오기**할 수 있습니다(v2.11.0 — 가져오기는 병합 방식이며 이름이
+  겹치면 자동으로 접미사를 붙입니다). 워크북 단위 zip 백업과는 별개입니다.
 * **백업** — 라이브러리 행의 ⬇ 버튼은 워크북과 썸네일을 묶은 `.zip`을 브라우저로
   내려받습니다(임의 경로 쓰기가 아니라 다운로드).
 * **저장 위치는 `promptDB/` 폴더로 고정** — 이 노드가 읽고 쓰는 모든 xlsx는
@@ -194,6 +236,11 @@ A standard KSampler with a selectable per-architecture prompt-adherence enhancer
 * 노드 높이는 수동 조절 — latent preview 영역을 원하는 만큼 확보 가능
 * 증폭 로직은 capitan01R 의 MIT 프로젝트에서 이식 ([THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참고)
 * CATEGORY: `✨ TJ_Node/Sampling`
+
+> **v2.11.0 수정** — ComfyUI 코어가 Krea2 모델의 `forward()`에 `ref_latents` 인자를 추가하면서
+> Krea2 enhance 사용 시 `TypeError`가 발생하던 문제를 고쳤습니다. 래퍼를 `*args, **kwargs`
+> 방식으로 바꿔서, 앞으로 코어가 인자를 더 추가해도 깨지지 않습니다. ComfyUI 업데이트 후
+> Krea2 인핸스가 동작하지 않았다면 이 버전으로 올려 주세요.
 
 ## 🧬 LoRA Analyzer 제품군 (Krea2 / Klein 4B·9B / Z-Image)
 
@@ -358,6 +405,20 @@ Auto Set, 번역(KO/EN/JP/CN) 지원. `Scene Maker Result - pipe(TJ)` 로 결과
 텍스트/이미지 프롬프트를 생성하는 노드. 모델 목록 자동 조회, 생성 중단(Stop) 버튼, VRAM
 정책(ComfyUI 모델과의 우선순위) 설정 지원.
 
+**시스템 프롬프트 관리**
+
+* **System Prompt 팝업** — 내장 프리셋과 사용자 프리셋을 고르고, 편집하고, 저장합니다.
+* **프리셋은 서버에 저장됩니다** — ComfyUI의 user 디렉터리
+  (`user/<user>/tj_node/ollama_system_prompts.json`)에 저장되므로, **서버 IP로 원격 접속해도
+  같은 목록이 보입니다.** 브라우저 저장소(localStorage)를 쓰던 시절에는 등록한 PC의
+  브라우저에서만 보였는데, 그 문제를 해결한 것입니다. 기존에 브라우저에 저장해 둔 프리셋은
+  팝업을 처음 열 때 서버로 자동 이전됩니다.
+  `Refresh` 버튼은 서버에서 목록을 다시 읽어옵니다(다른 기기에서 추가한 프리셋 가져오기).
+  `⬇ Export` / `⬆ Import` 는 백업이나 **다른 ComfyUI 서버로 옮길 때** 사용합니다.
+* **`system_prompt_override` 입력** — 시스템 프롬프트를 다른 노드에서 받아 덮어씁니다.
+  연결하지 않으면 노드의 위젯 값을 쓰고, 연결했더라도 **내용이 비어 있으면 위젯 값을
+  유지**합니다(빈 문자열이 흘러들어와 시스템 프롬프트가 통째로 사라지는 것을 막습니다).
+
 ## ✨ LLM Content Quality Controller (TJ)
 
 LLM의 리뷰 답변(OK/FAIL 류)을 보고 이후 그래프 실행을 통과/차단하는 게이트 노드. 리뷰가
@@ -367,6 +428,20 @@ LLM의 리뷰 답변(OK/FAIL 류)을 보고 이후 그래프 실행을 통과/�
 
 Z-Image 모델 전용 프롬프트 기반 노드. Embedded Get/Set, Auto Set, Positive/Negative 숨김
 UI, 재로드에도 안정적인 프리뷰 유지.
+
+## ✨ ZIT ControlNet (TJ)
+
+Z-Image Turbo (TJ)에 물리는 **ControlNet 번들 노드**. Depth / Canny / Pose 세 종류를 한
+노드에서 켜고 끄고 강도를 조절해 `zit_control` 하나로 내보냅니다.
+
+* 종류별 개별 제어: `depth_enable`/`depth_strength`, `canny_enable`/`canny_strength`,
+  `pose_enable`/`pose_strength`
+* 전처리 내장: `depth_preprocess`, `canny_preprocess`, `pose_preprocess`,
+  `preprocessor_resolution`, `canny_low`, `canny_high`
+  (이미 전처리된 이미지를 넣을 거면 해당 preprocess를 끄면 됩니다)
+* 입력 이미지: `depth_image`, `canny_image`, `pose_image`
+* 출력: `zit_control` → Z-Image Turbo (TJ)에 연결
+* CATEGORY: `✨ TJ_Node/Generator`
 
 ## 🧪 TQD Score Estimate (TJ) — 실험적, 테스트 중
 
@@ -602,6 +677,45 @@ Core Features:
 
 ---
 
+## ✨ Multi Switch (TJ)
+
+A/B 두 입력 중 하나를 선택하는 스위치. Multi Router가 **하나를 여러 곳으로 분배**한다면,
+Multi Switch는 **여럿 중 하나를 고르고 나머지 경로를 실행에서 배제**합니다.
+
+가장 큰 차이는 "선택되지 않은 쪽"의 처리입니다. 일반적인 스위치 노드는 값만 고를 뿐
+양쪽 상위 노드가 모두 실행되지만, 이 노드는 **큐 전송 직전 프론트엔드가 prompt JSON에서
+미선택 브랜치를 통째로 잘라냅니다.** 따라서 선택 안 된 쪽에 물린 체크포인트 로더나
+LoRA 체인은 아예 실행되지 않고 VRAM에도 올라가지 않습니다.
+
+| 선택 | 해당 입력 | 결과 |
+|---|---|---|
+| A | 연결됨 | A쪽 라인만 실행. B쪽 상위 체인 전체 미실행 |
+| A | 미연결 | 그 그룹만 통과 처리(연결 안 한 것과 동일), 에러 없음 |
+| B | 연결됨 | B쪽 라인만 실행. A쪽 상위 체인 전체 미실행 |
+| B | 미연결 | 통과 처리, 에러 없음 |
+
+* 그룹 = `{A_n, B_n}` 입력 2개 + `output_n` 출력 1개, **최대 12그룹**
+* `[+ Group]` / `[- Group]` 버튼, 우클릭 → `🗑 Delete Group...` 로 중간 그룹만 삭제
+  (남은 그룹은 연결을 유지한 채 번호가 당겨집니다)
+* `toggle_mode` — `Global`(모든 그룹이 하나의 스위치 공유) / `Per-Group`(그룹마다 개별 스위치)
+* 스위치 위젯은 콤보가 아니라 **토글**입니다 (`true` = A, `false` = B)
+* 그룹마다 타입이 독립적이며, 연결하는 순간 해당 그룹의 타입이 확정됩니다
+* 세로 크기는 내용에 맞춰 자동, **가로 폭만 사용자가 조절**하며 그 값이 저장됩니다
+* 서브그래프 안에서도 정상 동작합니다(중첩된 노드의 합성 ID를 인식)
+
+> ℹ️ 프루닝은 프론트엔드 큐 경로에서 이루어집니다. `/prompt` API를 직접 호출하는 경우에는
+> 개입할 수 없으며, 이때는 백엔드 폴백(단순 패스스루)으로 동작합니다.
+
+핵심 활용:
+
+* A/B 모델 비교 시 선택 안 한 모델을 아예 로드하지 않기
+* 무거운 전처리 브랜치(업스케일·ControlNet 등)를 통째로 끄기
+* 하나의 워크플로우에서 여러 파이프라인을 전환하며 사용
+
+CATEGORY: `✨ TJ_Node/Wireless`
+
+---
+
 # 🛠 Batch Workflow System
 
 TJ_NODE의 Batch Workflow System은 단순 Batch 처리 노드 모음이 아닙니다.
@@ -782,6 +896,42 @@ Recommended Usage:
 
 ---
 
+## ✨ Batch to MinimaxH3 (TJ)
+
+위 노드의 파생 버전. 출력 상한이 **12개**이고, 배치 수량을 넘어서는 출력은 검정 이미지
+대신 **`None`** 을 반환합니다.
+
+| 조건 | 반환 |
+|---|---|
+| `i < 배치 수량` | 실제 이미지 |
+| `i >= 배치 수량` | `None` (그 슬롯을 연결하지 않은 것과 동일) |
+
+`MiniMax H3 Reference to Video` 처럼 여러 optional 슬롯을 하나의 그룹으로 받는
+(Autogrow 계열) 노드는 `None` 을 "미연결"로 처리하므로, 배치 3장으로 출력 9개를 연결해도
+앞의 3개만 실제 레퍼런스로 쓰이고 나머지는 무시됩니다.
+
+> ⚠️ `PreviewImage` 처럼 `None` 을 받지 못하는 노드에 직접 연결하면 그쪽에서 에러가 납니다.
+
+* 입력: `images`, `get_name`, `out_count`(1~12), `auto_set`
+* 출력: `IMAGE_1` ~ `IMAGE_12`
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
+## ✨ Images Compare Sheet - Queue Loop (TJ)
+
+Queue Loop로 여러 번 돌린 결과 이미지를 **한 장의 비교 시트로 누적**하는 노드. 실행할
+때마다 이미지를 모아 두었다가 격자로 합성하므로, 시드/LoRA/스텝을 바꿔 가며 돌린 결과를
+한눈에 비교할 수 있습니다.
+
+* 레이아웃: `auto_layout` 또는 `rows`/`columns` 수동 지정, `fill_direction`, `padding`
+* 라벨: `show_label`, `name_source`(이름 출처), `auto_name_prefix`, `index_digits`,
+  `remove_extension`
+* 출력: `sheet`, `current_image`, `output_name`, `is_complete`, `collected_count`
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
 # 🛠 Preview / Utility System
 
 TJ Preview System은 단순 Preview Node가 아닙니다.
@@ -888,6 +1038,33 @@ Recommended Usage:
 * Frame Inspection
 * Video Preview
 * Audio Sync Workflow
+
+---
+
+## ✨ LTX2. TJ Sampler
+
+LTX-2 영상 생성 그래프에서 **8개 노드를 1개로 압축**한 샘플러. 노이즈·가이더·시그마·샘플러
+선택을 매번 배선하지 않고 한 노드에서 처리합니다.
+
+* 입력: `model`, `positive`, `negative`, `video_latent`, `audio_latent`, `seed`, `cfg`,
+  `sampler_name`, `manual_sigmas`, `sigmas`
+* 출력: `positive`, `negative`, `video_latent`, `audio_latent`
+  (컨디셔닝을 그대로 다시 내보내므로 뒤에 이어 붙이기 쉽습니다)
+* CATEGORY: `✨ TJ_Node/Video`
+
+---
+
+## ✨ Wan SCAIL Extend Sampler (TJ)
+
+Wan 2.1 SCAIL-2의 **generate + extend 그래프를 한 노드로** 접은 샘플러. 기본 구간을 만들고
+이어서 확장 구간을 반복 생성해 긴 영상을 만듭니다.
+
+* 입력: `model`, `clip`, `vae`, `reference_image`, `pose_video`, `positive`, `negative`,
+  `width`, `height`, `base_frames`, `extend_segments`, `seed`, `steps`, `cfg`,
+  `sampler_name`, `scheduler`, `shift`, `previous_frame_count`
+* `color_match` / `color_anchor` — 확장 구간에서 색이 밀리는 것을 보정
+* 출력: `images`, `frame_count`
+* CATEGORY: `✨ TJ_Node/Video`
 
 ---
 
@@ -1039,6 +1216,56 @@ Recommended Usage:
 
 ---
 
+## ✨ Save Text File (TJ)
+
+문자열을 파일로 저장하고, 저장한 텍스트를 그대로 다시 출력합니다(체인 중간에 끼워 넣어도
+흐름이 끊기지 않습니다).
+
+* `path`, `filename_prefix`, `filename_suffix`, `filename_delimiter`
+* `filename_number_padding` — 연번 자릿수
+* `file_extension`(예: `txt`), `encoding`
+* 무선 Set/Get: `get_name`(수신) / `setnode_name`(송신)
+* 출력: `text`
+* CATEGORY: `✨ TJ_Node/Utility`
+
+---
+
+## ✨ LED Display (TJ)
+
+전광판 스타일로 값을 크게 표시하는 노드. 긴 워크플로우에서 시드·인덱스·카운트처럼
+멀리서도 확인해야 하는 값을 눈에 띄게 띄워 두는 용도입니다.
+
+* `text`, `label`, `value`, `font_size`, `text_color`, `bg_color`
+* `value` 는 와일드카드 타입이라 어떤 값이든 받아서 표시하고, 그대로 통과시킵니다.
+* 출력: `value` (입력을 그대로 패스스루)
+* CATEGORY: `✨ TJ_Node/Utility`
+
+---
+
+## ✨ Video Grid Comparer (TJ)
+
+폴더 안의 영상들을 **격자로 배치해 한 화면에서 비교**하는 노드. 같은 프롬프트를 설정만
+바꿔 여러 번 뽑았을 때 결과를 나란히 놓고 고르는 용도입니다.
+
+* `folder_path` — 비교할 영상들이 있는 폴더
+* `grid_layout` — 격자 배치 방식
+* CATEGORY: `✨ TJ_Node/Utility`
+
+---
+
+## ✨ Time Segment List (TJ)
+
+전체 길이를 **겹침(overlap)을 둔 시간 구간 목록**으로 잘라 주는 노드. 긴 영상을 구간별로
+나눠 처리하거나, 구간마다 다른 프롬프트를 적용할 때 씁니다.
+
+* `start_sec`, `duration_sec`, `total_sec`, `overlap_sec`
+* `include_over_total` — 마지막 구간이 전체 길이를 넘어갈 때 포함할지 여부
+* `format_mode` — 출력 문자열 형식
+* 출력: `segment_list`, `segment_count`
+* CATEGORY: `✨ TJ_Node/Etc`
+
+---
+
 # 🛠 Loaders System
 
 TJ_NODE Loaders는 Model / Clip / VAE 로딩을 더 유연하고 구조적으로 운영하기 위한 노드 그룹입니다.
@@ -1145,6 +1372,22 @@ Recommended Usage:
 * Dynamic Model Switch
 * Batch Model Test
 * Model Path Routing
+
+---
+
+## ✨ Index LoRA Loader (TJ)
+
+폴더 안의 LoRA를 **인덱스 번호로** 골라 적용하는 로더. Queue Loop과 함께 쓰면 LoRA를 하나씩
+바꿔 가며 자동으로 순회 테스트할 수 있습니다.
+
+* `index` — 몇 번째 LoRA를 쓸지. Queue Loop의 `index` 출력을 연결하면 실행마다 자동으로 넘어갑니다.
+* `folder_filter` — 특정 하위 폴더로 대상 한정
+* `overflow_mode` — 인덱스가 목록 범위를 넘어갔을 때의 처리
+* 무선 Set/Get: `get_name_model`, `get_name_clip`, `get_name_index`, `auto_set`
+* 출력: `MODEL`, `CLIP`, `lora_name`, `current_index`, `total_count`
+* 짝 노드로 **Index LoRA Loader Counter (TJ)** 가 있으며, 대상 LoRA 총 개수를 세어
+  Queue Loop의 `queue_count`에 그대로 연결할 수 있습니다.
+* CATEGORY: `✨ TJ_Node/Loaders`
 
 ---
 

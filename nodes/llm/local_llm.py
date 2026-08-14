@@ -658,6 +658,10 @@ class TJ_OllamaLLMLoader:
             "optional": {
                 "image": ("IMAGE",),
                 "prompt_in": ("STRING", {"forceInput": True}),
+                # 연결되어 있고 내용이 비어있지 않으면 system_prompt 위젯을 덮어쓴다.
+                # (빈 문자열이 흘러들어와 시스템 프롬프트가 통째로 사라지는 걸 막기 위해
+                #  "연결됨"이 아니라 "내용 있음"을 기준으로 판단한다.)
+                "system_prompt_override": ("STRING", {"forceInput": True}),
             },
             "hidden": {"unique_id": "UNIQUE_ID"},
         }
@@ -677,12 +681,15 @@ class TJ_OllamaLLMLoader:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    def run(self, get_name="(none)", setnode_name="", server_url=OLLAMA_DEFAULT_SERVER, model="", system_prompt="", user_prompt="", thinking=False, seed=1, seed_mode=SEED_MODE_FIXED, temperature=0.7, top_p=0.9, repeat_penalty=1.1, model_memory=MEMORY_UNLOAD_AFTER_RUN, keep_minutes=5, comfy_vram_policy=COMFY_VRAM_AUTO, prompt_in=None, image=None, unique_id=None):
+    def run(self, get_name="(none)", setnode_name="", server_url=OLLAMA_DEFAULT_SERVER, model="", system_prompt="", user_prompt="", thinking=False, seed=1, seed_mode=SEED_MODE_FIXED, temperature=0.7, top_p=0.9, repeat_penalty=1.1, model_memory=MEMORY_UNLOAD_AFTER_RUN, keep_minutes=5, comfy_vram_policy=COMFY_VRAM_AUTO, prompt_in=None, image=None, system_prompt_override=None, unique_id=None):
         base = _normalize_ollama_url(str(_extract_scalar(server_url, OLLAMA_DEFAULT_SERVER) or OLLAMA_DEFAULT_SERVER))
         model_value = str(_extract_scalar(model, "") or "").strip()
         if not model_value:
             raise RuntimeError("Select an Ollama model before running Ollama LLM Loader (TJ).")
         system_value = str(_extract_scalar(system_prompt, "") or "")
+        override_value = str(_extract_scalar(system_prompt_override, "") or "")
+        if override_value.strip():
+            system_value = override_value
         user_value = str(_extract_scalar(user_prompt, "") or "")
         prompt_inputs = _flatten_prompts(prompt_in)
         prompts: List[str] = []

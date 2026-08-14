@@ -3,6 +3,53 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [2.11.1] - 2026-08-14
+
+### [Added]
+
+* **`Ollama LLM Loader (TJ)` — `system_prompt_override` 입력 슬롯.** 시스템 프롬프트를
+  다른 노드에서 받아 덮어쓸 수 있다. 연결하지 않으면 위젯 값을 쓰고, 연결했더라도 내용이
+  비어 있으면 위젯 값을 유지한다 — 빈 문자열이 흘러들어와 시스템 프롬프트가 통째로
+  사라지는 걸 막기 위해 "연결됨"이 아니라 "내용 있음"을 기준으로 판단한다.
+
+### [Fixed]
+
+* **`Multi Switch (TJ)` — 서브그래프 안에서 프루닝이 전혀 동작하지 않던 문제.**
+  큐 훅이 최상위 `app.graph._nodes`만 훑어서 서브그래프에 중첩된 스위치를 찾지 못했고,
+  그 결과 `hasSwitch`가 `false`가 되어 **프루닝 파이프라인 자체가 통째로 스킵**됐다.
+  A/B 양쪽 브랜치가 모두 큐에 들어가면서, 스위치로 갈라 놓은 그래프가
+  `DependencyCycleError`로 실패했다.
+  * 스위치 탐색을 서브그래프까지 재귀적으로 내려가도록 변경.
+  * 스위치 정보를 live 그래프가 아니라 `app.graphToPrompt()`가 이미 평탄화해 준 출력에서
+    직접 읽도록 변경 — 중첩 노드의 합성 id(`247:249`)가 자연스럽게 처리된다.
+  * 노드 조회를 합성 id를 해석하는 방식으로 교체(`:`로 나눠 서브그래프를 한 단계씩 내려감).
+
+* **시스템 프롬프트 프리셋이 원격 접속에서 안 보이던 문제 — 저장 위치를 브라우저에서
+  서버로 옮김.** 프리셋을 `localStorage`에 저장하고 있어서, 집 서버에서 등록해도 서버 IP로
+  원격 접속하면 목록이 비어 있었다(저장 주체가 브라우저였으므로 다른 브라우저는 알 방법이
+  없다). ComfyUI 내장 `/userdata` API를 사용해 서버의 user 디렉터리
+  (`user/<user>/tj_node/ollama_system_prompts.json`)에 저장하도록 변경 — 프론트엔드가
+  워크플로우·설정 저장에 쓰는 표준 경로라 원격에서도 그대로 동작한다.
+  * PromptDB 라우트 방식(`_local_only` 가드)은 loopback 전용이라 이 용도에는 쓸 수 없어
+    채택하지 않았다.
+  * 기존에 브라우저에 저장돼 있던 프리셋은 팝업을 처음 열 때 서버로 **1회 자동 이전**된다.
+  * `Refresh` 버튼은 이제 서버에서 목록을 다시 읽어온다(다른 기기에서 추가한 프리셋 가져오기).
+  * `Export`/`Import`는 백업 및 다른 ComfyUI 서버로 이전하는 용도로 남는다.
+
+### [Docs]
+
+* **README 전면 갱신.** 문서에 아예 빠져 있던 노드 11개를 추가했다 —
+  `Multi Switch (TJ)`, `Batch to MinimaxH3 (TJ)`, `Images Compare Sheet - Queue Loop (TJ)`,
+  `Save Text File (TJ)`, `LED Display (TJ)`, `Video Grid Comparer (TJ)`,
+  `Time Segment List (TJ)`, `Index LoRA Loader (TJ)`, `LTX2. TJ Sampler`,
+  `Wan SCAIL Extend Sampler (TJ)`, `ZIT ControlNet (TJ)`.
+  등록된 59개 노드 전부가 문서화된 상태가 되었다.
+* v2.11.0에서 추가됐지만 README에 반영되지 않았던 PromptDB 기능(라이브러리 간 이동,
+  이름 변경, 등록 목록 내보내기/가져오기, 썸네일 크기 분리, 메모를 카드 제목으로,
+  정렬 토글, 상세보기 비율 유지/상단 기준 크롭)과 Enhanced KSampler의 Krea2 수정 사항을
+  각 절에 추가했다.
+
+---
 ## [2.11.0] - 2026-08-11
 
 ### [Added]
