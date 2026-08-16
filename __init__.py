@@ -57,6 +57,10 @@ from .nodes.video import (
     TJ_SaveAndPreviewVideo,
     TJ_LTX2Sampler,
     WanSCAILExtendSampler,
+    TJ_H3_AudioLock,
+    TJ_H3_LatentContinuation,
+    TJ_H3_SaveLatentCheckpoint,
+    TJ_H3_LoadLatentCheckpoint,
 )
 
 # ── LLM ───────────────────────────────────────────────────────────────────
@@ -140,6 +144,10 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
     "TJ_LTX2Sampler":           TJ_LTX2Sampler,
     "WanSCAILExtendSampler":     WanSCAILExtendSampler,
+    "TJ_H3_AudioLock":          TJ_H3_AudioLock,
+    "TJ_H3_LatentContinuation":    TJ_H3_LatentContinuation,
+    "TJ_H3_SaveLatentCheckpoint":  TJ_H3_SaveLatentCheckpoint,
+    "TJ_H3_LoadLatentCheckpoint":  TJ_H3_LoadLatentCheckpoint,
 
     # LLM
     "TJ_PromptEnhancer":    TJ_PromptEnhancer,
@@ -219,6 +227,10 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
     "TJ_LTX2Sampler":           "LTX2. TJ Sampler",
     "WanSCAILExtendSampler":     "Wan SCAIL Extend Sampler (TJ)",
+    "TJ_H3_AudioLock":          "MiniMax H3 Audio Lock (TJ)",
+    "TJ_H3_LatentContinuation":    "MiniMax H3 Latent Continuation (TJ)",
+    "TJ_H3_SaveLatentCheckpoint":  "MiniMax H3 Save Latent Checkpoint (TJ)",
+    "TJ_H3_LoadLatentCheckpoint":  "MiniMax H3 Load Latent Checkpoint (TJ)",
 
     # LLM
     "TJ_PromptEnhancer":    "Prompt Enhancer (TJ)",
