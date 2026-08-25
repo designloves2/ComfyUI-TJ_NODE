@@ -459,8 +459,11 @@ app.registerExtension({
             if (!this.properties.num_groups) this.properties.num_groups = 1;
             this.properties.toggle_mode = this.properties.toggle_mode || "Global";
 
-            // 첫 그룹 슬롯이 없으면 생성
-            requestAnimationFrame(() => {
+            // 첫 그룹 슬롯이 없으면 생성.
+            // requestAnimationFrame 은 탭이 백그라운드/비표시 상태면 아예 호출되지 않아
+            // A_1/B_1 슬롯이 만들어지지 않은 채로 남는다(그 상태로 저장하면 워크플로우가
+            // 깨진다). 화면 표시 여부와 무관하게 도는 setTimeout 을 쓴다.
+            setTimeout(() => {
                 // 백엔드가 자동 생성한 여분 output 슬롯(최대 12개) 정리 — 반드시 가장 먼저
                 trimOutputsToCount(this, this.properties.num_groups);
 

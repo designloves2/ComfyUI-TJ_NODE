@@ -20,7 +20,10 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_IndexLoRALoader",
     "TJ_Resolution",
     "TJ_PromptDBLoader",
-    "TJ_PromptDBBridge"
+    "TJ_PromptDBBridge",
+    "TJ_H3_AudioLock",
+    "TJ_PromptQueue",
+    "TJ_H3_Sequencer"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";
@@ -886,6 +889,12 @@ function ensureUniqueAutoSetNames(graph) {
 
 function updateProviderLabels(node) {
     if (!node) return;
+    // set_name / setnode_name 위젯이 아예 없는 노드는 이 함수의 대상이 아니다.
+    // 가드가 없으면 name 이 "" 로 계산되어 아래에서 outputs[0] 라벨을 지워버리는데,
+    // auto_set 만 쓰는 노드(출력 라벨을 auto_sets 로 직접 관리하는 노드)의 첫 번째
+    // 출력 라벨이 로드 직후 사라지는 원인이었다. 호출부 중 일부는 이미 같은 가드를
+    // 걸고 있어(위 참조), 그 조건을 함수 안으로 옮겨 일관되게 만든다.
+    if (!providerNameWidgets(node).length) return;
     const w = providerNameWidgets(node)[0];
     const name = String(w?.value || "").trim();
     if (node.type === "TJ_SetNode") node.title = "SET: " + (name || "TJ_Set_1");

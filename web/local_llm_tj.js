@@ -107,22 +107,45 @@ function setWidgetValue(node, name, value, call = true) {
     markDirty(node);
     return true;
 }
+// multiline STRING 위젯(system_prompt 등)은 실제 <textarea> DOM 엘리먼트로 렌더링되므로
+// computeSize/draw만 죽이면 레이아웃 높이는 0이 되어도 DOM 엘리먼트 자체는 화면에 그대로
+// 남아 노드 박스 밖으로 떠서 겹친다 — element.style.display까지 같이 꺼야 한다.
 function hideWidget(widget) {
-    if (!widget || widget._tj_hidden) return;
-    widget._tj_hidden = true;
-    widget._tj_orig_compute = widget.computeSize;
-    widget._tj_orig_draw = widget.draw;
-    widget._tj_orig_mouse = widget.mouse;
-    widget.computeSize = () => [0, -4];
-    widget.draw = () => {};
-    widget.mouse = () => false;
+    if (!widget) return;
+    const el = widget.element;
+    const wrap = el && el.parentElement && el.parentElement.classList?.contains("dom-widget")
+        ? el.parentElement : null;
+    if (!widget._tj_hidden) {
+        widget._tj_hidden = true;
+        widget._tj_orig_compute = widget.computeSize;
+        widget._tj_orig_draw = widget.draw;
+        widget._tj_orig_mouse = widget.mouse;
+        widget.computeSize = () => [0, -4];
+        widget.draw = () => {};
+        widget.mouse = () => false;
+    }
+    if (el) {
+        widget._tj_orig_el_display = widget._tj_orig_el_display ?? el.style.display;
+        el.style.display = "none";
+    }
+    if (wrap) {
+        widget._tj_orig_wrap_display = widget._tj_orig_wrap_display ?? wrap.style.display;
+        wrap.style.display = "none";
+    }
 }
 function showWidget(widget) {
-    if (!widget || !widget._tj_hidden) return;
-    widget._tj_hidden = false;
-    if (widget._tj_orig_compute !== undefined) widget.computeSize = widget._tj_orig_compute; else delete widget.computeSize;
-    if (widget._tj_orig_draw !== undefined) widget.draw = widget._tj_orig_draw; else delete widget.draw;
-    if (widget._tj_orig_mouse !== undefined) widget.mouse = widget._tj_orig_mouse; else delete widget.mouse;
+    if (!widget) return;
+    if (widget._tj_hidden) {
+        widget._tj_hidden = false;
+        if (widget._tj_orig_compute !== undefined) widget.computeSize = widget._tj_orig_compute; else delete widget.computeSize;
+        if (widget._tj_orig_draw !== undefined) widget.draw = widget._tj_orig_draw; else delete widget.draw;
+        if (widget._tj_orig_mouse !== undefined) widget.mouse = widget._tj_orig_mouse; else delete widget.mouse;
+    }
+    const el = widget.element;
+    const wrap = el && el.parentElement && el.parentElement.classList?.contains("dom-widget")
+        ? el.parentElement : null;
+    if (el) el.style.display = widget._tj_orig_el_display || "";
+    if (wrap) wrap.style.display = widget._tj_orig_wrap_display || "";
 }
 function setWidgetVisible(widget, visible) {
     if (visible) showWidget(widget);
@@ -740,6 +763,11 @@ class LoaderPreviewWidget {
         ctx.restore();
     }
     draw(ctx, node, width, y, height) {
+        // 자가 치유: system_prompt는 실제 <textarea> DOM이라 addDOMWidget 계열 엘리먼트가
+        // 노드 생성 시점 이후 비동기로 붙는 경우 최초 hideWidget() 호출을 놓칠 수 있다
+        // (그래서 새로고침하면 잠깐 정상이었다가 다시 밖으로 나오는 것처럼 보였음) —
+        // 매 프레임 재확인해서 바로잡는다. hideWidget은 이미 숨겨진 상태면 거의 비용이 없다.
+        hideWidget(getWidget(node, "system_prompt"));
         this.node = node;
         const drawW = Math.max(1, Math.min(width || node.size?.[0] || DEFAULT_WIDTH, node.size?.[0] || DEFAULT_WIDTH));
         const x = 12;
@@ -1001,8 +1029,7 @@ function installOllamaLoaderUI(node) {
     const sysW = getWidget(node, "system_prompt");
     if (sysW) {
         sysW.label = "System Prompt";
-        sysW.computeSize = () => [0, -4];
-        sysW.draw = () => {};
+        hideWidget(sysW);
     }
     const promptW = getWidget(node, "user_prompt");
     if (promptW) {

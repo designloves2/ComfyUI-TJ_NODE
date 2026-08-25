@@ -40,6 +40,8 @@ from .nodes.utility import (
     TJ_ModelSetLoader,
     TJ_SaveTextFile,
     TJ_QueueLoop,
+    TJ_PromptQueue,
+    TJ_FreeTextEncoderVRAM,
     TJ_IndexLoRALoader,
     TJ_IndexLoRALoaderCounter,
     TJ_LEDDisplay,
@@ -61,6 +63,9 @@ from .nodes.video import (
     TJ_H3_LatentContinuation,
     TJ_H3_SaveLatentCheckpoint,
     TJ_H3_LoadLatentCheckpoint,
+    TJ_H3_Sequencer,
+    TJ_H3_Output,
+    TJ_H3_OneTakeSampler,
 )
 
 # ── LLM ───────────────────────────────────────────────────────────────────
@@ -129,6 +134,8 @@ NODE_CLASS_MAPPINGS = {
     "TJ_ModelSetLoader":    TJ_ModelSetLoader,
     "TJ_SaveTextFile":     TJ_SaveTextFile,
     "TJ_QueueLoop":       TJ_QueueLoop,
+    "TJ_PromptQueue":     TJ_PromptQueue,
+    "TJ_FreeTextEncoderVRAM": TJ_FreeTextEncoderVRAM,
     "TJ_IndexLoRALoader": TJ_IndexLoRALoader,
     "TJ_IndexLoRALoaderCounter": TJ_IndexLoRALoaderCounter,
     "TJ_GoStop":         TJ_GoStop,
@@ -148,6 +155,9 @@ NODE_CLASS_MAPPINGS = {
     "TJ_H3_LatentContinuation":    TJ_H3_LatentContinuation,
     "TJ_H3_SaveLatentCheckpoint":  TJ_H3_SaveLatentCheckpoint,
     "TJ_H3_LoadLatentCheckpoint":  TJ_H3_LoadLatentCheckpoint,
+    "TJ_H3_Sequencer":          TJ_H3_Sequencer,
+    "TJ_H3_Output":             TJ_H3_Output,
+    "TJ_H3_OneTakeSampler":     TJ_H3_OneTakeSampler,
 
     # LLM
     "TJ_PromptEnhancer":    TJ_PromptEnhancer,
@@ -212,6 +222,8 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_ModelSetLoader":    "Model Set Loader (TJ)",
     "TJ_SaveTextFile":     "Save Text File (TJ)",
     "TJ_QueueLoop":       "Queue Loop (TJ)",
+    "TJ_PromptQueue":     "MiniMax H3 Prompt Queue (TJ)",
+    "TJ_FreeTextEncoderVRAM": "Free Text Encoder VRAM (TJ)",
     "TJ_IndexLoRALoader": "Index LoRA Loader (TJ)",
     "TJ_IndexLoRALoaderCounter": "Index LoRA Loader Counter (TJ)",
     "TJ_GoStop":         "Go & Stop (TJ)",
@@ -231,6 +243,9 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_H3_LatentContinuation":    "MiniMax H3 Latent Continuation (TJ)",
     "TJ_H3_SaveLatentCheckpoint":  "MiniMax H3 Save Latent Checkpoint (TJ)",
     "TJ_H3_LoadLatentCheckpoint":  "MiniMax H3 Load Latent Checkpoint (TJ)",
+    "TJ_H3_Sequencer":          "MiniMax H3 Sequencer (TJ)",
+    "TJ_H3_Output":             "MiniMax H3 Output (TJ)",
+    "TJ_H3_OneTakeSampler":     "MiniMax H3 One-Take Sampler (TJ)",
 
     # LLM
     "TJ_PromptEnhancer":    "Prompt Enhancer (TJ)",
