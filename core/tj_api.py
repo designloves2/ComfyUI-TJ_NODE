@@ -40,6 +40,14 @@ def _validate_download_url(url):
             return "Access to internal/private addresses is blocked."
     return None
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """리다이렉트를 따라가면 _validate_download_url을 우회해 사설망으로
+    갈 수 있으므로(DNS 재바인딩/오픈 리다이렉트), 전부 거부한다."""
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+_DOWNLOAD_MAX_BYTES = 64 * 1024 * 1024
+
 def _get_download_dir():
     d = os.path.join(folder_paths.get_input_directory(), "download")
     os.makedirs(d, exist_ok=True)
@@ -98,9 +106,20 @@ async def download_url(request):
             counter += 1
 
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        opener = urllib.request.build_opener(_NoRedirect())
+        with opener.open(req, timeout=30) as resp:
+            remaining = _DOWNLOAD_MAX_BYTES
             with open(dest, "wb") as f:
-                shutil.copyfileobj(resp, f)
+                while remaining > 0:
+                    chunk = resp.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    f.write(chunk)
+                    remaining -= len(chunk)
+                else:
+                    if resp.read(1):
+                        os.remove(dest)
+                        return web.json_response({"success": False, "error": "File exceeds size limit."})
 
         rel_path = "input/download/" + os.path.basename(dest)
         return web.json_response({"success": True, "path": rel_path, "filename": os.path.basename(dest)})
