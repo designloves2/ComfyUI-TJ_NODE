@@ -1054,6 +1054,23 @@ LTX-2 영상 생성 그래프에서 **8개 노드를 1개로 압축**한 샘플�
 
 ---
 
+## ✨ LTX25 CLIP GGUF LOADER (TJ)
+
+LTX 2.5 의 **gemma4 텍스트 인코더를 GGUF 로 로드**합니다. `city96/ComfyUI-GGUF` 는
+`general.architecture = gemma4` 를 허용 목록에 두지 않아 "Unexpected text model
+architecture" 로 거부하는데, 이 노드는 city96 로더를 재사용하면서 실행 시점에
+허용 목록에 `gemma4` 만 추가합니다 (set 에 add — 비파괴적·멱등, GGUF 팩을
+업데이트해도 되돌려지지 않음). 다운스트림(gemma4 sd 무보정 통과, `dual_linear`
+projection 선택, BF16 자동 dequant)은 이미 정상 동작합니다.
+
+* 입력: `clip_name` (`.gguf` 파일 목록 — `text_encoders` / `clip` / `clip_gguf` 폴더)
+* 출력: `clip` (core `CLIPLoader` / `CLIPLoaderGGUF` 와 동일한 CLIP, `type=ltxv`)
+* 무선: `setnode_name` + `Auto Set` (embedded Set provider)
+* 요구: `ComfyUI-GGUF` 설치 (Manager 또는 ONE STUDIO 인스톨러에 포함)
+* CATEGORY: `✨ TJ_Node/Video`
+
+---
+
 ## ✨ Wan SCAIL Extend Sampler (TJ)
 
 Wan 2.1 SCAIL-2의 **generate + extend 그래프를 한 노드로** 접은 샘플러. 기본 구간을 만들고
