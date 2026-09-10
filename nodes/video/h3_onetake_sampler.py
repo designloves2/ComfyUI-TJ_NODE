@@ -12,7 +12,7 @@
 #
 # 샘플러 체인은 ComfyUI 공식 comfy_extras/nodes_custom_sampler.py 의 로직을
 # 그대로 재현한다(Noise_RandomNoise/Guider_Basic는 그 모듈에서 직접 가져와 재사용).
-# 모델 자체의 패치(SageAttention, MiniMaxH3Cache, SigmaShift, Model Preview
+# 모델 자체의 패치(SageAttention, FirstBlockCache, SigmaShift, Model Preview
 # Override 등)는 이 노드 밖에서 model 입력으로 이미 끝내고 들어온다고 가정한다 —
 # 어떤 패치를 몇 개 걸든 이 노드는 그냥 MODEL 하나만 받는다.
 
