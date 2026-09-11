@@ -3,21 +3,92 @@
 #
 # LTX 2.5 의 gemma4 텍스트 인코더를 GGUF 로 로드한다.
 #
-# city96/ComfyUI-GGUF 의 gguf_sd_loader 는 `general.architecture = gemma4` 를
-# 허용 목록(TXT_ARCH_LIST)에 넣지 않아서 "Unexpected text model architecture" 로
-# 거부한다. 다운스트림은 이미 gemma4 를 정상 처리한다:
-#   - loader.py gguf_clip_loader 의 `else: pass` 분기가 gemma4 sd 를 손대지 않고
-#     그대로 반환 (T5/llama/gemma3 리매핑·norm 보정에 안 걸림)
-#   - comfy/text_encoders/lt.py 가 projection 텐서를 보고 dual_linear 를 선택
-#   - BF16 1D bias/norm 은 gguf_sd_loader 가 자동 dequant
-# 따라서 유일하게 필요한 것은 허용 목록에 "gemma4" 를 더하는 것뿐이다.
-# TXT_ARCH_LIST 는 set 이므로 add() 는 비파괴적·멱등이고, 이 노드가 실행될 때마다
-# 다시 적용되므로 ComfyUI-Manager 가 GGUF 팩을 업데이트해도 되돌려지지 않는다.
-# (동작 몽키패치가 아니라 허용 목록 확장이다.)
+# city96/ComfyUI-GGUF 는 LTX 2.5 gemma4 파이프라인을 그대로 돌리지 못한다. 두 가지
+# 문제가 있고, 제작자 패치(HF elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF 의
+# patches/ComfyUI-GGUF-ltx25-gemma4.patch)가 둘 다 고친다. 이 모듈은 그 패치와
+# 동일한 동작을 런타임에 적용한다 — loader.py 파일을 직접 수정하지 않으므로
+# ComfyUI-Manager 가 GGUF 팩을 업데이트해도 되돌려지지 않는다.
+#
+#   1) gemma4 텍스트 인코더 GGUF: `general.architecture = gemma4` 가 TXT_ARCH_LIST 에
+#      없어서 "Unexpected text model architecture" 로 거부된다. → set.add("gemma4").
+#      (다운스트림은 이미 gemma4 정상 처리: gguf_clip_loader 의 else:pass 통과,
+#       comfy CLIPType.LTXV 가 dual_linear projection 선택.)
+#
+#   2) arch=ltxv 확산 모델 GGUF: embeddings connector 의 raw 파라미터 3종
+#      (audio/video_embeddings_connector.learnable_registers, keyframes_abs_pos_embedding)
+#      은 BF16 로 저장되고 GGMLOps 를 안 거치므로, gguf_sd_loader 에서 강제로 dequant
+#      하지 않으면 GGMLTensor 인 채로 connector 의 torch.cat 에 들어가
+#      "Tensors must have same number of dimensions: got 4 and 3" 로 샘플링이 죽는다.
+#      → gguf_sd_loader 를 래핑해 arch=ltxv 일 때 이 3종을 float32 로 dequant.
+#
+# set.add 와 함수 래핑 모두 멱등이다.
 
 import sys
 
 import folder_paths
+
+_LTXV_BF16_PARAMETERS = (
+    "audio_embeddings_connector.learnable_registers",
+    "video_embeddings_connector.learnable_registers",
+    "keyframes_abs_pos_embedding",
+)
+
+
+def _apply_ltx25_gguf_patch():
+    """제작자 LTX 2.5 gemma4 패치와 동일한 동작을 city96 loader 에 런타임 적용.
+
+    반환: city96 loader 모듈을 찾아 적용했으면 True.
+    """
+    loader_mod = None
+    for mod in list(sys.modules.values()):
+        try:
+            arch_list = getattr(mod, "TXT_ARCH_LIST", None)
+        except Exception:
+            continue
+        # city96 loader.py 만 TXT_ARCH_LIST + gguf_sd_loader + dequantize_tensor 를
+        # 동시에 가진다
+        if (isinstance(arch_list, set)
+                and hasattr(mod, "gguf_sd_loader")
+                and hasattr(mod, "dequantize_tensor")):
+            arch_list.add("gemma4")
+            loader_mod = mod
+
+    if loader_mod is None:
+        return False
+    if getattr(loader_mod, "_tj_ltx25_bf16_patch", False):
+        return True
+
+    import torch
+
+    _orig = loader_mod.gguf_sd_loader
+    _dequant = loader_mod.dequantize_tensor
+
+    def _wrapped(path, *args, **kwargs):
+        sd, extra = _orig(path, *args, **kwargs)
+        try:
+            if extra.get("arch_str") == "ltxv":
+                for key in list(sd.keys()):
+                    if not any(key == p or key.endswith("." + p) for p in _LTXV_BF16_PARAMETERS):
+                        continue
+                    val = sd[key]
+                    if hasattr(val, "tensor_type"):   # 아직 GGMLTensor (BF16 raw)
+                        sd[key] = _dequant(val, dtype=torch.float32)
+        except Exception:
+            pass
+        return sd, extra
+
+    _wrapped._tj_orig = _orig
+    # gguf_sd_loader 는 loader.py 자신(gguf_clip_loader 가 호출)과 nodes.py
+    # (`from .loader import gguf_sd_loader`, UnetLoaderGGUF 가 호출) 양쪽에 바인딩돼
+    # 있으므로 두 곳 다 교체한다.
+    for mod in list(sys.modules.values()):
+        try:
+            if getattr(mod, "gguf_sd_loader", None) is _orig:
+                mod.gguf_sd_loader = _wrapped
+        except Exception:
+            continue
+    loader_mod._tj_ltx25_bf16_patch = True
+    return True
 
 
 def _get_gguf_clip_loader_cls():
@@ -30,25 +101,6 @@ def _get_gguf_clip_loader_cls():
             "ComfyUI-Manager 또는 ONE STUDIO 인스톨러로 ComfyUI-GGUF 를 설치하세요."
         )
     return cls
-
-
-def _enable_gemma4_arch():
-    """이미 로드된 city96 loader 모듈의 TXT_ARCH_LIST 에 'gemma4' 를 추가한다.
-
-    반환: 실제로 추가한 모듈이 하나라도 있으면 True.
-    """
-    patched = False
-    for mod in list(sys.modules.values()):
-        try:
-            arch_list = getattr(mod, "TXT_ARCH_LIST", None)
-        except Exception:
-            continue
-        # city96 loader.py 만 TXT_ARCH_LIST + gguf_sd_loader 를 동시에 가진다
-        if isinstance(arch_list, set) and hasattr(mod, "gguf_sd_loader"):
-            if "gemma4" not in arch_list:
-                arch_list.add("gemma4")
-                patched = True
-    return patched
 
 
 def _gguf_clip_names():
@@ -106,7 +158,7 @@ class TJ_LTX25ClipLoaderGGUF:
             )
 
         loader_cls = _get_gguf_clip_loader_cls()
-        _enable_gemma4_arch()
+        _apply_ltx25_gguf_patch()
 
         node = loader_cls()
         fn = getattr(node, getattr(loader_cls, "FUNCTION", "load_clip"))
@@ -115,3 +167,12 @@ class TJ_LTX25ClipLoaderGGUF:
         result = fn(clip_name=clip_name, type="ltxv")
         clip = result[0] if isinstance(result, (tuple, list)) else result
         return (clip,)
+
+
+# import 시점에 한 번 적용해 둔다 — LTX 2.5 확산 모델 GGUF 를 로드하는
+# UnetLoaderGGUF 가 이 노드보다 먼저 실행돼도 패치가 걸려 있도록. (city96 loader 가
+# 아직 import 안 됐으면 조용히 실패하고, load_clip 에서 다시 시도한다.)
+try:
+    _apply_ltx25_gguf_patch()
+except Exception:
+    pass

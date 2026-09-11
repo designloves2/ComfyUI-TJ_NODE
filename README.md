@@ -1057,16 +1057,25 @@ LTX-2 영상 생성 그래프에서 **8개 노드를 1개로 압축**한 샘플�
 ## ✨ LTX25 CLIP GGUF LOADER (TJ)
 
 LTX 2.5 의 **gemma4 텍스트 인코더를 GGUF 로 로드**합니다. `city96/ComfyUI-GGUF` 는
-`general.architecture = gemma4` 를 허용 목록에 두지 않아 "Unexpected text model
-architecture" 로 거부하는데, 이 노드는 city96 로더를 재사용하면서 실행 시점에
-허용 목록에 `gemma4` 만 추가합니다 (set 에 add — 비파괴적·멱등, GGUF 팩을
-업데이트해도 되돌려지지 않음). 다운스트림(gemma4 sd 무보정 통과, `dual_linear`
-projection 선택, BF16 자동 dequant)은 이미 정상 동작합니다.
+LTX 2.5 gemma4 파이프라인을 그대로 못 돌리는데, 이 노드가 제작자 패치
+(HF `elix3r/gemma4-12b-with-proj-ltx-2.5-GGUF` 의
+`patches/ComfyUI-GGUF-ltx25-gemma4.patch`)와 **동일한 동작을 런타임에 적용**합니다
+(`loader.py` 파일을 안 건드리므로 GGUF 팩 업데이트해도 안 지워짐):
+
+1. `TXT_ARCH_LIST` 에 `gemma4` 추가 — gemma4 텍스트 인코더 GGUF 가
+   "Unexpected text model architecture" 로 거부되는 것 해제
+2. `arch=ltxv` 확산 모델 GGUF 에서 `gguf_sd_loader` 를 래핑해 raw 파라미터 3종
+   (`audio/video_embeddings_connector.learnable_registers`,
+   `keyframes_abs_pos_embedding`, BF16, GGMLOps 미경유)을 `float32` 로 강제 dequant
+   — 안 하면 embeddings connector 의 `torch.cat` 에서
+   `Tensors must have same number of dimensions: got 4 and 3` 로 샘플링이 죽음
 
 * 입력: `clip_name` (`.gguf` 파일 목록 — `text_encoders` / `clip` / `clip_gguf` 폴더)
 * 출력: `clip` (core `CLIPLoader` / `CLIPLoaderGGUF` 와 동일한 CLIP, `type=ltxv`)
 * 무선: `setnode_name` + `Auto Set` (embedded Set provider)
 * 요구: `ComfyUI-GGUF` 설치 (Manager 또는 ONE STUDIO 인스톨러에 포함)
+* 패치는 모듈 import 시점에도 한 번 적용 — `UnetLoaderGGUF` 가 이 노드보다 먼저
+  실행돼도 확산 모델 GGUF 가 정상 로드됨
 * CATEGORY: `✨ TJ_Node/Video`
 
 ---
