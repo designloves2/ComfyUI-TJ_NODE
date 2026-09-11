@@ -284,7 +284,8 @@ function updateWidgetVisibility(node) {
 
     requestAnimationFrame(() => {
         const sz = node.computeSize();
-        node.setSize([Math.max(node.size[0], sz[0]), sz[1]]);
+        // 저장된(사용자가 늘려놓은) 크기를 깎지 않는다 — 최소 크기로만 키운다.
+        node.setSize([Math.max(node.size[0], sz[0]), Math.max(node.size[1], sz[1])]);
         node.setDirtyCanvas(true, true);
     });
 }
@@ -699,7 +700,8 @@ app.registerExtension({
 
                 requestAnimationFrame(() => {
                     const sz = node.computeSize();
-                    node.setSize([Math.max(node.size[0], sz[0]), sz[1]]);
+                    // 저장된(사용자가 늘려놓은) 크기를 깎지 않는다 — 최소 크기로만 키운다.
+                    node.setSize([Math.max(node.size[0], sz[0]), Math.max(node.size[1], sz[1])]);
                     node.setDirtyCanvas(true, true);
                 });
             }
@@ -708,7 +710,8 @@ app.registerExtension({
             rowSlider.addEventListener("input", () => {
                 requestAnimationFrame(() => {
                     const sz = node.computeSize();
-                    node.setSize([Math.max(node.size[0], sz[0]), sz[1]]);
+                    // rows 슬라이더로 grid 를 키울 때만 growth, 사용자가 줄여놓은 걸 못 늘림
+                    node.setSize([Math.max(node.size[0], sz[0]), Math.max(node.size[1], sz[1])]);
                     node.setDirtyCanvas(true, true);
                 });
             });

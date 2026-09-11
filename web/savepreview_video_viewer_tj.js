@@ -116,12 +116,41 @@ function saveLastPreview(node, kind, metas) {
     kind,
     metas: JSON.parse(JSON.stringify(metas)),
     saved_at: Date.now(),
+    owner_node_id: node.id,
   };
+  // A real execution result always means this node is live again — any earlier
+  // "copied node" detach flag is now stale.
+  delete node.properties.tj_video_snapshot_detached;
+}
+
+// Copy/paste (and Clone) carry `properties` — including tj_last_video_preview — onto
+// the new node. Without this check the copy would silently show the *source* node's
+// last video forever. Keep the visual snapshot (useful as a reference), but cut the
+// live input so the next queue run can't cross-wire the two nodes together.
+// Same convention as Save & Preview Image (TJ)'s tjDetachCopiedPreviewSnapshot.
+function detachCopiedVideoSnapshot(node) {
+  const saved = node?.properties?.tj_last_video_preview;
+  if (!node || !saved || saved.owner_node_id === undefined || node.properties.tj_video_snapshot_detached) return false;
+  if (String(saved.owner_node_id) === String(node.id)) return false;
+
+  const inp = node.inputs?.[0];
+  if (inp?.link != null && node.graph) {
+    try { node.graph.removeLink(inp.link); } catch (_) {}
+    inp.link = null;
+  }
+  const getW = node.widgets?.find(w => w.name === "get_name");
+  if (getW && getW.value !== "(none)") getW.value = "(none)";
+
+  node.properties.tj_video_snapshot_detached = true;
+  saved.owner_node_id = node.id;
+  node.setDirtyCanvas?.(true, true);
+  return true;
 }
 
 function restoreLastPreview(node) {
   const saved = node?.properties?.tj_last_video_preview;
   if (!saved || !Array.isArray(saved.metas) || !saved.metas.length) return false;
+  detachCopiedVideoSnapshot(node);
   try {
     if (saved.kind === "audio") setAudioPreview(node, saved.metas);
     else setVideoPreview(node, saved.metas[0]);
@@ -450,6 +479,10 @@ app.registerExtension({
         try { build(this); installVideoAdvancedToggle(this); restoreLastPreview(this); armImageVideoMutex(this, 500); }
         catch (e) { console.warn("[TJ_NODE] video viewer configure failed", e); }
       });
+      // node.id can still be mid-reassignment (clone/paste) at the moment configure()
+      // runs synchronously — recheck ownership once the graph has settled.
+      const self = this;
+      setTimeout(() => { try { detachCopiedVideoSnapshot(self); } catch (_) {} }, 150);
       return r;
     };
 

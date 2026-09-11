@@ -63,6 +63,12 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "Dynamic Image Batch(TJ)", type: "Dynamic Image Batch(TJ)" },
   { category: "Image", title: "Dynamic Image Batch(Eclipse-TJ)", type: "Dynamic Image Batch(Eclipse-TJ)" },
   { category: "Image", title: "Images Compare Sheet - Queue Loop (TJ)", type: "Images Compare Sheet - Queue Loop (TJ)" },
+  // RTX Deblur 는 STUDIO_ONE 팩에도 표시 이름이 완전히 같은("RTX Deblur (TJ)")
+  // 별도 노드가 있어서, title 이 아니라 이 팩의 실제 등록 키(TJ_NODE_RTXDeblur)를
+  // type 에 써서 항상 이 팩 노드로 확정 배치되게 한다.
+  { category: "Image", title: "RTX Deblur (TJ)", type: "TJ_NODE_RTXDeblur" },
+  { category: "Image", title: "RTX Denoise (TJ)", type: "RTX Denoise (TJ)" },
+  { category: "Image", title: "RTX VSR (TJ)", type: "RTX VSR (TJ)" },
 
   // Preview
   { category: "Preview", title: "Show Any (TJ)", type: "Show Any (TJ)" },
@@ -72,6 +78,9 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Video", title: "LTX2. TJ Sampler", type: "LTX2. TJ Sampler" },
   { category: "Video", title: "Save & Preview Video (TJ)", type: "Save & Preview Video (TJ)" },
   { category: "Video", title: "Wan SCAIL Extend Sampler (TJ)", type: "Wan SCAIL Extend Sampler (TJ)" },
+  { category: "Video", title: "LTX25 CLIP GGUF LOADER (TJ)", type: "LTX25 CLIP GGUF LOADER (TJ)" },
+  { category: "Image", title: "KREA2 UNET GGUF LOADER (TJ)", type: "TJ_NODE_Krea2UnetLoaderGGUF" },
+  { category: "Image", title: "KREA2 CLIP GGUF LOADER (TJ)", type: "TJ_NODE_Krea2ClipLoaderGGUF" },
 
   // LLM
   { category: "LLM", title: "Scene Maker (TJ)", type: "Scene Maker (TJ)" },
@@ -96,5 +105,16 @@ export const TJ_LAUNCHER_NODES = [
   // Generator
   { category: "Generator", title: "Flux2 Klein 4B/9B (TJ)", type: "Flux2 Klein 4B/9B (TJ)" },
   { category: "Generator", title: "Z-Image Turbo (TJ)", type: "Z-Image Turbo (TJ)" },
-  { category: "Generator", title: "ZIT ControlNet (TJ)", type: "ZIT ControlNet (TJ)" }
+  { category: "Generator", title: "ZIT ControlNet (TJ)", type: "ZIT ControlNet (TJ)" },
+
+  // ONE STUDIO (ComfyUI-TJ_NODE_STUDIO_ONE 팩의 올인원 생성 패널들 — 그 팩이
+  // 설치돼 있어야 실제로 배치 가능하고, 없으면 목록에 "missing"으로 회색 표시된다)
+  { category: "Generator", title: "Flux.2 Klein ONE STUDIO (TJ)", type: "Flux.2 Klein ONE STUDIO (TJ)" },
+  { category: "Generator", title: "Z-Image ONE STUDIO (TJ)", type: "Z-Image ONE STUDIO (TJ)" },
+  { category: "Generator", title: "Krea 2 ONE STUDIO (TJ)", type: "Krea 2 ONE STUDIO (TJ)" },
+  { category: "Generator", title: "Qwen Image Edit 2511 ONE STUDIO (TJ)", type: "Qwen Image Edit 2511 ONE STUDIO (TJ)" },
+  { category: "Generator", title: "SDXL ONE STUDIO (TJ)", type: "SDXL ONE STUDIO (TJ)" },
+  { category: "Generator", title: "MiniMax H3 ONE STUDIO (TJ)", type: "MiniMax H3 ONE STUDIO (TJ)" },
+  { category: "Generator", title: "MusicMaker ONE STUDIO (TJ)", type: "MusicMaker ONE STUDIO (TJ)" },
+  { category: "Generator", title: "Anima ONE STUDIO (TJ)", type: "Anima ONE STUDIO (TJ)" }
 ];

@@ -28,6 +28,11 @@ from .nodes.image import (
     TJ_SaveAndPreviewImage,
     TJ_ImagesCompareSheetQueueLoop,
     TJ_BatchToMinimaxH3,
+    TJ_NODE_RTXDeblur,
+    TJ_NODE_RTXDenoise,
+    TJ_NODE_RTXVSR,
+    TJ_NODE_Krea2UnetLoaderGGUF,
+    TJ_NODE_Krea2ClipLoaderGGUF,
 )
 
 # ── Utility ───────────────────────────────────────────────────────────────
@@ -125,6 +130,11 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveAndPreviewImage":           TJ_SaveAndPreviewImage,
     "TJ_ImagesCompareSheetQueueLoop":    TJ_ImagesCompareSheetQueueLoop,
     "TJ_BatchToMinimaxH3":              TJ_BatchToMinimaxH3,
+    "TJ_NODE_RTXDeblur":                TJ_NODE_RTXDeblur,
+    "TJ_NODE_RTXDenoise":               TJ_NODE_RTXDenoise,
+    "TJ_NODE_RTXVSR":                   TJ_NODE_RTXVSR,
+    "TJ_NODE_Krea2UnetLoaderGGUF":      TJ_NODE_Krea2UnetLoaderGGUF,
+    "TJ_NODE_Krea2ClipLoaderGGUF":      TJ_NODE_Krea2ClipLoaderGGUF,
 
     # Utility
     "TJ_PromptText":        TJ_PromptText,
@@ -214,6 +224,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveAndPreviewImage":           "Save & Preview Image (TJ)",
     "TJ_ImagesCompareSheetQueueLoop":    "Images Compare Sheet - Queue Loop (TJ)",
     "TJ_BatchToMinimaxH3":              "Batch to MinimaxH3 (TJ)",
+    "TJ_NODE_RTXDeblur":                "RTX Deblur (TJ)",
+    "TJ_NODE_RTXDenoise":               "RTX Denoise (TJ)",
+    "TJ_NODE_RTXVSR":                   "RTX VSR (TJ)",
+    "TJ_NODE_Krea2UnetLoaderGGUF":      "KREA2 UNET GGUF LOADER (TJ)",
+    "TJ_NODE_Krea2ClipLoaderGGUF":      "KREA2 CLIP GGUF LOADER (TJ)",
 
     # Utility
     "TJ_PromptText":        "Prompt Text (TJ)",

@@ -14,6 +14,7 @@ import {
 
 (function () {
   const EXT_NAME = "TJ.NodeFloatingLauncher.Registry";
+  const SETTING_ENABLED = "TJ_NODE.FloatingLauncher.Enabled";
   const STORAGE_POS = "tj_node_launcher_pos_v3";
   const STORAGE_RECENT = "tj_node_launcher_recent_v3";
 
@@ -30,6 +31,25 @@ import {
 
   function log(...args) {
     console.log("[TJ Launcher]", ...args);
+  }
+
+  function getSettings() {
+    return app?.ui?.settings || null;
+  }
+
+  function getSettingValue(id, fallback) {
+    try {
+      const value = getSettings()?.getSettingValue?.(id);
+      return value === undefined || value === null ? fallback : value;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  // ComfyUI Settings > TJ_NODE > Tools 의 "Show TJ_NODE floating launcher" 토글.
+  // 기존 사용자 경험을 안 깨려고 기본값은 true(항상 켜져 있던 동작 유지).
+  function isEnabled() {
+    return getSettingValue(SETTING_ENABLED, true) === true;
   }
 
   function injectStyle() {
@@ -416,6 +436,25 @@ import {
     panel = null;
   }
 
+  function destroyLauncherButton() {
+    closePanel();
+    hideGhost();
+    pendingNodeType = null;
+    pendingNodeTitle = "";
+    launcherBtn?.remove();
+    launcherBtn = null;
+  }
+
+  function updateLauncherVisibility(value) {
+    const enabled = typeof value === "boolean" ? value : isEnabled();
+    if (enabled) {
+      injectStyle();
+      createLauncherButton();
+    } else {
+      destroyLauncherButton();
+    }
+  }
+
   function togglePanel() {
     if (panel) closePanel();
     else openPanel();
@@ -649,11 +688,23 @@ import {
 
   app.registerExtension({
     name: EXT_NAME,
+    settings: [
+      {
+        id: SETTING_ENABLED,
+        name: "Show TJ_NODE floating launcher",
+        category: ["TJ_NODE", "Tools", "Floating Launcher"],
+        tooltip: "Show a draggable TJ_NODE button for placing TJ nodes on the canvas.",
+        type: "boolean",
+        defaultValue: true,
+        onChange: updateLauncherVisibility,
+      },
+    ],
     async setup() {
-      injectStyle();
-      createLauncherButton();
+      // 위치/드래그/배치 리스너는 항상 설치해 둔다 — 버튼이 없으면 그냥 아무 일도
+      // 안 한다(pendingNodeType 이 null). 실제 표시/제거만 설정값을 따른다.
       installPlacementListeners();
       closePanelOnOutsideClick();
+      updateLauncherVisibility();
 
       setTimeout(() => {
         const missing = allRegistryNodes().filter((n) => !n.exists);

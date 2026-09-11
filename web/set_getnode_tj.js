@@ -24,7 +24,9 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_H3_AudioLock",
     "TJ_PromptQueue",
     "TJ_H3_Sequencer",
-    "TJ_LTX25ClipLoaderGGUF"
+    "TJ_LTX25ClipLoaderGGUF",
+    "TJ_NODE_Krea2UnetLoaderGGUF",
+    "TJ_NODE_Krea2ClipLoaderGGUF"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";

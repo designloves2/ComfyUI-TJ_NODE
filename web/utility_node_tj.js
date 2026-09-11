@@ -1020,16 +1020,24 @@ app.registerExtension({
             };
 
             nodeType.prototype.onExecuted = function(message) {
-                if (this.properties?.tj_snapshot_detached) {
-                    tjRestoreDetachedSnapshotIfNeeded(this);
-                    return;
-                }
                 // Save & Preview Image (TJ) display pipeline only.
                 // Do not touch wireless/direct-wire logic here.
                 // ComfyUI may return UI payloads in slightly different shapes,
                 // so normalize defensively and make image loading retry-safe.
                 const tjImagesRaw = message?.tj_images || message?.ui?.tj_images || message?.images || null;
-                if (!tjImagesRaw) return;
+                if (!tjImagesRaw) {
+                    // No fresh output in this message (e.g. a bypass/mute pass). If this is
+                    // a detached copy whose runtime image cache got cleared (tab switch),
+                    // rebuild the visual from stored metadata instead of going blank.
+                    if (this.properties?.tj_snapshot_detached) tjRestoreDetachedSnapshotIfNeeded(this);
+                    return;
+                }
+                // A real execution result came in — this node has a live input again, so
+                // it must show ITS OWN new result, never a stale "detached copy" snapshot.
+                // Bug fixed 2026: the old early-return here made any node ever flagged
+                // tj_snapshot_detached (a false-positive copy detection included) ignore
+                // every future execution forever and keep showing the old image.
+                if (this.properties?.tj_snapshot_detached) delete this.properties.tj_snapshot_detached;
 
                 const tjImages = Array.isArray(tjImagesRaw) ? tjImagesRaw.flat(Infinity).filter(Boolean) : [];
                 if (tjImages.length === 0) {
@@ -1065,6 +1073,12 @@ app.registerExtension({
             nodeType.prototype.onDrawForeground = function(ctx) {
                 this._tjUpdateGetReceiverOptions?.();
                 if (this.flags?.collapsed) return;
+                // Re-check copy ownership on every draw, not just at onConfigure time.
+                // node.id can still be mid-reassignment (clone/paste) the instant
+                // onConfigure runs synchronously; by the time this node actually gets
+                // drawn, graph.add() has long since finalized its real id, so this is a
+                // timing-independent backstop for the same detach logic.
+                tjDetachCopiedPreviewSnapshot(this, { inputIndex: 0, inputName: "images" });
                 if (this.properties?.tj_snapshot_detached && (!this.tj_imgs || this.tj_imgs.length === 0)) {
                     tjRestoreDetachedSnapshotIfNeeded(this);
                 }
@@ -1280,6 +1294,27 @@ app.registerExtension({
     name: "TJ.PromptText",
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if (nodeData.name === "TJ_PromptText") {
+            // 사용자가 드래그로 정한 크기를 properties 에 별도 저장해 두고 새로고침
+            // 직후 여러 시점에 재적용한다. workflow JSON 의 node.size 자체가 저장
+            // 직전 레이아웃 패스에서 일시적으로 줄어든 값일 수 있어(다른 TJ 노드,
+            // ShowAny/SmartShow 에서 이미 관측·수정된 문제와 동일 계열) 신뢰하지 않는다.
+            const origOnResizePT = nodeType.prototype.onResize;
+            nodeType.prototype.onResize = function(size) {
+                if (origOnResizePT) origOnResizePT.apply(this, arguments);
+                if (app.canvas?.resizing_node === this) {
+                    this.properties = this.properties || {};
+                    this.properties.tj_saved_size = [this.size[0], this.size[1]];
+                }
+            };
+            const restoreSavedSize = (node) => {
+                const saved = node.properties?.tj_saved_size;
+                if (!Array.isArray(saved) || saved.length < 2) return;
+                const applySize = () => { try { node.setSize([saved[0], saved[1]]); } catch (_) {} };
+                setTimeout(applySize, 0);
+                setTimeout(applySize, 80);
+                setTimeout(applySize, 250);
+            };
+
             const origOnNodeCreated = nodeType.prototype.onNodeCreated;
             nodeType.prototype.onNodeCreated = function() {
                 if (origOnNodeCreated) origOnNodeCreated.apply(this, arguments);
@@ -1347,6 +1382,7 @@ app.registerExtension({
             nodeType.prototype.onConfigure = function(data) {
                 if (origOnConfigure) origOnConfigure.apply(this, arguments);
                 setTimeout(() => { attachSetNodeSync(this); attachTJGetReceiver(this, { inputIndex: 0, inputName: "prompt_in", outputIndex: 0, defaultType: "*", defaultOutputType: "STRING" }); }, 100);
+                restoreSavedSize(this);
             };
 
             const origOnDrawForegroundPrompt = nodeType.prototype.onDrawForeground;

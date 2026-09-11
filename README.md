@@ -1041,6 +1041,26 @@ Recommended Usage:
 
 ---
 
+## ✨ RTX Deblur (TJ) / RTX Denoise (TJ) / RTX VSR (TJ)
+
+NVIDIA VFX SDK 필터 3종을 독립 노드로 뺐습니다. SDK 는 이 셋을 별도 이펙트가 아니라
+같은 `VideoSuperRes` 필터의 quality level 로 노출합니다 — Deblur/Denoise 는
+**해상도를 안 바꾸는** 처리라 출력 width/height 는 항상 입력과 같고, VSR 만 배율/목표
+해상도로 실제 업스케일합니다. `comfyui_nvidia_rtx_nodes` 팩(git 체크아웃)을 직접
+패치하지 않고 TJ_NODE 에 따로 둔 이유: 그 팩을 수정하면 트리가 dirty 해져서
+`update_all_nodes.bat` 가 업데이트를 건너뛰고 영영 그 버전에 멈춥니다.
+
+* **RTX Deblur (TJ)** — `strength`(LOW/MEDIUM/HIGH/ULTRA), 흔들리거나 흐릿한 영상 선명화
+* **RTX Denoise (TJ)** — `strength`(LOW/MEDIUM/HIGH/ULTRA), 센서/압축 노이즈 제거
+* **RTX VSR (TJ)** — `resize_type`(scale by multiplier / target dimensions) + `scale`
+  또는 `width`/`height` + `quality`(LOW/MEDIUM/HIGH/ULTRA), 실제 업스케일
+* 셋 다 입력/출력: `images` (IMAGE) → `images` / `upscaled_images` (IMAGE)
+* 무선: `get_name`(images 입력 수신) + `setnode_name`(출력 발행)
+* 요구: NVIDIA RTX GPU + `comfyui_nvidia_rtx_nodes` 런타임(NVIDIA VFX SDK)
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
 ## ✨ LTX2. TJ Sampler
 
 LTX-2 영상 생성 그래프에서 **8개 노드를 1개로 압축**한 샘플러. 노이즈·가이더·시그마·샘플러
@@ -1077,6 +1097,41 @@ LTX 2.5 gemma4 파이프라인을 그대로 못 돌리는데, 이 노드가 제�
 * 패치는 모듈 import 시점에도 한 번 적용 — `UnetLoaderGGUF` 가 이 노드보다 먼저
   실행돼도 확산 모델 GGUF 가 정상 로드됨
 * CATEGORY: `✨ TJ_Node/Video`
+
+---
+
+## ✨ KREA2 UNET GGUF LOADER (TJ)
+
+Krea 2 (FLUX.1 Krea [dev] 파생) 확산 모델을 GGUF 로 로드합니다. LTX25 CLIP GGUF LOADER
+와 완전히 같은 종류의 문제 — `city96/ComfyUI-GGUF` 가 `general.architecture = krea2` 를
+허용 목록(`IMG_ARCH_LIST`)에 두지 않아 로드 전에 거부합니다. 이 게이트는 순수 확인
+용도일 뿐 `arch_str` 자체는 이후 로직(`comfy.sd.load_diffusion_model_state_dict`)에
+전혀 쓰이지 않고, 실제 모델 클래스는 텐서 shape 로 판별됩니다(Krea 2 는 구조상 FLUX
+파생이라 그쪽으로 잡힘) — 그래서 허용 목록에 `krea2` 만 추가하면 됩니다.
+
+* 입력: `unet_name` (`.gguf` 파일 목록 — `diffusion_models` / `unet_gguf` 폴더)
+* 출력: `model` (core `UnetLoaderGGUF` 와 동일한 MODEL)
+* 무선: `setnode_name` + `Auto Set` (embedded Set provider)
+* 요구: `ComfyUI-GGUF` 설치
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
+## ✨ KREA2 CLIP GGUF LOADER (TJ)
+
+Krea 2 텍스트 인코더(Qwen3-VL-4B 전체, 12-layer tap)를 GGUF 로 로드합니다. core
+ComfyUI 는 `CLIPType.KREA2` + `TEModel.QWEN3VL_4B` 조합을 이미 지원합니다
+(`comfy.text_encoders.krea2`) — 문제는 city96 GGUF 로더 쪽 허용 목록뿐인데, 정확한
+GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에 `qwen3vl` 은
+이미 있음) **이 노드는 값을 하드코딩하지 않고, 선택한 파일이 실제로 선언한 architecture
+값을 읽어 그것만 허용 목록에 추가**합니다. 다운스트림 감지는 GGUF 태그가 아니라 텐서
+키 기준이라 안전합니다.
+
+* 입력: `clip_name` (`.gguf` 파일 목록 — `text_encoders` / `clip` / `clip_gguf` 폴더)
+* 출력: `clip` (core `CLIPLoader` / `CLIPLoaderGGUF` 와 동일한 CLIP, `type=krea2`)
+* 무선: `setnode_name` + `Auto Set` (embedded Set provider)
+* 요구: `ComfyUI-GGUF` 설치
+* CATEGORY: `✨ TJ_Node/Image`
 
 ---
 

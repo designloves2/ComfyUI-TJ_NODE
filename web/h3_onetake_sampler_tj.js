@@ -37,7 +37,8 @@ function applyTileVisibility(node) {
 function resize(node) {
     const width = node.size?.[0];
     const computed = node.computeSize?.();
-    if (computed) node.setSize([width || computed[0], computed[1]]);
+    // 저장된(사용자가 늘려놓은) 높이를 깎지 않는다 — 최소 높이로만 키운다.
+    if (computed) node.setSize([width || computed[0], Math.max(node.size?.[1] || 0, computed[1])]);
     markDirty(node);
 }
 

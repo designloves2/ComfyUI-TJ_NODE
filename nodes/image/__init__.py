@@ -10,3 +10,6 @@ from .batch_to_multi_output import TJ_BatchToMultiOutput
 from .batch_to_minimax_h3 import TJ_BatchToMinimaxH3
 from .save_preview_image import TJ_SaveAndPreviewImage
 from .images_compare_sheet_queue_loop import TJ_ImagesCompareSheetQueueLoop
+from .rtx_effects import TJ_NODE_RTXDeblur, TJ_NODE_RTXDenoise, TJ_NODE_RTXVSR
+from .krea2_unet_gguf import TJ_NODE_Krea2UnetLoaderGGUF
+from .krea2_clip_gguf import TJ_NODE_Krea2ClipLoaderGGUF

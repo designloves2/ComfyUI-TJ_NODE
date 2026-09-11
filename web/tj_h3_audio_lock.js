@@ -50,10 +50,11 @@ function setWidgetVisible(widget, visible) {
 function applyModeVisibility(node) {
     const mode = String(findWidget(node, "mode")?.value || "lock");
     setWidgetVisible(findWidget(node, "strength"), mode === "remix");
-    // 구조가 바뀌었으니 높이만 다시 계산 — 사용자가 잡아둔 가로 폭은 유지한다.
+    // 구조가 바뀌었으니 최소 높이만 다시 계산 — 사용자가 잡아둔 가로 폭/세로 크기는
+    // (그보다 커야 할 때만 키우고) 그대로 유지한다.
     const width = node.size?.[0];
     const computed = node.computeSize?.();
-    if (computed) node.setSize([width || computed[0], computed[1]]);
+    if (computed) node.setSize([width || computed[0], Math.max(node.size?.[1] || 0, computed[1])]);
     markDirty(node);
 }
 
