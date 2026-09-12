@@ -10,3 +10,4 @@ from .h3_sequencer import TJ_H3_Sequencer
 from .h3_output import TJ_H3_Output
 from .h3_onetake_sampler import TJ_H3_OneTakeSampler
 from .ltx25_clip_gguf import TJ_LTX25ClipLoaderGGUF
+from .video_resize import TJ_VideoResize

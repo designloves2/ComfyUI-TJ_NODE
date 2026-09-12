@@ -72,6 +72,7 @@ from .nodes.video import (
     TJ_H3_Output,
     TJ_H3_OneTakeSampler,
     TJ_LTX25ClipLoaderGGUF,
+    TJ_VideoResize,
 )
 
 # ── LLM ───────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_H3_Output":             TJ_H3_Output,
     "TJ_H3_OneTakeSampler":     TJ_H3_OneTakeSampler,
     "TJ_LTX25ClipLoaderGGUF":   TJ_LTX25ClipLoaderGGUF,
+    "TJ_VideoResize":           TJ_VideoResize,
 
     # LLM
     "TJ_PromptEnhancer":    TJ_PromptEnhancer,
@@ -264,6 +266,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_H3_Output":             "MiniMax H3 Output (TJ)",
     "TJ_H3_OneTakeSampler":     "MiniMax H3 One-Take Sampler (TJ)",
     "TJ_LTX25ClipLoaderGGUF":   "LTX25 CLIP GGUF LOADER (TJ)",
+    "TJ_VideoResize":           "Video Resize (TJ)",
 
     # LLM
     "TJ_PromptEnhancer":    "Prompt Enhancer (TJ)",
