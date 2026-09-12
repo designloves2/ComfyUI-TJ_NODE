@@ -1135,6 +1135,34 @@ GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에
 
 ---
 
+## ✨ Video Resize (TJ)
+
+`AI_One_Studio` 갤러리 전용 웹 "↔ Resize" 후처리 툴을 그래프 노드로 이식한 버전 —
+어떤 워크플로우든 프레임 로더(예: `VHS_LoadVideo`) 뒤, 인코더(`CreateVideo` /
+`VHS_VideoCombine`) 앞에 끼워 쓸 수 있습니다. ComfyUI 코어 `ImageScale` /
+`ImageScaleBy` 와 동일한 `comfy.utils.common_upscale` 을 그대로 재사용해
+스케일/크롭 품질이 코어 노드와 같습니다.
+
+5가지 모드:
+* **Long side** — 종횡비 유지, 긴 변을 `target_px` 에 맞춤
+* **Short side** — 종횡비 유지, 짧은 변을 `target_px` 에 맞춤
+* **Ratio** — `ratio_w:ratio_h` 로 **원본 해상도에서 센터크롭만**(스케일 없음)
+* **Mega Pixel** — 종횡비 유지한 채 전체 픽셀 수가 `megapixels` 에 맞도록 균일 스케일
+* **Width x Height** — `target_width`/`target_height` 정확히 맞춤. `crop_mode`
+  `"crop"` = 커버되게 스케일 후 센터크롭(비율 유지) / `"stretch"` = 그대로 리사이즈(왜곡)
+
+홀수 프레임 크기는 일부 비디오 인코더가 거부해서 모든 모드가 결과 크기를 짝수로
+반올림합니다.
+
+* 입력: `images`, `mode`, `upscale_method`, `target_px`, `ratio_w`, `ratio_h`,
+  `megapixels`, `target_width`, `target_height`, `crop_mode`
+* 출력: `images`, `width`, `height`
+* 무선: `get_name`(images 입력 embedded Get) + `setnode_name`/`Auto Set`(3-출력
+  embedded Set — 켜면 `이름_images`/`이름_width`/`이름_height` 로 각각 등록)
+* CATEGORY: `✨ TJ_Node/Video`
+
+---
+
 ## ✨ Wan SCAIL Extend Sampler (TJ)
 
 Wan 2.1 SCAIL-2의 **generate + extend 그래프를 한 노드로** 접은 샘플러. 기본 구간을 만들고

@@ -21,6 +21,8 @@
 # RandomNoise 가 오디오 채널에도 노이즈를 만들지만 mask=0 이면 매 스텝 복원되므로
 # 정상 동작이다(버그 아님).
 
+from collections.abc import Mapping
+
 import torch
 
 import comfy.nested_tensor
@@ -62,6 +64,8 @@ def _as_nested(samples):
 
 def _encode_audio(audio, audio_vae):
     """원본 오디오를 H3 오디오 VAE 로 인코딩. 반환 [1, 32, 2, T]."""
+    if not isinstance(audio, dict) and isinstance(audio, Mapping):
+        audio = dict(audio)  # VHS_LoadVideo의 LazyAudioMap 등 dict-like 객체 대응
     if not isinstance(audio, dict) or "waveform" not in audio:
         raise ValueError("MiniMax H3 Audio Lock (TJ): audio 입력이 비어 있거나 형식이 올바르지 않습니다.")
     waveform = audio["waveform"]

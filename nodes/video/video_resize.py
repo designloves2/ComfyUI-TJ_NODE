@@ -74,6 +74,12 @@ class TJ_VideoResize:
                                "then centre-crop the overhang (no distortion). stretch = "
                                "resize straight to the target (aspect not kept)."}),
             },
+            "optional": {
+                "get_name": ("STRING", {"default": "(none)"}),
+                "auto_set": ("BOOLEAN", {"default": False,
+                    "tooltip": "켜면 출력들을 setnode_name 기반 이름으로 자동 Set 등록."}),
+                "setnode_name": ("STRING", {"default": "VideoResize"}),
+            },
         }
 
     @staticmethod
@@ -92,7 +98,8 @@ class TJ_VideoResize:
         return out.movedim(1, -1)
 
     def run(self, images, mode, upscale_method, target_px, ratio_w, ratio_h,
-            megapixels, target_width, target_height, crop_mode):
+            megapixels, target_width, target_height, crop_mode,
+            get_name="(none)", auto_set=False, setnode_name="VideoResize"):
         b, h, w, c = images.shape
 
         if mode == "Long side":

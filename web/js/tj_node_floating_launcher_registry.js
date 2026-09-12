@@ -79,6 +79,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Video", title: "Save & Preview Video (TJ)", type: "Save & Preview Video (TJ)" },
   { category: "Video", title: "Wan SCAIL Extend Sampler (TJ)", type: "Wan SCAIL Extend Sampler (TJ)" },
   { category: "Video", title: "LTX25 CLIP GGUF LOADER (TJ)", type: "LTX25 CLIP GGUF LOADER (TJ)" },
+  { category: "Video", title: "Video Resize (TJ)", type: "Video Resize (TJ)" },
   { category: "Image", title: "KREA2 UNET GGUF LOADER (TJ)", type: "TJ_NODE_Krea2UnetLoaderGGUF" },
   { category: "Image", title: "KREA2 CLIP GGUF LOADER (TJ)", type: "TJ_NODE_Krea2ClipLoaderGGUF" },
 
