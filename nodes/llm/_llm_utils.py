@@ -453,6 +453,29 @@ def _text_encoder_model_options():
     return names or ["NO_TEXT_ENCODER_FILES_FOUND"]
 
 
+def _find_text_encoder_by_basename(basename):
+    """get_full_path()가 못 찾을 때(이름이 서브폴더 없이 basename만 전달된 경우 등)
+    text_encoders 로 등록된 모든 root를 재귀적으로 훑어 파일명이 일치하는 첫 파일을 찾는다.
+    STUDIO_ONE이 발견한 케이스: models\\text_encoders\\LLM\\<brand>\\<model-folder>\\<file>.gguf
+    처럼 깊은 서브폴더에 있는 파일을, 목록/전달 과정 어딘가에서 basename만 남아 전달돼도
+    로드는 되게 하기 위한 방어적 폴백."""
+    try:
+        import folder_paths
+        roots = folder_paths.get_folder_paths("text_encoders")
+    except Exception:
+        return None
+    target = os.path.basename(str(basename)).lower()
+    for root in roots or []:
+        try:
+            for dirpath, _dirs, files in os.walk(root):
+                for f in files:
+                    if f.lower() == target:
+                        return os.path.join(dirpath, f)
+        except Exception:
+            continue
+    return None
+
+
 def _resolve_text_encoder_path(name):
     if not name or name in {MMPROJ_NONE, "NO_GGUF_FILES_IN_MODELS_TEXT_ENCODERS", "NO_TEXT_ENCODER_FILES_FOUND"}:
         return None
@@ -463,7 +486,14 @@ def _resolve_text_encoder_path(name):
             return full
     except Exception:
         pass
-    return os.path.join("models", "text_encoders", name)
+    flat = os.path.join("models", "text_encoders", name)
+    if os.path.isfile(flat):
+        return flat
+    # get_full_path()는 정확한 상대경로(서브폴더 포함)가 필요하다 - name이 basename만
+    # 갖고 있으면(리스트/전달 과정에서 서브폴더가 유실된 경우) 위 두 시도가 다 실패하므로,
+    # 등록된 모든 text_encoders root를 basename 기준으로 재귀 검색한다.
+    found = _find_text_encoder_by_basename(name)
+    return found or flat
 
 
 def _is_bad_choice(name):
