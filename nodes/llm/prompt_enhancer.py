@@ -129,23 +129,39 @@ class TJ_PromptEnhancer:
                     # 예전엔 "<think>\n</think>\n" 을 가짜 assistant 턴으로 미리 넣어 씽킹을
                     # "우회"하려 했는데, create_chat_completion 은 이걸 이미 끝난 턴으로 취급해
                     # 새 assistant 턴을 또 시작하므로 모델이 다시 생각 블록을 여는 경우가 흔했다.
-                    # ComfyUI-MiniMaxH3-Prompt-Writer(같은 GGUF/llama.cpp 스택, 실제로 결과가
-                    # 잘 나오는 걸로 확인된 구현)는 해킹 없이 Qwen3 계열 공식 Jinja 템플릿이
-                    # 지원하는 enable_thinking 템플릿 변수를 그대로 넘긴다 - 여기도 동일하게
-                    # 맞춘다. 구버전 llama-cpp-python/이 kwarg 를 모르는 채팅 포맷이면
-                    # TypeError 가 나므로, 그때만 재시도 없이 그냥 빼고 보낸다.
-                    chat_kwargs["enable_thinking"] = False
+                    # 그다음엔 Jinja "enable_thinking" 템플릿 변수를 시도했는데, 이 llama-cpp-python
+                    # 빌드의 create_chat_completion() 시그니처엔 그 파라미터가 아예 없다(대신
+                    # ComfyUI-MiniMaxH3-Prompt-Writer 가 쓰는 게 이 빌드 고유의 네이티브
+                    # reasoning_budget 메커니즘이었음 - inspect.signature 로 직접 확인).
+                    # reasoning_budget=0 은 "생각 블록을 열자마자(토큰 소비 없이) 강제로 닫는다"는
+                    # 뜻이라, 모델이 <think> 를 열더라도 실제 생성은 거의 즉시 </think> 뒤 진짜
+                    # 답변부터 시작한다 - stop 문자열이나 사후 regex 스트립에 기댈 필요가 없다.
+                    # 이 kwarg 를 모르는 구버전 llama-cpp-python 이면 TypeError 나므로 빼고 재시도.
+                    chat_kwargs["reasoning_budget"] = 0
                 try:
                     output = llm.create_chat_completion(**chat_kwargs)
                 except TypeError:
-                    chat_kwargs.pop("enable_thinking", None)
+                    chat_kwargs.pop("reasoning_budget", None)
                     output = llm.create_chat_completion(**chat_kwargs)
                 raw_output = output["choices"][0]["message"]["content"].strip()
+                finish_reason = output["choices"][0].get("finish_reason")
+                # 사후처리(_clean_output) 전 원본 그대로 콘솔에 남긴다 - "결과가 한 문단만
+                # 나온다"류 버그를 재현할 때마다 매번 코드를 고쳐가며 추측하는 대신, 실제로
+                # 모델이 뭘 생성했는지(그리고 max_tokens 로 끊겼는지) 바로 볼 수 있게.
+                print(
+                    f"[TJ_PromptEnhancer] finish_reason={finish_reason} "
+                    f"max_tokens={max_tokens} raw_chars={len(raw_output)}\n"
+                    f"--- RAW OUTPUT (pre-clean) ---\n{raw_output}\n--- END RAW OUTPUT ---"
+                )
             finally:
                 _free_llm(llm)
             file_label = gguf_model
 
-        final_prompt = _clean_output(raw_output, prompt_in)
+        # Minimax H3 브리프는 정답 자체가 여러 문단(오프닝 스타일 + [Shot N]... +
+        # Ambient sound: + Music:)이라, "마지막 한 문단만 남긴다"는 단일-문단 정리
+        # 단계를 건너뛰어야 한다 - 안 그러면 매번 어느 한 문단만 살아남는다.
+        multi_paragraph_format = model_format == "Minimax H3 (Video)"
+        final_prompt = _clean_output(raw_output, prompt_in, preserve_paragraphs=multi_paragraph_format)
         if not final_prompt.strip() or len(final_prompt) < 20:
             final_prompt = _strip_thinking_process_block(_strip_thinking_tags(raw_output)).strip()
             if not final_prompt:

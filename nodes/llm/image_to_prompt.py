@@ -231,7 +231,9 @@ class TJ_ImageToPrompt:
                 chat_handler_instance = None
             model_label = gguf_model
 
-        final_prompt = _clean_output(raw_output)
+        # Minimax H3 브리프는 정답 자체가 여러 문단이라 단일-문단 정리 단계를 건너뛴다.
+        # (prompt_enhancer.py 의 동일 처리와 같은 이유 - _clean_output 참고)
+        final_prompt = _clean_output(raw_output, preserve_paragraphs=(model_format == "Minimax H3 (Video)"))
         if not final_prompt.strip() or len(final_prompt) < 20:
             final_prompt = raw_output
 

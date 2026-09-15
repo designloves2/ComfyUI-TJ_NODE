@@ -318,12 +318,21 @@ def _extract_after_final_marker(text):
     return text
 
 
-def _clean_output(text, original_input=""):
+def _clean_output(text, original_input="", preserve_paragraphs=False):
+    """preserve_paragraphs=False(기본)는 "모델이 추론 몇 줄 쓰고 마지막에 답 한 문단만
+    낸다"는 이미지 프롬프트 강화류 포맷을 전제로 _extract_after_final_marker /
+    _extract_final_paragraph 를 돌려서 마지막 실제 문단만 남긴다. 반대로 MiniMax H3
+    브리프처럼 정답 자체가 원래 여러 문단(오프닝 스타일 + [Shot N]... + Ambient sound: +
+    Music:)인 포맷은, 이 두 함수를 아무리 "여러 문단 유지"로 고쳐도 REASONING_MARKERS 의
+    느슨한 부분 문자열 매칭이 정상적인 브리프 문장(예: "First," 로 시작하는 문장, "since"
+    포함 문장 등)을 추론으로 오판해 건너뛸 위험이 구조적으로 남는다 - 그래서 애초에 이
+    단계 자체를 스킵하는 게 맞다. preserve_paragraphs=True 를 넘기면 두 함수를 건너뛴다."""
     text = text.strip()
     text = _strip_thinking_tags(text)
     text = _strip_thinking_process_block(text)
-    text = _extract_after_final_marker(text)
-    text = _extract_final_paragraph(text)
+    if not preserve_paragraphs:
+        text = _extract_after_final_marker(text)
+        text = _extract_final_paragraph(text)
     text = _strip_preambles(text)
     if original_input:
         raw = original_input.strip()
