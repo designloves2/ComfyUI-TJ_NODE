@@ -431,18 +431,48 @@ def _unique_prepend(names, preferred):
     return items
 
 
+def _gguf_text_encoder_names():
+    """ComfyUI 코어의 "text_encoders" 폴더 종류는 .gguf 를 지원 확장자로 등록해 두지 않는다
+    (folder_paths.supported_pt_extensions 에 .gguf 가 없음) - 그래서 get_filename_list("text_encoders")
+    로는 .gguf 파일을 절대 못 찾는다(서브폴더 유무와 무관하게 전부 0건).
+    city96/ComfyUI-GGUF 가 같은 루트를 가리키는 별도 폴더 종류 "clip_gguf"(확장자={'.gguf'})를
+    등록해 두므로 그걸 우선 쓰고, 그 팩이 없어서 키 자체가 없는 경우에만 text_encoders 루트를
+    직접 걸어서 .gguf 를 찾는다(둘 다 실패하면 빈 리스트)."""
+    names = _folder_list_recursive("clip_gguf", None, [])
+    if names:
+        return names
+    try:
+        import folder_paths
+        roots = folder_paths.get_folder_paths("text_encoders")
+    except Exception:
+        return []
+    found = []
+    for root in roots or []:
+        try:
+            for dirpath, _dirs, files in os.walk(root):
+                for f in files:
+                    if f.lower().endswith(".gguf"):
+                        found.append(os.path.relpath(os.path.join(dirpath, f), root))
+        except Exception:
+            continue
+    return found
+
+
 def _text_encoder_ggufs(exclude_mmproj=False):
-    names = _folder_list_recursive("text_encoders", ".gguf", [])
+    names = _gguf_text_encoder_names()
     if exclude_mmproj:
         names = [n for n in names if "mmproj" not in os.path.basename(str(n)).lower()]
-        names = _unique_prepend(names, DEFAULT_GGUF_MODEL)
+        if DEFAULT_GGUF_MODEL in names:
+            names = _unique_prepend(names, DEFAULT_GGUF_MODEL)
     return names or ["NO_GGUF_FILES_IN_MODELS_TEXT_ENCODERS"]
 
 
 def _text_encoder_mmproj_options():
-    names = _folder_list_recursive("text_encoders", ".gguf", [])
+    names = _gguf_text_encoder_names()
     mm = [n for n in names if "mmproj" in os.path.basename(str(n)).lower()]
-    mm = _unique_prepend(sorted(mm), DEFAULT_MMPROJ_MODEL)
+    mm = sorted(mm)
+    if DEFAULT_MMPROJ_MODEL in mm:
+        mm = _unique_prepend(mm, DEFAULT_MMPROJ_MODEL)
     return [MMPROJ_NONE] + mm
 
 
