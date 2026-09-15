@@ -317,20 +317,34 @@ import {
     return LiteGraph?.registered_node_types || {};
   }
 
+  // resolveRegisteredType 은 매칭 안 되는 typeOrTitle 마다 등록된 노드 타입
+  // 전체(수백 개일 수 있음)를 훑는다 - 패널을 열거나 검색어를 칠 때마다
+  // 레지스트리의 모든 항목(현재 60개+)에 대해 이걸 다시 돌리면 체감상 느려진다.
+  // 성공한 결과만 캐시해 둔다(실패는 재시도 - 나중에 로드되는 확장 노드 대비).
+  const _resolveCache = new Map();
+
   function resolveRegisteredType(typeOrTitle) {
+    if (_resolveCache.has(typeOrTitle)) return _resolveCache.get(typeOrTitle);
+
     const types = registeredTypes();
-    if (types[typeOrTitle]) return typeOrTitle;
+    let result = null;
+    if (types[typeOrTitle]) {
+      result = typeOrTitle;
+    } else {
+      const q = String(typeOrTitle || "").toLowerCase();
+      result = Object.keys(types).find((type) => {
+        const ctor = types[type];
+        const nodeData = ctor?.nodeData || {};
+        const title = nodeData.display_name || nodeData.name || ctor?.title || type;
+        return type.toLowerCase() === q || String(title).toLowerCase() === q;
+      }) || null;
+    }
 
-    const q = String(typeOrTitle || "").toLowerCase();
-    const found = Object.keys(types).find((type) => {
-      const ctor = types[type];
-      const nodeData = ctor?.nodeData || {};
-      const title = nodeData.display_name || nodeData.name || ctor?.title || type;
-      return type.toLowerCase() === q || String(title).toLowerCase() === q;
-    });
-
-    return found || null;
+    if (result) _resolveCache.set(typeOrTitle, result);
+    return result;
   }
+
+  let _normalizedCache = null;
 
   function normalizeNode(item) {
     const realType = resolveRegisteredType(item.type) || resolveRegisteredType(item.title);
@@ -338,7 +352,16 @@ import {
   }
 
   function allRegistryNodes() {
-    return TJ_LAUNCHER_NODES.map(normalizeNode);
+    // 패널을 매번 다시 그릴 때(검색어 입력, 탭 전환)마다 60개+ 레지스트리 항목을
+    // 전부 재정규화하지 않도록 캐시. 항목 자체(TJ_LAUNCHER_NODES)는 정적이라
+    // "missing" 판정이 나중에 뒤집힐 때만(확장이 늦게 로드) 다시 계산하면 된다.
+    if (_normalizedCache) return _normalizedCache;
+    _normalizedCache = TJ_LAUNCHER_NODES.map(normalizeNode);
+    return _normalizedCache;
+  }
+
+  function invalidateRegistryCache() {
+    _normalizedCache = null;
   }
 
   function getRecent() {
@@ -462,6 +485,7 @@ import {
 
   function openPanel() {
     closePanel();
+    invalidateRegistryCache(); // 패널 열 때만 1회 재계산 - 렌더/검색마다는 캐시 재사용
 
     panel = document.createElement("div");
     panel.id = "tj-node-launcher-panel";
