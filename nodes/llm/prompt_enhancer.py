@@ -113,14 +113,33 @@ class TJ_PromptEnhancer:
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": prompt_in},
                 ]
-                if append_no_think:
-                    messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
-                output = llm.create_chat_completion(
+                chat_kwargs = dict(
                     messages=messages,
                     max_tokens=int(max_tokens), temperature=float(temperature), top_p=float(top_p),
                     repeat_penalty=float(repeat_penalty),
-                    stop=["\n\nUser:", "\n\nAssistant:", "Human:", "</think>", "</thinking>", "Thinking Process:"],
+                    # "</think>" 를 stop 에 넣으면 하이브리드 씽킹 모델이 생각 블록을 닫는
+                    # 순간(진짜 답변이 나오기 직전) 생성이 통째로 끊겨서, raw_output 이
+                    # 추론 내용뿐이거나(닫는 태그 직후 곧바로) 빈 문자열이 돼버린다 —
+                    # 실제 브리프는 </think> 뒤에 나오므로 여기서 자르면 안 되고, 생성이
+                    # 끝난 뒤 _strip_thinking_tags/_strip_thinking_process_block 로
+                    # 사후에 걷어내는 쪽(아래 _clean_output)에 맡긴다.
+                    stop=["\n\nUser:", "\n\nAssistant:", "Human:"],
                 )
+                if append_no_think:
+                    # 예전엔 "<think>\n</think>\n" 을 가짜 assistant 턴으로 미리 넣어 씽킹을
+                    # "우회"하려 했는데, create_chat_completion 은 이걸 이미 끝난 턴으로 취급해
+                    # 새 assistant 턴을 또 시작하므로 모델이 다시 생각 블록을 여는 경우가 흔했다.
+                    # ComfyUI-MiniMaxH3-Prompt-Writer(같은 GGUF/llama.cpp 스택, 실제로 결과가
+                    # 잘 나오는 걸로 확인된 구현)는 해킹 없이 Qwen3 계열 공식 Jinja 템플릿이
+                    # 지원하는 enable_thinking 템플릿 변수를 그대로 넘긴다 - 여기도 동일하게
+                    # 맞춘다. 구버전 llama-cpp-python/이 kwarg 를 모르는 채팅 포맷이면
+                    # TypeError 가 나므로, 그때만 재시도 없이 그냥 빼고 보낸다.
+                    chat_kwargs["enable_thinking"] = False
+                try:
+                    output = llm.create_chat_completion(**chat_kwargs)
+                except TypeError:
+                    chat_kwargs.pop("enable_thinking", None)
+                    output = llm.create_chat_completion(**chat_kwargs)
                 raw_output = output["choices"][0]["message"]["content"].strip()
             finally:
                 _free_llm(llm)

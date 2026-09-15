@@ -245,26 +245,41 @@ def _strip_thinking_process_block(text):
 
 
 def _extract_final_paragraph(text):
+    """앞쪽의 '추론처럼 보이는' 문단들만 걷어내고, 그 뒤는 끝까지 전부 유지한다.
+    예전엔 뒤에서부터 조건을 만족하는 문단을 딱 하나만 찾아 그것만 남겼는데, 이러면
+    MiniMax H3 브리프처럼 정답 자체가 여러 문단(오프닝 스타일 + [Shot N]... + Ambient
+    sound: + Music:)인 포맷에서 마지막 한 문단(Ambient sound/Music)만 남고 나머지
+    실제 내용이 통째로 사라졌다. 단일 문단 답변에서는 결과가 이전과 동일하다."""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
     if len(paragraphs) < 2:
         return text
     full_lower = text.lower()
     if sum(1 for m in REASONING_MARKERS if m in full_lower) < 2:
         return text
-    for p in reversed(paragraphs):
+
+    def _looks_like_reasoning(p):
         lower = p.lower().lstrip()
         if any(lower.startswith(m) for m in REASONING_MARKERS):
-            continue
+            return True
         lines = p.split("\n")
         bullets = sum(1 for l in lines if l.strip().startswith(("-", "*", "•", "1.", "2.", "3.")))
         if bullets > 0 and bullets >= len(lines) / 2:
-            continue
+            return True
         if len(p) < 60:
-            continue
+            return True
         if sum(1 for m in REASONING_MARKERS if m in lower) >= 2:
+            return True
+        return False
+
+    start = 0
+    for i, p in enumerate(paragraphs):
+        if _looks_like_reasoning(p):
+            start = i + 1
             continue
-        return p
-    return text
+        break
+
+    kept = paragraphs[start:]
+    return "\n\n".join(kept) if kept else text
 
 
 def _strip_preambles(text):
