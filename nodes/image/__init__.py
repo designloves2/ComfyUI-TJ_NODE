@@ -13,3 +13,4 @@ from .images_compare_sheet_queue_loop import TJ_ImagesCompareSheetQueueLoop
 from .rtx_effects import TJ_NODE_RTXDeblur, TJ_NODE_RTXDenoise, TJ_NODE_RTXVSR
 from .krea2_unet_gguf import TJ_NODE_Krea2UnetLoaderGGUF
 from .krea2_clip_gguf import TJ_NODE_Krea2ClipLoaderGGUF
+from .skin_retouch import TJ_SkinRetouch

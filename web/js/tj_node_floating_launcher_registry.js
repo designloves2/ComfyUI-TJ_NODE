@@ -69,6 +69,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "RTX Deblur (TJ)", type: "TJ_NODE_RTXDeblur" },
   { category: "Image", title: "RTX Denoise (TJ)", type: "RTX Denoise (TJ)" },
   { category: "Image", title: "RTX VSR (TJ)", type: "RTX VSR (TJ)" },
+  { category: "Image", title: "Skin Retouch (TJ)", type: "TJ_SkinRetouch" },
 
   // Preview
   { category: "Preview", title: "Show Any (TJ)", type: "Show Any (TJ)" },

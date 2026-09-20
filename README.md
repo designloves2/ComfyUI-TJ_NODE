@@ -1061,6 +1061,32 @@ NVIDIA VFX SDK 필터 3종을 독립 노드로 뺐습니다. SDK 는 이 셋을 
 
 ---
 
+## ✨ Skin Retouch (TJ)
+
+`VRGDG-SeedVR2-TensorRT-Studio`의 `apply_skin_finishing()` / `apply_skin_microtexture()`
+(순수 PyTorch, 외부 모델/체크포인트 없음)를 ComfyUI IMAGE 텐서로 감싼 얇은 어댑터입니다.
+STUDIO_ONE의 MiniMax H3 Postprocess 체인(Deblur→Denoise→Upscale→Grain→Interpolate→Resize)
+의 Skin Retouch 단계 요청으로 만들어졌습니다.
+
+YCbCr 기반 피부색 우도(likelihood) 마스크로 **피부로 보이는 영역만** 골라 톤/잡티/번들거림/
+피부결을 보정합니다 — 생성형(generative) 모델이 아니라서 정체성이나 얼굴 구조는 안 바뀝니다.
+입력 배치 `[N,H,W,C]`를 `[1,C,N,H,W]`(배치 1개짜리 클립, N 을 프레임 축으로)로 감싸서 원본
+함수를 그대로 돌리고 다시 IMAGE 로 풀어냅니다.
+
+* 입력: `images` (IMAGE)
+* `evenness` — 얼룩덜룩한 중간 스케일 톤 편차 제거(세밀한 피부결은 유지)
+* `smoothing` — 전반적인 피부결 매끄럽게
+* `redness` — 붉은기(자극/홍조) 완화
+* `shine` — 반짝임/기름기(specular highlight) 완화
+* `blemish_mode` — `off`/`subtle`/`strong`, 작은 고대비 잡티 스팟 보정
+* `preserve_marks` — 켜면 임계값을 높여서 점/흉터 같은 큰 마크는 안 건드림
+* `microtexture_strength`(0-3) — 스무딩 후 피부결 디테일을 되살림/강화(0 = 끔)
+* 출력: `images` (IMAGE)
+* 무선: `get_name`(images 입력 수신) + `setnode_name`(출력 발행)
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
 ## ✨ LTX2. TJ Sampler
 
 LTX-2 영상 생성 그래프에서 **8개 노드를 1개로 압축**한 샘플러. 노이즈·가이더·시그마·샘플러

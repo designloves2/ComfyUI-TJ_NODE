@@ -33,6 +33,7 @@ from .nodes.image import (
     TJ_NODE_RTXVSR,
     TJ_NODE_Krea2UnetLoaderGGUF,
     TJ_NODE_Krea2ClipLoaderGGUF,
+    TJ_SkinRetouch,
 )
 
 # ── Utility ───────────────────────────────────────────────────────────────
@@ -71,6 +72,11 @@ from .nodes.video import (
     TJ_H3_Sequencer,
     TJ_H3_Output,
     TJ_H3_OneTakeSampler,
+    TJ_H3_DenoisePath,
+    TJ_H3_PathRecorder,
+    TJ_H3_GuidedResample,
+    TJ_H3_GridRelay,
+    TJ_H3_GridRelayTarget,
     TJ_LTX25ClipLoaderGGUF,
     TJ_VideoResize,
 )
@@ -136,6 +142,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_NODE_RTXVSR":                   TJ_NODE_RTXVSR,
     "TJ_NODE_Krea2UnetLoaderGGUF":      TJ_NODE_Krea2UnetLoaderGGUF,
     "TJ_NODE_Krea2ClipLoaderGGUF":      TJ_NODE_Krea2ClipLoaderGGUF,
+    "TJ_SkinRetouch":                   TJ_SkinRetouch,
 
     # Utility
     "TJ_PromptText":        TJ_PromptText,
@@ -170,6 +177,11 @@ NODE_CLASS_MAPPINGS = {
     "TJ_H3_Sequencer":          TJ_H3_Sequencer,
     "TJ_H3_Output":             TJ_H3_Output,
     "TJ_H3_OneTakeSampler":     TJ_H3_OneTakeSampler,
+    "TJ_H3_DenoisePath":        TJ_H3_DenoisePath,
+    "TJ_H3_PathRecorder":       TJ_H3_PathRecorder,
+    "TJ_H3_GuidedResample":     TJ_H3_GuidedResample,
+    "TJ_H3_GridRelay":          TJ_H3_GridRelay,
+    "TJ_H3_GridRelayTarget":    TJ_H3_GridRelayTarget,
     "TJ_LTX25ClipLoaderGGUF":   TJ_LTX25ClipLoaderGGUF,
     "TJ_VideoResize":           TJ_VideoResize,
 
@@ -231,6 +243,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_NODE_RTXVSR":                   "RTX VSR (TJ)",
     "TJ_NODE_Krea2UnetLoaderGGUF":      "KREA2 UNET GGUF LOADER (TJ)",
     "TJ_NODE_Krea2ClipLoaderGGUF":      "KREA2 CLIP GGUF LOADER (TJ)",
+    "TJ_SkinRetouch":                   "Skin Retouch (TJ)",
 
     # Utility
     "TJ_PromptText":        "Prompt Text (TJ)",
@@ -265,6 +278,11 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_H3_Sequencer":          "MiniMax H3 Sequencer (TJ)",
     "TJ_H3_Output":             "MiniMax H3 Output (TJ)",
     "TJ_H3_OneTakeSampler":     "MiniMax H3 One-Take Sampler (TJ)",
+    "TJ_H3_DenoisePath":        "MiniMax H3 Denoise Path (TJ)",
+    "TJ_H3_PathRecorder":       "MiniMax H3 Path Recorder (TJ)",
+    "TJ_H3_GuidedResample":     "MiniMax H3 Guided Resample (TJ)",
+    "TJ_H3_GridRelay":          "MiniMax H3 Grid Relay (TJ)",
+    "TJ_H3_GridRelayTarget":    "MiniMax H3 Grid Relay Target (TJ)",
     "TJ_LTX25ClipLoaderGGUF":   "LTX25 CLIP GGUF LOADER (TJ)",
     "TJ_VideoResize":           "Video Resize (TJ)",
 
