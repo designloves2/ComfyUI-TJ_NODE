@@ -1,3 +1,4 @@
 {
-  "output_only_instruction": "Output only the final prompt, nothing else. Do not explain. Do not include thinking, analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'."
+  "output_only_instruction": "Output only the final prompt, nothing else. Do not explain. Do not include thinking, analysis, steps, notes, markdown headings, or labels such as 'Thinking Process'.",
+  "language_instruction": "Always write the descriptive prose of the final prompt in English, even if the user's input is written in another language. This does not apply to any text you are instructed to quote or transcribe verbatim — spoken dialogue, lyrics, on-screen text, or other exact-wording fields — which must stay in whatever language that specific instruction calls for."
 }
