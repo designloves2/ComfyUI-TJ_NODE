@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.11.1
+# ✨ TJ_NODE v2.17.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,43 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 🧴 Skin Retouch (TJ) — v2.17.0
+
+`VRGDG-SeedVR2-TensorRT-Studio`의 non-generative 피부 보정 알고리즘(YCbCr 피부색 우도
+마스크)을 ComfyUI IMAGE 텐서로 감싼 어댑터. 톤/잡티/번들거림/피부결만 건드리고 정체성은
+안 바뀝니다. STUDIO_ONE의 MiniMax H3 Postprocess 체인용으로 만들어졌지만 어떤 그래프에도
+독립적으로 배선 가능.
+
+## 🧩 GGUF 프롬프트 라이터 파이프라인 안정화 — v2.16.0
+
+MiniMax H3 브리프 생성이 빈 문자열/토막 문장만 나오던 문제의 근본 원인 4개(경로 해석,
+잘못된 `folder_paths` 폴더 종류 조회, `stop` 리스트의 `</think>`가 실제 답변 직전에
+생성을 끊던 문제, 단일-문단 정리 로직이 다중-문단 포맷을 통째로 잘라먹던 문제)를 STUDIO_ONE과
+함께 추적해서 전부 수정. 자세한 내용은 [CHANGELOG.md](CHANGELOG.md) 2.16.0 참고.
+
+## 🎨 RTX Deblur / RTX Denoise / RTX VSR (TJ) · KREA2 UNET/CLIP GGUF LOADER (TJ) — v2.15.0
+
+NVIDIA VFX SDK 필터 3종을 독립 노드로 분리, Krea 2 GGUF UNET/CLIP 로더 추가(city96/
+ComfyUI-GGUF의 아키텍처 허용 목록에 런타임으로 additively 추가). Floating Launcher에
+ComfyUI Settings on/off 토글도 이때 추가.
+
+## 📐 Video Resize (TJ) — v2.15.1
+
+Long side/Short side/Ratio(센터크롭)/Mega Pixel/Width x Height 5가지 모드의 프레임 리사이즈
+노드. `comfy.utils.common_upscale` 재사용.
+
+## 🧬 LTX25 CLIP GGUF LOADER (TJ) — v2.14.0 / v2.14.1
+
+LTX 2.5 gemma4 텍스트 인코더 GGUF 로딩 지원. v2.14.1에서 실제 4D/3D 텐서 크래시의 진짜
+원인(LTX 2.5 확산 모델 GGUF 쪽 BF16 파라미터 dequant 누락)을 재진단해서 수정.
+
+## 🎥 MiniMax H3 독립 캔버스 노드 세트 — v2.12.0 / v2.13.0
+
+Prompt Queue, Sequencer, Audio Lock, One-Take Sampler, Output, Latent Continuation,
+Save/Load Latent Checkpoint — One-Take latent-continuation 파이프라인을 올인원 스튜디오
+노드 밖에서도 순정 캔버스 배선만으로 쓸 수 있게 분리. 상세는 하단 "MiniMax H3 독립 캔버스
+노드 세트" 섹션 참고.
 
 ## 🔀 Multi Switch (TJ) — v2.11.0
 
@@ -384,7 +421,12 @@ depending on whether an image is connected.
 Prompt Studio 안에서도 쓰이는 두 개별 노드로도 직접 사용 가능합니다.
 
 * **Prompt Enhancer (TJ)** — 텍스트 프롬프트를 `model_format`(자연어/태그/KREA2 Prompt
-  Enhance 등) 규칙에 맞춰 재작성·보정
+  Enhance/`Qwen Image 2.1 (T2I)`/`Qwen Image 2.1 (Edit)` 등) 규칙에 맞춰 재작성·보정.
+  `Qwen Image 2.1 (T2I)`는 관찰형 장문 프롬프트(포지션 문구, 텍스트 필드 정확한 인용,
+  조명 전용 문장 규칙 포함), `Qwen Image 2.1 (Edit)`는 속성 분리 원칙(지시한 것만 강하게
+  바꾸고 나머지는 입력 그대로 보존) + `<image1>`/`<image2>` 다중 입력 참조 방식.
+  모든 포맷의 서술 프로즈는 언어와 무관하게 항상 영어로 나가되, `<d>` 대사·온스크린
+  텍스트처럼 "원문 그대로 옮겨 적으라"는 포맷별 규칙은 예외로 보존됩니다.
 * **Image to Prompt (TJ)** — 이미지를 Vision-LLM으로 분석해 캡션/태그/구조화된 프롬프트로
   변환 (`vision_task` 로 목적 선택: 캡션, SD/Booru 태그, 포즈 분석, 컨텐츠 품질 체크 등)
 
@@ -1161,6 +1203,23 @@ GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에
 
 ---
 
+## ✨ Text Encode Qwen Image 2.1 (TJ)
+
+`Batch to MinimaxH3 (TJ)` + core `Text Encode Qwen Image 2.1` + core `ModelSamplingFlux`
++ core `Qwen Image 2.1 Cache` 4개 노드를 하나로 접은 노드. `Batch to MinimaxH3 (TJ)`는
+`images` 배치 하나를 core 노드의 `image_1..image_16` Autogrow 슬롯에 한 장씩 나눠 넣는
+용도일 뿐이라, 여기서는 그 슬라이싱을 노드 안에서 직접 처리합니다(별도 노드 안 거침).
+
+* 입력: `model`, `clip`, `prompt`, `negative_prompt`, `resolution`(레퍼런스 이미지 리사이즈
+  기준, 0=원본 크기 유지), `max_shift`/`base_shift`/`sampling_width`/`sampling_height`
+  (`ModelSamplingFlux` 그대로), `cache_device`/`cache_dtype`(`Qwen Image 2.1 Cache` 그대로)
+* 선택: `vae`, `images`(배치 — 최대 16장, 한 장씩 `image_N` 슬롯으로 자동 분배)
+* 출력: `model`(캐시 패치 적용됨), `positive`, `negative`, `latent`
+* 무선: `get_name`(images 입력 수신) + `setnode_name`/`Auto Set`(4-출력 embedded Set)
+* CATEGORY: `✨ TJ_Node/Image`
+
+---
+
 ## ✨ Video Resize (TJ)
 
 `AI_One_Studio` 갤러리 전용 웹 "↔ Resize" 후처리 툴을 그래프 노드로 이식한 버전 —
@@ -1200,6 +1259,58 @@ Wan 2.1 SCAIL-2의 **generate + extend 그래프를 한 노드로** 접은 샘�
 * `color_match` / `color_anchor` — 확장 구간에서 색이 밀리는 것을 보정
 * 출력: `images`, `frame_count`
 * CATEGORY: `✨ TJ_Node/Video`
+
+---
+
+## ✨ MiniMax H3 독립 캔버스 노드 세트
+
+MiniMax H3 워크플로우를 올인원 스튜디오 노드(STUDIO_ONE) 밖에서도 순정 ComfyUI 캔버스에서
+그래프 배선만으로 쓸 수 있도록 분리한 노드들. 조건부 로직(레퍼런스 인코딩, 프레임 정렬 등)은
+ComfyUI 공식 `comfy_extras/nodes_minimax_h3.py`를 그대로 재사용합니다.
+
+* **`MiniMax H3 Prompt Queue (TJ)`** — `prompt_count`만큼 `prompt_1..N` 텍스트 필드를 노출하고
+  큐 자동 반복(Start/Stop/Reset)까지 이 노드 하나가 지휘합니다(Queue Loop 흡수). 출력:
+  `prompt`, `index`, `total_count`.
+* **`MiniMax H3 Sequencer (TJ)`** — 모드 스위치(Text/First-Last/Reference) + Audio Lock + One-Take를
+  하나로 통합. Audio Lock 노드와 One-Take 노드를 그냥 체인으로 연결하면 뒤 노드가
+  `noise_mask`를 통째로 덮어써서 앞 노드 마스크가 사라지는 문제가 있는데, video/audio 마스크를
+  하나의 `NestedTensor`로 합쳐 한 번만 기록해서 이 문제를 원천 차단합니다. 입력: `clip`, `vae`,
+  `audio_vae`, `prompt`, `mode`, `width`, `height`, `length`, Audio Lock/One-Take 관련 위젯,
+  first/last frame·reference 이미지/비디오/오디오(optional). 출력: `positive`, `latent`, `audio`,
+  `fps`, `total_frame`, `report`.
+* **`MiniMax H3 One-Take Sampler (TJ)`** — Sequencer + 샘플러 체인(RandomNoise/BasicGuider/
+  KSamplerSelect/BasicScheduler/SamplerCustomAdvanced) + 디코더(타일 옵션 포함) + 클립 간 latent
+  체크포인트 저장/로드를 전부 하나로 묶은 올인원 샘플러. `duration`(초)을 24fps 프레임으로
+  환산 후 H3의 17k+5 그리드에 맞춰 자동 정렬합니다. 모델 패치(SageAttention, FirstBlockCache,
+  SigmaShift 등)는 이 노드 밖에서 `model` 입력에 이미 끝내고 들어와야 합니다. 출력: `images`,
+  `audio`, `fps`, `total_frame`, `report`.
+* **`MiniMax H3 Audio Lock (TJ)`** — 오디오를 원본 그대로 고정(`lock`)하거나 `strength`만큼만
+  유지하고 나머지는 모델이 새로 생성(`remix`). `fit`으로 길이 안 맞을 때 처리(무음 패딩/루프/
+  경고만). `VHS_LoadVideo`의 `AUDIO` 출력(`LazyAudioMap`, dict가 아닌 `Mapping`)도 지원.
+* **`MiniMax H3 Latent Continuation (TJ)`** — 클립 간 latent 레벨 연속성(One-Take). 이전
+  클립의 샘플링된 AV latent 꼬리를 다음 클립의 빈 latent 머리에 복사하고 대응하는
+  `noise_mask`를 만듭니다. `overlap_frames`(기본 39프레임=1.625초, 17k+5 그리드 자동 정렬),
+  `lock_audio`(켜면 오디오 latent 전체를 mask=0으로 고정).
+* **`MiniMax H3 Save Latent Checkpoint (TJ)` / `MiniMax H3 Load Latent Checkpoint (TJ)`** —
+  클립 간 raw AV latent를 `<이름>.h3lat.safetensors`로 왕복 저장/로드. 멀티-클립 relay가
+  클립마다 별도 큐를 넣어(VRAM 확보를 위한 모델 언로드) 인메모리로 다음 클립에 latent를
+  못 넘길 때 이 파일 경로로 이어줍니다. Load 쪽 `index`를 연결하면 `index<=1`(첫 클립)일 때만
+  파일 없어도 에러 없이 넘어갑니다.
+* **`MiniMax H3 Output (TJ)`** — 프레임을 mp4로 인코드하고(오디오 있으면 mux), One-Take 모드에서는
+  같은 `manifest_name`의 모든 클립을 하나의 매니페스트로 묶습니다. 출력: `images`, `video`,
+  `audio`, `fps`, `total_frame`, `report`.
+* CATEGORY: `✨ TJ_Node/Video` (전부)
+
+## ✨ Free Text Encoder VRAM (TJ)
+
+텍스트 인코더 로드 → conditioning 계산 → 디퓨즈 모델 로드/샘플링/디코드 순서로 도는 어떤
+워크플로우든, conditioning이 나온 직후 텍스트 인코더를 강제로 VRAM에서 내리는 범용 유틸리티
+노드입니다(MiniMax H3 전용 아님 — CLIP을 쓰는 어떤 노드 조합에도 사용 가능). ComfyUI의 스마트
+메모리 관리가 모든 조각을 100% 안 내려주는 경우를 명시적으로 보정합니다.
+
+* 입력: `clip`(내릴 텍스트 인코더), `trigger`(아무 타입 — conditioning 등, 그대로 통과시키는 용도)
+* 출력: `trigger`(그대로), `report`(해제 전/후 free VRAM)
+* CATEGORY: `✨ TJ_Node/Utility`
 
 ---
 
@@ -1625,6 +1736,24 @@ Recommended Usage:
 * Metadata → JSON
 * Wireless Type Correction
 * Boolean Workflow Control
+
+---
+
+## ✨ TJ_NODE Floating Launcher
+
+캔버스에 떠 있는 "TJ" 드래그 가능 버튼으로, 클릭하면 패널이 열려 TJ_NODE(+설치돼 있으면
+ComfyUI-TJ_NODE_STUDIO_ONE의 올인원 생성 패널들)의 노드를 카테고리/검색으로 찾아 클릭 한 번에
+캔버스에 배치할 수 있습니다. Wireless/Utility/Image/Preview/Video/LLM/LoRA/Sampling/Generator
+카테고리, 최근 사용 5개, `Set/Get/Multi Get` 퀵 버튼 포함.
+
+* **on/off 토글** — Settings ⚙️ → **TJ_NODE → Tools → Floating Launcher** →
+  "Show TJ_NODE floating launcher" (기본 켜짐). 꺼도 배치 리스너 자체는 항상 설치돼 있어
+  버튼만 없을 뿐 아무 부작용 없음.
+* 등록되지 않은(설치 안 된 팩의) 노드는 목록에 회색으로 "missing"으로 표시됩니다.
+* 등록된 노드 타입 확인 결과는 캐시됩니다 — 레지스트리가 60개+로 늘면서 패널 열기/검색/탭
+  전환마다 매번 다시 스캔하면 느려지던 문제를 고쳤습니다(패널을 다시 열 때만 재확인).
+* 등록 목록 파일: `web/js/tj_node_floating_launcher_registry.js` (노드 추가/이동은 이 파일만
+  편집하면 됨)
 
 ---
 

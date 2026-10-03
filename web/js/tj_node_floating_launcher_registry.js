@@ -70,6 +70,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "RTX Denoise (TJ)", type: "RTX Denoise (TJ)" },
   { category: "Image", title: "RTX VSR (TJ)", type: "RTX VSR (TJ)" },
   { category: "Image", title: "Skin Retouch (TJ)", type: "TJ_SkinRetouch" },
+  { category: "Image", title: "Text Encode Qwen Image 2.1 (TJ)", type: "TJ_TextEncodeQwenImage21" },
 
   // Preview
   { category: "Preview", title: "Show Any (TJ)", type: "Show Any (TJ)" },

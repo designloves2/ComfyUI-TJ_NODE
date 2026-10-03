@@ -34,6 +34,7 @@ from .nodes.image import (
     TJ_NODE_Krea2UnetLoaderGGUF,
     TJ_NODE_Krea2ClipLoaderGGUF,
     TJ_SkinRetouch,
+    TJ_TextEncodeQwenImage21,
 )
 
 # ── Utility ───────────────────────────────────────────────────────────────
@@ -143,6 +144,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_NODE_Krea2UnetLoaderGGUF":      TJ_NODE_Krea2UnetLoaderGGUF,
     "TJ_NODE_Krea2ClipLoaderGGUF":      TJ_NODE_Krea2ClipLoaderGGUF,
     "TJ_SkinRetouch":                   TJ_SkinRetouch,
+    "TJ_TextEncodeQwenImage21":         TJ_TextEncodeQwenImage21,
 
     # Utility
     "TJ_PromptText":        TJ_PromptText,
@@ -244,6 +246,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_NODE_Krea2UnetLoaderGGUF":      "KREA2 UNET GGUF LOADER (TJ)",
     "TJ_NODE_Krea2ClipLoaderGGUF":      "KREA2 CLIP GGUF LOADER (TJ)",
     "TJ_SkinRetouch":                   "Skin Retouch (TJ)",
+    "TJ_TextEncodeQwenImage21":         "Text Encode Qwen Image 2.1 (TJ)",
 
     # Utility
     "TJ_PromptText":        "Prompt Text (TJ)",

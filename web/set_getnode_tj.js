@@ -27,7 +27,8 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_LTX25ClipLoaderGGUF",
     "TJ_NODE_Krea2UnetLoaderGGUF",
     "TJ_NODE_Krea2ClipLoaderGGUF",
-    "TJ_VideoResize"
+    "TJ_VideoResize",
+    "TJ_TextEncodeQwenImage21"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";

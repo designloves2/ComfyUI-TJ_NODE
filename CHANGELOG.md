@@ -3,6 +3,205 @@
 이 프로젝트의 주요 변경 사항을 기록합니다.
 (Keep a Changelog 형식 / 날짜: YYYY-MM-DD)
 ---
+## [Unreleased]
+
+### [Added]
+
+* **`Text Encode Qwen Image 2.1 (TJ)`.** `Batch to MinimaxH3 (TJ)` +
+  `ModelSamplingFlux` + `Qwen Image 2.1 Cache` + `Text Encode Qwen Image 2.1`
+  4-노드 서브그라프를 하나로 접은 노드. `ModelSamplingFlux`/`Qwen Image 2.1
+  Cache`의 모든 위젯(범위/기본값/콤보 옵션)은 하드코딩 없이 코어 노드
+  클래스에서 import 시점에 그대로 가져와 구성. 이미지 배치 → 레퍼런스 슬롯
+  분배 로직은 `Batch to MinimaxH3 (TJ)`의 배치 정규화 알고리즘을 그대로
+  재사용하며, 빈 슬롯은 검정 이미지 대신 bypass(미입력) 처리.
+* **`Qwen Image 2.1 (T2I)` / `Qwen Image 2.1 (Edit)` model format.** Prompt
+  Enhancer / Prompt Studio / Image to Prompt에 T2I용(관찰형 장문 프롬프트,
+  포지션 문구·텍스트 필드·조명 문장 규칙 포함)과 편집용(속성 분리 원칙 —
+  지시한 것만 강하게 바꾸고 나머지는 입력 그대로 보존, `<image1>`/`<image2>`
+  다중 입력 참조) 두 포맷을 추가.
+* **`build_layered_system_prompt()` — 언어 지시문 추가.** 모든 `model_format`
+  출력의 서술 프로즈(prose)는 사용자 입력 언어와 무관하게 항상 영어로
+  쓰도록 강제. `<d>` 대사, 온스크린 텍스트 등 "원문 그대로 옮겨 적으라"는
+  포맷별 규칙(MiniMax H3, Ideogram4, Qwen Image 2.1 Edit 등)과 충돌하지
+  않도록, verbatim 인용 필드는 이 지시에서 명시적으로 예외 처리.
+
+---
+## [2.17.0] - 2026-09-21
+
+### [Added]
+
+* **`Skin Retouch (TJ)`.** `VRGDG-SeedVR2-TensorRT-Studio`의
+  `apply_skin_finishing()`/`apply_skin_microtexture()`(순수 PyTorch, 외부
+  모델 없음)를 ComfyUI IMAGE 텐서로 감싼 어댑터. YCbCr 피부색 우도 마스크로
+  피부 영역만 골라 톤/잡티/번들거림/피부결을 보정 — non-generative라 정체성은
+  안 바뀜. STUDIO_ONE의 MiniMax H3 Postprocess 체인 Skin Retouch 단계용.
+  `evenness`/`smoothing`/`redness`/`shine`(0-1), `blemish_mode`(off/subtle/
+  strong), `preserve_marks`, `microtexture_strength`(0-3).
+
+---
+## [2.16.0] - 2026-09-21
+
+### [Fixed]
+
+* **GGUF 프롬프트 라이터 파이프라인 — 4단계 버그 체인.** STUDIO_ONE과 함께
+  MiniMax H3 브리프 생성이 매번 빈 문자열/토막 문장만 나오는 문제를 추적한
+  결과:
+  1. `_resolve_text_encoder_path()` — `folder_paths.get_full_path()`와 flat
+     join이 둘 다 실패하면(서브폴더 없이 basename만 전달된 경우) 등록된 모든
+     `text_encoders` root를 basename 기준으로 재귀 검색하는 폴백 추가.
+  2. `_text_encoder_ggufs()`/`_text_encoder_mmproj_options()` — 코어
+     `"text_encoders"` 폴더 종류는 `.gguf`를 지원 확장자로 등록해 두지 않아
+     항상 0개만 리턴했다. city96/ComfyUI-GGUF가 등록하는 `"clip_gguf"` 키를
+     우선 조회하도록 교체(없으면 루트 직접 walk 폴백). 스캔 결과와 무관하게
+     `DEFAULT_GGUF_MODEL`을 무조건 목록 맨 앞에 끼워 넣던 버그도 수정(실제
+     있을 때만 앞으로).
+  3. `create_chat_completion()`의 `stop` 리스트에 있던 `"</think>"` —
+     하이브리드 씽킹 모델이 생각 블록을 닫는 순간 생성이 끊겨 실제 답변이
+     나올 기회 자체가 없었다. 제거하고, 이 llama-cpp-python 빌드의 네이티브
+     `reasoning_budget=0`(생각 블록을 토큰 소비 없이 즉시 강제로 닫음)으로
+     교체.
+  4. `_clean_output()`이 무조건 돌리던 `_extract_after_final_marker()`/
+     `_extract_final_paragraph()` — "추론 몇 줄 + 답 한 문단"을 가정한
+     단일-문단 정리 단계라, MiniMax H3처럼 정답 자체가 여러 문단(오프닝
+     스타일+[Shot N]+Ambient sound:+Music:)인 포맷에서 마지막 한 문단만
+     남기고 나머지를 통째로 날렸다. `preserve_paragraphs` 플래그를 추가해
+     H3 포맷에서는 이 단계를 스킵하도록 배선.
+* **`Minimax H3 (Video)` 프롬프트 규칙 강화.** ALWAYS-TRUE RULES에 우선순위
+  규칙(명시적 지시 > 레퍼런스 역할 > 기본값)과 불필요한 창작 금지 규칙 추가,
+  full-reference 시나리오에 레퍼런스 역할 배타성 + 오디오 환각 방지 규칙
+  추가, 단어수 규칙에 패딩 금지 문구, 출력 규칙에 메타 언급 금지 추가.
+* **Floating Launcher — 노드 존재 확인 캐싱.** `resolveRegisteredType()`가
+  등록된 노드 타입 전체(수백 개)를 매 렌더(검색어 입력, 탭 전환, 패널 열기)
+  마다 다시 스캔하고 있었다. 레지스트리가 60개+로 늘면서 체감 지연이 커져서,
+  성공한 타입 매칭 결과와 정규화된 목록을 캐시하고 패널을 다시 열 때만
+  무효화하도록 변경.
+
+---
+## [2.15.1] - 2026-09-15
+
+### [Added]
+
+* **`Video Resize (TJ)`.** STUDIO_ONE의 갤러리 전용 웹 "↔ Resize" 후처리
+  툴을 그래프 노드로 이식. Long side/Short side/Ratio(센터크롭)/Mega
+  Pixel/Width x Height(crop 또는 stretch) 5가지 모드, `comfy.utils.
+  common_upscale` 재사용. TJ_NODE 컨벤션(무선 get/set, 런처, README) 맞춰
+  보강.
+
+### [Fixed]
+
+* **`MiniMax H3 Audio Lock (TJ)` — `VHS_LoadVideo`의 AUDIO 출력(`LazyAudioMap`,
+  dict가 아니라 `collections.abc.Mapping`)을 못 읽던 문제.** `_encode_audio()`가
+  `isinstance(audio, dict)`만 확인해서 항상 "형식이 올바르지 않습니다" 에러가
+  났다. dict가 아니면서 `Mapping`이면 `dict(audio)`로 변환하도록 수정.
+
+---
+## [2.15.0] - 2026-09-13
+
+### [Added]
+
+* **`RTX Deblur (TJ)` / `RTX Denoise (TJ)` / `RTX VSR (TJ)`.**
+  STUDIO_ONE 전용이던 NVIDIA VFX SDK 필터 3종을 독립 노드로 분리. Deblur/
+  Denoise는 해상도 불변, VSR만 배율/목표 해상도로 실제 업스케일. 레지스트리
+  키를 `TJ_NODE_RTX*`(기존 `TJ_RTX*`가 아님)로 지어 STUDIO_ONE의 동일 이름
+  노드와 `NODE_CLASS_MAPPINGS` 충돌을 피함 — 이후 모든 신규 TJ_NODE 키는
+  `TJ_NODE_` 접두사 컨벤션으로 통일.
+* **`KREA2 UNET GGUF LOADER (TJ)` / `KREA2 CLIP GGUF LOADER (TJ)`.**
+  LTX25 CLIP GGUF LOADER와 같은 종류의 문제 — city96/ComfyUI-GGUF의
+  아키텍처 허용 목록에 `krea2`가 없어 로드 전에 거부되던 것을 런타임에
+  additively 추가. CLIP 로더는 파일이 실제로 선언한 `general.architecture`
+  값을 읽어 그 값만 허용 목록에 추가(하드코딩 안 함).
+* **Floating Launcher — ComfyUI Settings 토글.** Settings > TJ_NODE > Tools
+  > "Show TJ_NODE floating launcher" (기본 켜짐, DENO 팩과 동일 패턴).
+
+### [Fixed]
+
+* **노드 크기가 새로고침/워크플로우 로드 시 사용자가 늘려둔 크기를 무시하고
+  초기 크기로 되돌아가던 문제.** Multi Image Loader, MiniMax H3 Sequencer/
+  One-Take Sampler/Audio Lock — `onConfigure`/redraw 경로에서 `node.setSize`가
+  현재(복원된) 크기와 비교 없이 매번 새로 계산한 값으로 덮어썼다. 폭에 이미
+  있던 `Math.max` 보존 로직을 높이에도 동일하게 적용.
+* **Prompt Text (TJ) 크기 유실.** 자동저장 직전 레이아웃 패스가 `node.size`를
+  일시적으로 축소시키는 문제 — 드래그로 실제 리사이즈했을 때만
+  `properties.tj_saved_size`에 기록하고, `onConfigure`에서 지연 재적용.
+* **Save & Preview Image (TJ) — 심각한 stale-cache 버그.** 노드를 복제하면
+  `tj_snapshot_detached` 플래그가 한 번 세팅된 뒤로 실제 실행 결과를 영구히
+  무시하고 예전 스냅샷만 계속 보여줬다. `onExecuted`가 진짜 실행 메시지를
+  항상 우선 처리하도록 수정, 복제 감지(`owner_node_id`)를 `onDrawForeground`
+  에서도 매 프레임 재확인하도록 보강(타이밍 레이스 대응).
+* **Save & Preview Video (TJ) — 복제 감지 자체가 아예 없었음.** Image 노드와
+  동일한 `owner_node_id` 패턴을 포팅.
+
+---
+## [2.14.1] - 2026-09-12
+
+### [Fixed]
+
+* **`LTX25 CLIP GGUF LOADER (TJ)` — 실제 원인 재진단 및 수정.**
+  STUDIO_ONE이 보고한 4D/3D 텐서 크래시("Tensors must have same number of
+  dimensions: got 4 and 3")가 gemma4 텍스트 인코더 GGUF 쪽 문제로
+  오진단됐었음. 실제 제작자 패치(`ComfyUI-GGUF-ltx25-gemma4.patch`) 확인
+  결과, 진짜 원인은 **LTX 2.5 확산 모델 GGUF**(`arch=ltxv`) 쪽 — raw BF16
+  파라미터 3종(`audio/video_embeddings_connector.learnable_registers`,
+  `keyframes_abs_pos_embedding`)이 GGMLOps를 안 거쳐서 dequant가 안 된 채로
+  남아 embeddings connector의 `torch.cat`에서 rank mismatch로 죽었음.
+  `gguf_sd_loader` 자체를 래핑해 강제 dequant하도록 수정, city96 `loader`/
+  `nodes` 두 모듈 바인딩 모두에 재적용. 오진단 당시 추가했던 방어용
+  `force_passthrough_gguf` 위젯은 제거(정상 케이스를 막고 있었음).
+
+---
+## [2.14.0] - 2026-09-11
+
+### [Added]
+
+* **`LTX25 CLIP GGUF LOADER (TJ)`.** city96/ComfyUI-GGUF가 `general.
+  architecture=gemma4`를 거부(`TXT_ARCH_LIST`에 없음)하는 문제 — 런타임에
+  `gemma4`를 additively 추가(`set.add`, 비파괴적, GGUF 팩 업데이트에도
+  안 지워짐)해서 LTX 2.5 gemma4 텍스트 인코더 GGUF를 로드 가능하게 함.
+  출력은 순정 CLIP(`type=ltxv`)이라 코어 `CLIPLoader`를 그대로 대체.
+
+---
+## [2.13.1] - 2026-09-05
+
+### [Fixed]
+
+* **`/tj_node/download_url` — SSRF 방어 강화.** 리다이렉트를 이용한
+  프라이빗 IP 사전 검사 우회를 막는 `HTTPRedirectHandler` 추가, 다운로드
+  크기 상한(64MB) 추가.
+
+---
+## [2.13.0] - 2026-09-02
+
+### [Added]
+
+* **MiniMax H3 독립 캔버스 노드 세트.** One-Take latent-continuation
+  파이프라인을 올인원 스튜디오 노드 밖에서도 순수 그래프 배선만으로 쓸 수
+  있게 분리 — `MiniMax H3 Prompt Queue (TJ)`, `MiniMax H3 Sequencer (TJ)`,
+  `MiniMax H3 Audio Lock (TJ)`, `MiniMax H3 One-Take Sampler (TJ)`(듀레이션
+  ↔ 프레임수 변환 헬퍼 + 선택적 tiled decode 내장), `MiniMax H3 Output (TJ)`.
+* **`Free Text Encoder VRAM (TJ)`.** 유틸리티 노드.
+* 여러 DOM 위젯이 낮은 줌/캔버스 전용 전환 후 안 숨는 문제, Save/Load Latent
+  Checkpoint의 Windows mmap 파일 락, 체크포인트 로드/저장이 큐 재실행 간
+  캐싱되던 문제(`IS_CHANGED` 누락), One-Take mask merge의 해상도 불일치
+  가드 등 수정.
+
+---
+## [2.12.0] - 2026-08-28
+
+### [Added]
+
+* **`MiniMax H3 Latent Continuation (TJ)` + `Save/Load Latent Checkpoint
+  (TJ)`.** MiniMax H3 클립 간 latent 레벨 연속성(One-Take) 지원 — 이전
+  클립의 샘플링된 AV latent 꼬리를 다음 클립의 빈 latent 머리에 복사하고
+  대응하는 `noise_mask`를 만든다. `NestedTensor.__getitem__`이 video/audio
+  두 스트림에 같은 인덱스를 적용해버리는 함정과, 마스크 shape 불일치가
+  `reshape_mask`에서 trilinear 보간되는 함정을 각각 unbind-후-개별-슬라이스,
+  스트림별 정확한 T/H/W로 마스크 생성해서 회피. 체크포인트 노드는 클립 간
+  raw latent를 safetensors 파일로 왕복 — STUDIO_ONE의 relay가 클립마다
+  별도 큐를 넣어(VRAM 확보 위해 모델 언로드) 인메모리 경로가 없기 때문.
+  실측: 두 클립 체이닝 후 겹침 구간이 float32 노이즈 수준으로 일치
+  (video 4.77e-7, audio 1.19e-7), 비겹침 구간은 실제로 다름을 확인.
+
+---
 ## [2.11.1] - 2026-08-14
 
 ### [Added]
