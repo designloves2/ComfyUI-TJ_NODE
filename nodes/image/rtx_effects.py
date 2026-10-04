@@ -158,9 +158,12 @@ class TJ_NODE_RTXDenoise:
 
 
 class TJ_NODE_RTXVSR:
-    """NVIDIA VFX Video Super Resolution — upscale by a factor or to exact dimensions."""
+    """NVIDIA VFX Video Super Resolution — upscale by a factor, to exact dimensions, or to a
+    short / long edge (the other side follows the source's aspect ratio)."""
 
-    _RESIZE_TYPES = ("scale by multiplier", "target dimensions")
+    _RESIZE_TYPES = ("scale by multiplier", "target dimensions", "short edge", "long edge",
+                     "target dimensions (crop to fit)")
+    _CROP_ANCHORS = ("center", "left", "right", "top", "bottom")
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -177,6 +180,10 @@ class TJ_NODE_RTXVSR:
                 "quality": (list(_LEVELS), {"default": "ULTRA"}),
             },
             "optional": {
+                "edge": ("INT", {"default": 1080, "min": 8, "max": 8192, "step": 8,
+                    "tooltip": "Pixels of the short or long side. Used when resize_type = short edge / long edge."}),
+                "crop_anchor": (list(cls._CROP_ANCHORS), {"default": "center",
+                    "tooltip": "Which part is kept when resize_type = target dimensions (crop to fit)."}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "setnode_name": ("STRING", {"default": "RTX_VSR"}),
             },
@@ -192,11 +199,35 @@ class TJ_NODE_RTXVSR:
         return True
 
     def run(self, images, resize_type="scale by multiplier", scale=2.0, width=1920,
-             height=1080, quality="ULTRA", get_name="(none)", setnode_name="RTX_VSR"):
+             height=1080, quality="ULTRA", edge=1080, crop_anchor="center",
+             get_name="(none)", setnode_name="RTX_VSR"):
         nvvfx = _require_nvvfx("RTX VSR (TJ)")
         b, h, w, c = images.shape
+        snap = lambda v: max(8, round(v / 8) * 8)
         if resize_type == "target dimensions":
             out_w, out_h = int(width), int(height)
+        elif resize_type in ("short edge", "long edge"):
+            # the given side is `edge`; the other follows the source's own aspect ratio
+            short, long = min(w, h), max(w, h)
+            use_short = resize_type == "short edge"
+            other = edge * (long / short) if use_short else edge * (short / long)
+            w_is_short = w <= h
+            if use_short:
+                out_w, out_h = (edge, snap(other)) if w_is_short else (snap(other), edge)
+            else:
+                out_w, out_h = (snap(other), edge) if w_is_short else (edge, snap(other))
+        elif resize_type == "target dimensions (crop to fit)":
+            # crop the source to the target's aspect first, so nothing is stretched
+            out_w, out_h = int(width), int(height)
+            target_aspect, src_aspect = out_w / out_h, w / h
+            crop_w, crop_h = w, h
+            if src_aspect > target_aspect:
+                crop_w = round(h * target_aspect)
+            elif src_aspect < target_aspect:
+                crop_h = round(w / target_aspect)
+            x = 0 if crop_anchor == "left" else (w - crop_w if crop_anchor == "right" else (w - crop_w) // 2)
+            y = 0 if crop_anchor == "top" else (h - crop_h if crop_anchor == "bottom" else (h - crop_h) // 2)
+            images = images[:, y:y + crop_h, x:x + crop_w, :]
         else:
             out_w, out_h = int(w * scale), int(h * scale)
 
