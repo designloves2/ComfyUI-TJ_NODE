@@ -7,6 +7,17 @@
 
 ### [Added]
 
+* **Reference asset library + `MiniMax H3 Reference to Video (TJ)`.** 레퍼런스 이미지/영상/오디오를
+  라이브러리 폴더(카테고리별 하위 폴더)로 **복사**해 등록하고 SQLite(`index.sqlite`)에는 루트
+  기준 상대 경로만 저장 — 원본 경로가 사라지거나 바뀌어도 ID로 계속 재사용된다. 노드 3개:
+  `Reference Asset Register (TJ)`(이미지/오디오/비디오 등록, 이미지 배치를 세트로 묶기),
+  `Reference Project Save (TJ)`(프로젝트 만들기), `MiniMax H3 Reference to Video (TJ)`(프로젝트 또는
+  에셋 슬롯 + 프롬프트의 `@12`/`@별칭` → `<Picture i>`/`<Video k>`/`<Audio j>` 치환 →
+  매칭 검수(`off|warn|strict`) → 코어 `MiniMax H3 Reference to Video` 인코딩을 한 노드로,
+  출력 positive/latent/snapshot/report). 같은 인물의 여러 장 세트는 영상 1개(`<Video k>`) 또는
+  개별 이미지로 전달. VAE 인코딩 결과를 라이브러리 캐시에 보관해 같은 레퍼런스 재사용 시
+  인코딩을 건너뜀. REST: `/tj_node/reflib/*`(목록/등록/이동/삭제/썸네일/프로젝트/resolve/
+  번들 export·import/누락·해시 점검). 설명: `REFERENCE_LIBRARY.md`.
 * **`Text Encode Qwen Image 2.1 (TJ)`.** `Batch to MinimaxH3 (TJ)` +
   `ModelSamplingFlux` + `Qwen Image 2.1 Cache` + `Text Encode Qwen Image 2.1`
   4-노드 서브그라프를 하나로 접은 노드. `ModelSamplingFlux`/`Qwen Image 2.1

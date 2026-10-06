@@ -61,6 +61,9 @@ from .nodes.utility import (
 )
 from .nodes.utility.go_stop_tj import TJ_GoStop
 
+# ── Reference asset library ───────────────────────────────────────────────
+from .nodes.reflib import TJ_RefAssetRegister, TJ_RefProjectSave, TJ_RefAssetBrowser, TJ_H3Reference, TJ_H3ImageToVideo
+
 # ── Video ─────────────────────────────────────────────────────────────────
 from .nodes.video import (
     TJ_SaveAndPreviewVideo,
@@ -168,6 +171,13 @@ NODE_CLASS_MAPPINGS = {
     "TJ_PromptDBLoader": TJ_PromptDBLoader,
     "TJ_PromptDBBridge": TJ_PromptDBBridge,
 
+    # Reference asset library
+    "TJ_RefAssetRegister": TJ_RefAssetRegister,
+    "TJ_RefProjectSave":   TJ_RefProjectSave,
+    "TJ_RefAssetBrowser":  TJ_RefAssetBrowser,
+    "TJ_H3Reference":      TJ_H3Reference,
+    "TJ_H3ImageToVideo":   TJ_H3ImageToVideo,
+
     # Video
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
     "TJ_LTX2Sampler":           TJ_LTX2Sampler,
@@ -269,6 +279,13 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_PromptDBSave": "PromptDBSave(TJ)",
     "TJ_PromptDBLoader": "PromptDBLoader(TJ)",
     "TJ_PromptDBBridge": "PromptDBBridge(TJ)",
+
+    # Reference asset library
+    "TJ_RefAssetRegister": "Reference Asset Register (TJ)",
+    "TJ_RefProjectSave":   "Reference Project Save (TJ)",
+    "TJ_RefAssetBrowser":  "Reference Asset Browser (TJ)",
+    "TJ_H3Reference":      "MiniMax H3 Reference to Video (TJ)",
+    "TJ_H3ImageToVideo":   "MiniMax H3 Image to Video (TJ)",
 
     # Video
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",

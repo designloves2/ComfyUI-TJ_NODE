@@ -1220,6 +1220,23 @@ GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에
 
 ---
 
+## ✨ Reference Asset Library (TJ) — 레퍼런스 에셋 라이브러리
+
+MiniMax H3 레퍼런스(이미지 / 영상 / 오디오)를 **한 번 등록해 두고 ID로 재사용**하는 라이브러리. 파일을 라이브러리
+폴더(카테고리별 하위 폴더)로 **복사**하고 SQLite에는 상대 경로만 저장하므로, 원본이 사라지거나 경로가 바뀌어도 ID로 계속
+불러옵니다. 자세한 설명: [`REFERENCE_LIBRARY.md`](REFERENCE_LIBRARY.md). 예제: Workflows 패널의 `TJ_RefLib_에셋라이브러리_최종`.
+
+* `Reference Asset Register (TJ)` — 이미지/오디오/영상 등록(이미지 배치를 세트로 묶기 가능)
+* `Reference Project Save (TJ)` — 등록된 에셋을 콤보로 골라 프로젝트로 저장(슬롯이 하나씩 열림)
+* `Reference Asset Browser (TJ)` — 카테고리 | 에셋 | 뷰어 3단 화면: 미리보기, 이름·카테고리 수정, 교체, 삭제
+* `MiniMax H3 Reference to Video (TJ)` — 프로젝트 모드(전체 로드) / 에셋 모드(콤보). 프롬프트의 `@12`·`@별칭`을
+  `<Picture i>`/`<Video k>`/`<Audio j>`로 자동 치환(`@` 입력 시 목록 자동완성), 매칭 검수(`off|warn|strict`),
+  `compress_refs`(토큰 1/4) / `encode_cache`(VAE 인코딩 캐시) 스위치
+* `MiniMax H3 Image to Video (TJ)` — 첫/마지막 프레임을 이미지 연결 또는 에셋 콤보로 지정
+* CATEGORY: `✨ TJ_Node/Reference`
+
+---
+
 ## ✨ Video Resize (TJ)
 
 `AI_One_Studio` 갤러리 전용 웹 "↔ Resize" 후처리 툴을 그래프 노드로 이식한 버전 —

@@ -6,6 +6,7 @@ export const TJ_LAUNCHER_CATEGORIES = [
   "Wireless",
   "Utility",
   "Image",
+  "Reference",
   "Preview",
   "Video",
   "LLM",
@@ -71,6 +72,13 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "RTX VSR (TJ)", type: "RTX VSR (TJ)" },
   { category: "Image", title: "Skin Retouch (TJ)", type: "TJ_SkinRetouch" },
   { category: "Image", title: "Text Encode Qwen Image 2.1 (TJ)", type: "TJ_TextEncodeQwenImage21" },
+
+  // Reference
+  { category: "Reference", title: "MiniMax H3 Reference to Video (TJ)", type: "TJ_H3Reference" },
+  { category: "Reference", title: "MiniMax H3 Image to Video (TJ)", type: "TJ_H3ImageToVideo" },
+  { category: "Reference", title: "Reference Asset Register (TJ)", type: "TJ_RefAssetRegister" },
+  { category: "Reference", title: "Reference Project Save (TJ)", type: "TJ_RefProjectSave" },
+  { category: "Reference", title: "Reference Asset Browser (TJ)", type: "TJ_RefAssetBrowser" },
 
   // Preview
   { category: "Preview", title: "Show Any (TJ)", type: "Show Any (TJ)" },
