@@ -19,7 +19,7 @@ const css = `
 .tjrb button:hover{background:#3a3a3a}
 .tjrb button.danger{border-color:#8a3a3a;color:#f0a0a0}
 .tjrb button.armed{background:#8a2a2a;color:#fff}
-.tjrb .cols{display:grid;grid-template-columns:130px 1fr 1.2fr;gap:6px;flex:1;min-height:0}
+.tjrb .cols{display:grid;grid-template-columns:130px minmax(0,1fr) minmax(0,1.2fr);gap:6px;flex:1;min-height:0}
 .tjrb .col{border:1px solid #333;border-radius:6px;background:#161616;display:flex;flex-direction:column;min-height:0}
 .tjrb .head{padding:4px 8px;background:#242424;border-bottom:1px solid #333;font-weight:600;color:#9ab}
 .tjrb .scroll{overflow:auto;flex:1;min-height:0;padding:4px}
@@ -46,6 +46,18 @@ const css = `
 .tjrb .trim .row button{padding:3px 6px;white-space:nowrap}
 .tjrb .trim input[type=number]{width:58px;padding:3px 4px}
 .tjrb audio{height:30px}
+.tjrb .tabs{display:flex;gap:2px;flex:0 0 130px;width:130px}
+.tjrb .tabs button{flex:1;min-width:0;border-radius:4px 4px 0 0;padding:5px 0;text-align:center}
+.tjrb .tabs button.on{background:#2f4a66;color:#fff;border-color:#5aa0e0}
+.tjrb .prj{padding:6px 8px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;gap:6px}
+.tjrb .prj:hover{background:#262626}.tjrb .prj.on{background:#2f4a66;color:#fff}
+.tjrb .item{display:grid;grid-template-columns:38px 1fr;gap:6px;align-items:center;padding:4px;border:1px solid #333;border-radius:6px;background:#1e1e1e;margin-bottom:4px}
+.tjrb .item img{width:38px;height:38px;object-fit:cover;border-radius:4px;background:#000}
+.tjrb .item .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tjrb .item .ctl{display:flex;gap:4px;align-items:center;margin-top:2px}
+.tjrb .item .ctl input{flex:1;min-width:0}
+.tjrb .item .ctl button{padding:1px 7px}
+.tjrb .card.in::after{content:"✓";position:absolute;right:3px;bottom:20px;background:#2f8f4f;color:#fff;border-radius:50%;width:16px;height:16px;text-align:center;line-height:16px;font-size:11px}
 .tjrb .bottom{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:6px;border-top:1px solid #333}
 .tjrb .msg{min-height:16px;color:#9c9}.tjrb .msg.err{color:#f09090}
 `;
@@ -71,29 +83,34 @@ const post = (path, body) =>
 
 function build(node) {
     if (!document.getElementById("tjrb-style")) document.head.append(el("style", { id: "tjrb-style", textContent: css }));
-    const state = { assets: [], category: "all", query: "", id: null, detail: null, armed: null };
-    const selW = node.widgets.find((w) => w.name === "selected");
-    if (selW) { selW.type = "hidden"; selW.hidden = true; selW.computeSize = () => [0, -4]; }
+    const state = { assets: [], category: "all", query: "", id: null, detail: null, armed: null,
+        tab: "assets", projects: [], draft: null, pArmed: false };
+    const hideW = (w) => { if (w) { w.type = "hidden"; w.hidden = true; w.computeSize = () => [0, -4]; } return w; };
+    const selW = hideW(node.widgets.find((w) => w.name === "selected"));
+    const selP = hideW(node.widgets.find((w) => w.name === "selected_project"));
 
-    const search = el("input", { placeholder: "검색: 이름 / 태그 / ID", oninput: () => { state.query = search.value.toLowerCase(); drawList(); } });
+    const search = el("input", { placeholder: "Search: name / tag / ID", oninput: () => { state.query = search.value.toLowerCase(); state.tab === "assets" ? drawList() : drawLibrary(); } });
     const fileAdd = el("input", { type: "file", multiple: true, style: "display:none", onchange: () => upload(fileAdd.files) });
-    const addBtn = el("button", { textContent: "+ 등록", onclick: () => fileAdd.click() });
-    const refreshBtn = el("button", { textContent: "새로고침", onclick: () => reload() });
+    const addBtn = el("button", { textContent: "+ Add", onclick: () => fileAdd.click() });
+    const refreshBtn = el("button", { textContent: "Refresh", onclick: () => reload() });
     const catBox = el("div", { class: "scroll" });
     const listBox = el("div", { class: "scroll" });
     const viewBox = el("div", { class: "scroll" });
     const msg = el("div", { class: "msg" });
     const fileRep = el("input", { type: "file", style: "display:none", onchange: () => replace(fileRep.files[0]) });
-    const btnReplace = el("button", { textContent: "교체", onclick: () => fileRep.click() });
-    const btnSave = el("button", { textContent: "저장", onclick: () => save() });
-    const btnDelete = el("button", { class: "danger", textContent: "삭제", onclick: () => remove() });
+    const btnReplace = el("button", { textContent: "Replace", onclick: () => (state.tab === "assets" ? fileRep.click() : newProject()) });
+    const btnSave = el("button", { textContent: "Save", onclick: () => (state.tab === "assets" ? save() : saveProject()) });
+    const btnDelete = el("button", { class: "danger", textContent: "Delete", onclick: () => (state.tab === "assets" ? remove() : removeProject()) });
+    const tabAssets = el("button", { textContent: "Assets", onclick: () => setTab("assets") });
+    const tabProjects = el("button", { textContent: "Projects", onclick: () => setTab("projects") });
+    const heads = ["Categories", "Assets", "Viewer"].map((t) => el("div", { class: "head", textContent: t }));
 
     const root = el("div", { class: "tjrb" },
-        el("div", { class: "top" }, search, addBtn, refreshBtn, fileAdd, fileRep),
+        el("div", { class: "top" }, el("div", { class: "tabs" }, tabAssets, tabProjects), search, addBtn, refreshBtn, fileAdd, fileRep),
         el("div", { class: "cols" },
-            el("div", { class: "col" }, el("div", { class: "head", textContent: "카테고리" }), catBox),
-            el("div", { class: "col" }, el("div", { class: "head", textContent: "등록 에셋" }), listBox),
-            el("div", { class: "col" }, el("div", { class: "head", textContent: "뷰어" }), viewBox,
+            el("div", { class: "col" }, heads[0], catBox),
+            el("div", { class: "col" }, heads[1], listBox),
+            el("div", { class: "col" }, heads[2], viewBox,
                 el("div", { class: "bottom" }, btnReplace, btnSave, btnDelete))),
         msg);
 
@@ -106,7 +123,7 @@ function build(node) {
         for (const a of state.assets) counts[a.category] = (counts[a.category] || 0) + 1;
         for (const c of ["all", ...CATEGORIES]) {
             catBox.append(el("div", { class: "cat" + (state.category === c ? " on" : ""), onclick: () => { state.category = c; drawCats(); drawList(); } },
-                el("span", { textContent: c === "all" ? "전체" : c }), el("span", { textContent: counts[c] || 0 })));
+                el("span", { textContent: c === "all" ? "All" : c }), el("span", { textContent: counts[c] || 0 })));
         }
     }
 
@@ -137,7 +154,7 @@ function build(node) {
                 el("div", { class: "k", textContent: a.kind }),
                 el("div", { class: "n", textContent: `#${a.id} ${a.name}` })));
         }
-        listBox.append(grid.children.length ? grid : el("div", { class: "meta", textContent: "에셋이 없습니다. '+ 등록'으로 추가하세요." }));
+        listBox.append(grid.children.length ? grid : el("div", { class: "meta", textContent: "No assets yet. Use '+ Add' to register files." }));
     }
 
     // In / out trim of an audio or video asset (seconds). The numbers are the asset's library default
@@ -156,7 +173,7 @@ function build(node) {
         let peaks = null, playhead = null;
 
         const draw = () => {
-            info.textContent = `in ${num(f.start).toFixed(2)}s  →  out ${outOf().toFixed(2)}s  (길이 ${Math.max(0, outOf() - num(f.start)).toFixed(2)}s / 전체 ${duration.toFixed(2)}s)`;
+            info.textContent = `in ${num(f.start).toFixed(2)}s  →  out ${outOf().toFixed(2)}s  (length ${Math.max(0, outOf() - num(f.start)).toFixed(2)}s / total ${duration.toFixed(2)}s)`;
             if (!canvas || !duration) return;
             const g = canvas.getContext("2d"), w = canvas.width, h = canvas.height, ruler = 14;
             g.clearRect(0, 0, w, h);
@@ -230,14 +247,14 @@ function build(node) {
         const player = a.kind === "audio" ? new Audio(src) : videoEl;
         let guard = null;
         const stopPlay = () => { player.pause(); if (guard) player.removeEventListener("timeupdate", guard); guard = null; playhead = null; draw(); };
-        const play = el("button", { textContent: "▶ 구간", title: "play only the in-out range", onclick: () => {
+        const play = el("button", { textContent: "▶ Play range", title: "play only the in-out range", onclick: () => {
             stopPlay();
             player.currentTime = num(f.start); player.muted = false; player.play();
             guard = () => { playhead = player.currentTime; if (player.currentTime >= outOf()) stopPlay(); else draw(); };
             player.addEventListener("timeupdate", guard);
         } });
         const stopBtn = el("button", { textContent: "■", onclick: stopPlay });
-        const reset = el("button", { textContent: "전체", onclick: () => { f.start.value = 0; f.end.value = 0; draw(); } });
+        const reset = el("button", { textContent: "Full", onclick: () => { f.start.value = 0; f.end.value = 0; draw(); } });
         // typed values: follow on every keystroke, tidy up (end after start, inside the clip) when done
         [f.start, f.end].forEach((i) => i.addEventListener("input", draw));
         f.start.addEventListener("change", () => { setStartTidy(); draw(); });
@@ -257,7 +274,7 @@ function build(node) {
     function drawView() {
         viewBox.replaceChildren();
         const d = state.detail;
-        if (!d) { viewBox.append(el("div", { class: "meta view", textContent: "왼쪽에서 에셋을 고르세요." })); return; }
+        if (!d) { viewBox.append(el("div", { class: "meta view", textContent: "Pick an asset on the left." })); return; }
         const a = d.asset;
         const src = api.apiURL(`${BASE}/file/${a.id}?v=${Math.round(a.updated)}`);
         let mediaEl, videoEl = null;
@@ -268,7 +285,7 @@ function build(node) {
         const f = {
             name: el("input", { value: a.name }),
             category: el("select", {}, CATEGORIES.map((c) => el("option", { value: c, textContent: c, selected: c === a.category }))),
-            sub: el("input", { value: a.subcategory, placeholder: "하위 카테고리(폴더)" }),
+            sub: el("input", { value: a.subcategory, placeholder: "Sub-category (folder)" }),
             tags: el("input", { value: a.tags.join(","), placeholder: "tag1,tag2" }),
             note: el("input", { value: a.note }),
             mp: el("input", { type: "number", step: "0.1", min: "0", value: a.settings.mp }),
@@ -280,22 +297,142 @@ function build(node) {
         const trim = a.kind === "audio" || a.kind === "video" ? trimEditor(a, f, src, videoEl) : null;
         const facts = [`#${a.id}`, a.kind, a.width ? `${a.width}x${a.height}` : null, a.duration ? `${a.duration.toFixed(1)}s` : null,
             a.size ? `${(a.size / 1048576).toFixed(2)} MB` : null].filter(Boolean).join("  ·  ");
-        const used = d.projects.length ? `프로젝트: ${d.projects.map((p) => p.name).join(", ")}` : "어떤 프로젝트에도 쓰이지 않음";
+        const used = d.projects.length ? `Projects: ${d.projects.map((p) => p.name).join(", ")}` : "Not used in any project";
         viewBox.append(el("div", { class: "view" }, a.kind === "audio" ? [trim, mediaEl] : [mediaEl, trim], el("div", { class: "meta", textContent: facts }),
-            el("div", { class: "meta", textContent: a.rel_path || `세트 (이미지 ${a.members.length}장)` }),
+            el("div", { class: "meta", textContent: a.rel_path || `Set (${a.members.length} images)` }),
             el("div", { class: "form" },
-                el("span", { textContent: "이름" }), f.name, el("span", { textContent: "카테고리" }), f.category,
-                el("span", { textContent: "하위" }), f.sub, el("span", { textContent: "태그" }), f.tags,
-                el("span", { textContent: "메모" }), f.note,
-                ...(a.kind === "audio" ? [] : [el("span", { textContent: "mp(축소)" }), f.mp]),
-                ...(a.kind === "video" ? [el("span", { textContent: "영상 소리" }), f.withAudio] : [])),
+                el("span", { textContent: "Name" }), f.name, el("span", { textContent: "Category" }), f.category,
+                el("span", { textContent: "Sub" }), f.sub, el("span", { textContent: "Tags" }), f.tags,
+                el("span", { textContent: "Note" }), f.note,
+                ...(a.kind === "audio" ? [] : [el("span", { textContent: "mp (downscale)" }), f.mp]),
+                ...(a.kind === "video" ? [el("span", { textContent: "Video sound" }), f.withAudio] : [])),
             el("div", { class: "meta", textContent: used })));
+    }
+
+    // ── projects tab: projects | the project's assets (alias, order) | library to add from ──────
+    const draftItems = () => state.draft?.items || [];
+    const assetById = (id) => state.assets.find((a) => a.id === id);
+
+    function setTab(tab) {
+        state.tab = tab; state.pArmed = false;
+        tabAssets.classList.toggle("on", tab === "assets");
+        tabProjects.classList.toggle("on", tab === "projects");
+        btnDelete.classList.remove("armed");
+        if (tab === "assets") {
+            heads[0].textContent = "Categories"; heads[1].textContent = "Assets"; heads[2].textContent = "Viewer";
+            btnReplace.textContent = "Replace"; btnSave.textContent = "Save"; btnDelete.textContent = "Delete";
+            search.placeholder = "Search: name / tag / ID";
+            drawCats(); drawList(); drawView();
+        } else {
+            heads[0].textContent = "Projects"; heads[1].textContent = "Library — click to add"; heads[2].textContent = "Project contents (alias / order)";
+            btnReplace.textContent = "New project"; btnSave.textContent = "Save"; btnDelete.textContent = "Delete";
+            search.placeholder = "Search library";
+            loadProjects().then(() => { drawProjectList(); drawDraft(); drawLibrary(); });
+        }
+        say("");
+    }
+
+    async function loadProjects() {
+        const r = await call("/projects");
+        state.projects = r.projects || [];
+        return state.projects;
+    }
+
+    function drawProjectList() {
+        catBox.replaceChildren(...state.projects.map((p) => el("div", { class: "prj" + (state.draft?.id === p.id ? " on" : ""), title: p.note || p.name, onclick: () => openProject(p.id) },
+            el("span", { textContent: p.name, style: "overflow:hidden;text-overflow:ellipsis;white-space:nowrap" }), el("span", { textContent: p.item_count }))));
+        if (!state.projects.length) catBox.append(el("div", { class: "meta", textContent: "No projects yet. Press 'New project'." }));
+    }
+
+    async function openProject(id) {
+        const r = await call(`/projects/${id}`);
+        if (!r.ok) return say(`${r.code}: ${r.detail}`, true);
+        state.draft = { id: r.project.id, name: r.project.name, note: r.project.note || "",
+            items: r.project.items.map((i) => ({ asset_id: i.asset_id, alias: i.alias || "" })) };
+        if (selP) selP.value = String(id);
+        state.pArmed = false; btnDelete.textContent = "Delete"; btnDelete.classList.remove("armed");
+        say(""); drawProjectList(); drawDraft(); drawLibrary();
+    }
+
+    function newProject() {
+        state.draft = { id: null, name: "", note: "", items: [] };
+        say("Type a name, click assets in the library to add them, then press Save");
+        drawProjectList(); drawDraft(); drawLibrary();
+    }
+
+    function drawDraft() {
+        viewBox.replaceChildren();
+        const d = state.draft;
+        if (!d) { viewBox.append(el("div", { class: "meta", textContent: "Pick a project on the left or press 'New project'." })); return; }
+        const name = el("input", { value: d.name, placeholder: "Project name", style: "width:100%", oninput: () => { d.name = name.value; } });
+        const note = el("input", { value: d.note, placeholder: "Note", style: "width:100%", oninput: () => { d.note = note.value; } });
+        const move = (i, by) => { const j = i + by; if (j < 0 || j >= d.items.length) return; [d.items[i], d.items[j]] = [d.items[j], d.items[i]]; drawDraft(); };
+        const rows = d.items.map((it, i) => {
+            const a = assetById(it.asset_id);
+            const alias = el("input", { value: it.alias, placeholder: "Alias (@alias)", oninput: () => { it.alias = alias.value.trim(); } });
+            return el("div", { class: "item" },
+                el("img", { src: a ? thumb(a) : "" }),
+                el("div", {}, el("div", { class: "t", textContent: a ? `#${a.id} ${a.name}  ·  ${a.kind}` : `#${it.asset_id} (missing asset)`, title: a?.rel_path || "" }),
+                    el("div", { class: "ctl" }, alias,
+                        el("button", { textContent: "▲", onclick: () => move(i, -1) }), el("button", { textContent: "▼", onclick: () => move(i, 1) }),
+                        el("button", { textContent: "✕", onclick: () => { d.items.splice(i, 1); drawDraft(); drawLibrary(); } }))));
+        });
+        viewBox.append(el("div", { style: "display:flex;flex-direction:column;gap:4px;margin-bottom:6px" }, name, note),
+            ...rows, rows.length ? "" : el("div", { class: "meta", textContent: "Click assets in the library on the left to add them." }));
+    }
+
+    function drawLibrary() {
+        listBox.replaceChildren();
+        const grid = el("div", { class: "grid" });
+        const q = state.query;
+        for (const a of state.assets) {
+            if (q && !`${a.name} ${a.tags.join(" ")} ${a.id}`.toLowerCase().includes(q)) continue;
+            const inside = draftItems().some((i) => i.asset_id === a.id);
+            grid.append(el("div", { class: "card" + (inside ? " in on" : ""), title: `#${a.id} ${a.name}`, onclick: () => addToDraft(a) },
+                el("img", { src: thumb(a), loading: "lazy" }), el("div", { class: "k", textContent: a.kind }),
+                el("div", { class: "n", textContent: `#${a.id} ${a.name}` })));
+        }
+        listBox.append(grid);
+    }
+
+    function addToDraft(a) {
+        if (!state.draft) newProject();
+        if (draftItems().some((i) => i.asset_id === a.id)) return say(`#${a.id} is already in the project`, true);
+        state.draft.items.push({ asset_id: a.id, alias: "" });
+        say(""); drawDraft(); drawLibrary();
+    }
+
+    async function saveProject() {
+        const d = state.draft;
+        if (!d) return say("No project to save", true);
+        if (!d.name.trim()) return say("Enter a project name", true);
+        const r = await post("/projects", { id: d.id ?? undefined, name: d.name.trim(), note: d.note,
+            items: d.items.map((i) => ({ asset_id: i.asset_id, alias: i.alias || null })) });
+        if (!r.ok) return say(`${r.code || "ERROR"}: ${r.detail || r.error}`, true);
+        say(`Saved '${r.project.name}' (project #${r.project.id}, ${r.project.items.length} assets)`);
+        await loadProjects();
+        await openProject(r.project.id);
+    }
+
+    async function removeProject() {
+        const d = state.draft;
+        if (!d || d.id == null) return say("Pick a project to delete", true);
+        if (!state.pArmed) {
+            state.pArmed = true; btnDelete.classList.add("armed"); btnDelete.textContent = `Delete '${d.name}'? (press again)`;
+            armTimer = setTimeout(() => { state.pArmed = false; btnDelete.classList.remove("armed"); btnDelete.textContent = "Delete"; }, 5000);
+            return;
+        }
+        clearTimeout(armTimer); state.pArmed = false; btnDelete.classList.remove("armed"); btnDelete.textContent = "Delete";
+        const r = await post(`/projects/${d.id}/delete`);
+        say(r.ok ? `Deleted '${d.name}'` : `${r.code}: ${r.detail}`, !r.ok);
+        if (r.ok) { state.draft = null; if (selP) selP.value = ""; await loadProjects(); drawProjectList(); drawDraft(); drawLibrary(); }
     }
 
     async function reload(keep = true) {
         const r = await call("/assets?limit=5000");
         state.assets = r.assets || [];
         if (keep && state.id != null && !state.assets.some((a) => a.id === state.id)) { state.id = null; state.detail = null; }
+        if (state.tab === "projects") { drawProjectList(); drawDraft(); drawLibrary(); return; }
         drawCats(); drawList(); drawView();
     }
 
@@ -319,7 +456,7 @@ function build(node) {
             r.duplicate ? dup++ : ok++; last = r.asset.id;
         }
         fileAdd.value = "";
-        if (ok || dup) say(`등록 ${ok}개${dup ? `, 이미 있음 ${dup}개` : ""} (${cat})`);
+        if (ok || dup) say(`Added ${ok}${dup ? `, already present ${dup}` : ""} (${cat})`);
         await reload(); if (last != null) select(last);
     }
 
@@ -328,7 +465,7 @@ function build(node) {
         const form = new FormData(); form.append("file", file);
         const r = await (await api.fetchApi(`${BASE}/assets/${state.id}/replace`, { method: "POST", body: form })).json();
         fileRep.value = "";
-        say(r.ok ? `#${state.id} 파일을 교체했습니다 (ID 유지)` : `${r.code}: ${r.detail}`, !r.ok);
+        say(r.ok ? `#${state.id} file replaced (ID kept)` : `${r.code}: ${r.detail}`, !r.ok);
         if (r.ok) { await reload(); select(state.id); }
     }
 
@@ -349,26 +486,26 @@ function build(node) {
             tags: f.tags.value.split(",").map((t) => t.trim()).filter(Boolean), note: f.note.value,
             settings,
         });
-        say(r.ok ? `#${state.id} 저장했습니다` : `${r.code}: ${r.detail}`, !r.ok);
+        say(r.ok ? `Saved #${state.id}` : `${r.code}: ${r.detail}`, !r.ok);
         if (r.ok) { await reload(); select(state.id); }
     }
 
     let armTimer = null;
-    function resetDelete() { clearTimeout(armTimer); state.armed = null; btnDelete.textContent = "삭제"; btnDelete.classList.remove("armed"); }
+    function resetDelete() { clearTimeout(armTimer); state.armed = null; btnDelete.textContent = "Delete"; btnDelete.classList.remove("armed"); }
     async function remove() {
         if (state.id == null) return;
         const projects = state.detail?.projects || [];
         if (!state.armed) {
             state.armed = projects.length ? "force" : "plain";
             btnDelete.classList.add("armed");
-            btnDelete.textContent = projects.length ? `프로젝트 ${projects.length}개에서도 제거하고 삭제? (한 번 더)` : "정말 삭제? (한 번 더)";
+            btnDelete.textContent = projects.length ? `Also remove from ${projects.length} project(s) and delete? (press again)` : "Really delete? (press again)";
             armTimer = setTimeout(resetDelete, 5000);
             return;
         }
         const force = state.armed === "force";
         resetDelete();
         const r = await post(`/assets/${state.id}/delete`, { force });
-        say(r.ok ? `#${state.id} 삭제했습니다` : `${r.code}: ${r.detail}`, !r.ok);
+        say(r.ok ? `Deleted #${state.id}` : `${r.code}: ${r.detail}`, !r.ok);
         if (r.ok) { state.id = null; state.detail = null; if (selW) selW.value = ""; await reload(); }
     }
 
@@ -376,6 +513,7 @@ function build(node) {
     delete dom.computeSize;
     dom.computeLayoutSize = () => ({ minHeight: 420, minWidth: 700, maxHeight: 1e6, maxWidth: 1e6 });
     node.setSize([860, 600]);
+    tabAssets.classList.add("on");
     reload().then(() => { const id = selW?.value && parseInt(selW.value, 10); if (id) select(id); });
     node._tjBrowserReload = reload;
 }

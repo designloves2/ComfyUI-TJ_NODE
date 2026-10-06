@@ -148,28 +148,32 @@ _ITEM = re.compile(r"^\s*(\d+)\s*(?:[=\s]\s*([^\s,;]+))?")
 
 
 class TJ_RefAssetBrowser:
-    """Browse, preview, edit, replace and delete library assets (the screen is web/reflib_tj.js);
-    the selected asset id comes out as a STRING."""
+    """Browse, preview, edit, replace and delete library assets and manage projects (the screen is
+    web/reflib_browser_tj.js); the selected asset id and project id come out as STRINGs."""
 
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {}, "optional": {"selected": ("STRING", {"default": ""})}}
+        return {"required": {}, "optional": {"selected": ("STRING", {"default": ""}),
+                                             "selected_project": ("STRING", {"default": ""})}}
 
-    RETURN_TYPES = ("STRING",)
-    RETURN_NAMES = ("asset_id",)
+    RETURN_TYPES = ("STRING", "STRING")
+    RETURN_NAMES = ("asset_id", "project_id")
     FUNCTION = "run"
     CATEGORY = CATEGORY
 
     @classmethod
-    def IS_CHANGED(cls, selected=""):
+    def IS_CHANGED(cls, selected="", selected_project=""):
         asset = lib.get_asset(lib.parse_id(selected)) if lib.parse_id(selected) is not None else None
-        return asset["sha256"] if asset else ""
+        project = lib.get_project(lib.parse_id(selected_project)) if lib.parse_id(selected_project) is not None else None
+        return f"{asset['sha256'] if asset else ''}|{project['updated'] if project else ''}"
 
-    def run(self, selected=""):
-        asset_id = lib.parse_id(selected)
+    def run(self, selected="", selected_project=""):
+        asset_id, project_id = lib.parse_id(selected), lib.parse_id(selected_project)
         if asset_id is not None and lib.get_asset(asset_id) is None:
             raise ValueError(f"ASSET_MISSING: asset_id={asset_id} is not in the library")
-        return ("" if asset_id is None else str(asset_id),)
+        if project_id is not None and lib.get_project(project_id) is None:
+            raise ValueError(f"PROJECT_NOT_FOUND: project_id={project_id} does not exist")
+        return ("" if asset_id is None else str(asset_id), "" if project_id is None else str(project_id))
 
 
 class TJ_RefProjectSave:

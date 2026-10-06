@@ -7,6 +7,9 @@
 
 ### [Added]
 
+* **Reference Asset Browser: 프로젝트 관리.** 에셋/프로젝트 탭 — 프로젝트 목록 | 라이브러리(클릭해서 추가) | 프로젝트 구성(별칭·순서)에서
+  만들기·수정·삭제하고, 고른 프로젝트의 ID를 새 출력 `project_id`로 내보낸다(`Reference to Video`의 `project_id`에 연결). 두 탭의
+  열 폭이 같고, 브라우저 UI 문구는 모두 영어.
 * **Reference Asset Browser: 오디오/영상 트림 + 카드 표시.** 음악·음성 에셋은 파형 위에서 in/out 핸들을 끌어 구간을 정하고
   (입력칸과 양방향 동기화, `▶ 구간` 재생), 영상은 in/out + 소리 포함 여부. 구간을 저장한 카드에는 구간 막대와 `✂ in–out`이
   표시된다. `GET /tj_node/reflib/waveform/{id}` 추가. 프롬프트/시스템 프롬프트/정보창은 막대로 높이를 조절하고 기억하며,
