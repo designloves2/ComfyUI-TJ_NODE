@@ -30,7 +30,8 @@ const AUTO_SET_PROVIDER_TYPES = new Set([
     "TJ_VideoResize",
     "TJ_TextEncodeQwenImage21",
     "TJ_H3Reference",
-    "TJ_H3ImageToVideo"
+    "TJ_H3ImageToVideo",
+    "TJ_CustomLLM"
 ]);
 const ECLIPSE_SET_TYPES = new Set(["SetNode", "SetNode [Eclipse]"]);
 const TJ_PROVIDER_PREFIX = "TJ / ";

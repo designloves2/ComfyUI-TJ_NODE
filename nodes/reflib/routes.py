@@ -3,6 +3,7 @@
 # Same local guard as the PromptDB routes (loopback + same-origin). Failures are
 # {ok:false, code, detail}; matching problems found by resolve are HTTP 200 inside the report.
 
+import asyncio
 import ipaddress
 import os
 
@@ -10,7 +11,7 @@ from aiohttp import web
 
 from server import PromptServer
 
-from . import bundle, encode_cache
+from . import bundle, encode_cache, media
 from . import library as lib
 from .resolve import resolve
 
@@ -156,6 +157,17 @@ async def file(request):
 async def preview(request):
     data = lib.preview_bytes(_asset_or_404(request), float(request.query.get("max_mp", 1)))
     return web.Response(body=data, content_type="image/jpeg")
+
+
+@_route("get", "/waveform/{id}")
+async def waveform(request):
+    """Peaks of an audio asset for the trim editor: {duration, peaks:[0..1 x bins]}."""
+    a = _asset_or_404(request)
+    if a["kind"] != "audio":
+        raise lib.LibraryError("BAD_KIND", f"asset_id={a['id']} is {a['kind']}, not audio")
+    bins = max(50, min(2000, int(request.query.get("bins", 600))))
+    data = await asyncio.get_running_loop().run_in_executor(None, media.waveform_peaks, lib.abs_path(a), bins)
+    return web.json_response({"ok": True, **data})
 
 
 @_route("get", "/projects")

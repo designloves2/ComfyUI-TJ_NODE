@@ -17,3 +17,4 @@ node.zip
 # locally built llama-cpp-python wheels (env-specific, do not distribute)
 wheels/
 *.whl
+customLLM/

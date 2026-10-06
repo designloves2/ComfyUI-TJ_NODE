@@ -119,6 +119,17 @@ def load_audio(path, start=0.0, end=0.0):
     return {"waveform": torch.from_numpy(np.ascontiguousarray(wave))[None], "sample_rate": rate}
 
 
+def waveform_peaks(path, bins=600):
+    """Loudness envelope for the trim editor: duration in seconds and `bins` peaks scaled to 0..1."""
+    audio = load_audio(path)
+    wave = audio["waveform"][0].mean(0).abs().numpy()
+    usable = max(bins, -(-len(wave) // bins) * bins)
+    wave = np.pad(wave, (0, usable - len(wave)))
+    peaks = wave.reshape(bins, -1).max(1)
+    peaks = peaks / (peaks.max() or 1.0)
+    return {"duration": len(audio["waveform"][0][0]) / audio["sample_rate"], "peaks": [round(float(p), 3) for p in peaks]}
+
+
 def poster(path, kind, size=256):
     """PIL image for thumbnails: the picture itself, a video's first frame, or an audio waveform."""
     if kind == "image":

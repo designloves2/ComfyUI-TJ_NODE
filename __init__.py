@@ -96,6 +96,7 @@ from .nodes.llm import (
     TJ_OllamaLLMLoader,
     TJ_LLMContentQualityController,
     TJ_TQDScoreEstimate,
+    TJ_CustomLLM,
 )
 
 # ── LoRA ──────────────────────────────────────────────────────────────────
@@ -207,6 +208,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_OllamaLLMLoader":   TJ_OllamaLLMLoader,
     "TJ_LLMContentQualityController": TJ_LLMContentQualityController,
     "TJ_TQDScoreEstimate":  TJ_TQDScoreEstimate,
+    "TJ_CustomLLM":         TJ_CustomLLM,
 
     # LoRA
     "Krea2LoRAAnalyzer":  Krea2LoRAAnalyzer,
@@ -316,6 +318,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_OllamaLLMLoader":   "Ollama LLM Loader (TJ)",
     "TJ_LLMContentQualityController": "LLM Content Quality Controller (TJ)",
     "TJ_TQDScoreEstimate":  "TQD Score Estimate (TJ)",
+    "TJ_CustomLLM":         "LLM (TJ)",
 
     # LoRA
     "Krea2LoRAAnalyzer":  "Krea2 LoRA Analyzer (TJ)",

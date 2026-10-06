@@ -1220,6 +1220,23 @@ GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에
 
 ---
 
+## ✨ LLM (TJ)
+
+백엔드 4개 중 골라 쓰는 범용 LLM 노드: `GGUF / llama.cpp`(로컬 GGUF, 이미지 입력은 mmproj 필요), `ComfyUI TextGenerate`
+(텍스트 인코더/`clip` 입력), `Open Router`, `Connect Custom`(LM Studio · Ollama · llama.cpp 서버 · 프록시 등 OpenAI 호환
+`/v1`). 선택한 백엔드의 설정만 보입니다.
+
+* 입력: `backend`, `prompt`(링크 가능), `system_preset`/`system_prompt`, `images`(선택, 배치 전체 전송), `clip`(TextGenerate),
+  `max_tokens`, `temperature`, `seed`, `strip_thinking`, `cache_same_input`(기본 꺼짐: 매번 호출)
+* 출력: `text`, `info`(백엔드 · 모델 · 시간 · 토큰)
+* **API 키**: 노드의 키 칸 → `Connect & test`로 서버 **메모리에만** 전달(워크플로우/디스크에 저장 안 됨, ComfyUI 재시작 시 다시 입력).
+  Open Router는 환경변수 `OPENROUTER_API_KEY`도 사용. 공개 주소는 HTTPS만, HTTP는 localhost/LAN만 허용.
+* **시스템 프롬프트 프리셋**: 목록에서 고르면 `system_prompt`가 채워지고, `새로 저장`/`수정 저장`/`삭제`(두 번 눌러 확인)로 관리.
+  저장 위치 `customLLM/system_prompts.json`(git 제외).
+* CATEGORY: `✨ TJ_Node/LLM`
+
+---
+
 ## ✨ Reference Asset Library (TJ) — 레퍼런스 에셋 라이브러리
 
 MiniMax H3 레퍼런스(이미지 / 영상 / 오디오)를 **한 번 등록해 두고 ID로 재사용**하는 라이브러리. 파일을 라이브러리

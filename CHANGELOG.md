@@ -7,6 +7,15 @@
 
 ### [Added]
 
+* **Reference Asset Browser: 오디오/영상 트림 + 카드 표시.** 음악·음성 에셋은 파형 위에서 in/out 핸들을 끌어 구간을 정하고
+  (입력칸과 양방향 동기화, `▶ 구간` 재생), 영상은 in/out + 소리 포함 여부. 구간을 저장한 카드에는 구간 막대와 `✂ in–out`이
+  표시된다. `GET /tj_node/reflib/waveform/{id}` 추가. 프롬프트/시스템 프롬프트/정보창은 막대로 높이를 조절하고 기억하며,
+  노드 높이는 마지막 위젯에 맞춰 자동 고정(`web/tj_box_resize.js`).
+* **`LLM (TJ)`.** 백엔드 4개(`GGUF / llama.cpp`, `ComfyUI TextGenerate`, `Open Router`, `Connect Custom`)를 고르는
+  범용 LLM 노드. `Connect Custom`/`Open Router`는 OpenAI 호환 Chat Completions 서버에 연결(공개 주소는 HTTPS만, HTTP는
+  localhost/LAN만, `/models` 목록·테스트, 이미지 배치를 `image_url`로 전송, 생각 블록 제거). API 키는 서버 메모리에만
+  보관(워크플로우에 저장 안 됨). **시스템 프롬프트 프리셋**: 목록에서 고르기 / 새로 저장 / 수정 저장 / 삭제
+  (`customLLM/system_prompts.json`). 선택한 백엔드의 설정만 화면에 표시, 무선 Set/Get 지원. 출력 `text`, `info`.
 * **Reference asset library + `MiniMax H3 Reference to Video (TJ)`.** 레퍼런스 이미지/영상/오디오를
   라이브러리 폴더(카테고리별 하위 폴더)로 **복사**해 등록하고 SQLite(`index.sqlite`)에는 루트
   기준 상대 경로만 저장 — 원본 경로가 사라지거나 바뀌어도 ID로 계속 재사용된다. 노드 3개:
