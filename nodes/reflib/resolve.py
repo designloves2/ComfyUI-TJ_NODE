@@ -13,6 +13,7 @@ from . import library as lib
 # Without these the asset cannot be loaded at all, so match_check=off does not waive them.
 ALWAYS_FATAL = {"ASSET_MISSING", "HASH_MISMATCH", "PROJECT_NOT_FOUND", "BAD_MODE"}
 
+_NAME_TOKEN = re.compile(r"[^\W\d]\w*")
 _TOKEN = re.compile(r"(?<![\w@])@(@|id:\d+|\w+)")
 _LABEL = re.compile(r"<(Picture|Video|Audio) (\d+)>")
 _LABEL_KIND = {"Picture": "image", "Video": "video", "Audio": "audio"}
@@ -146,6 +147,17 @@ def resolve(mode, project, assets, prompt, overrides=None, verify_hash=False):
 
     by_id = {e["asset"]["id"]: e for e in entries}
     by_alias = {e["alias"].casefold(): e for e in entries if e["alias"]}
+    # An asset with no alias (every asset in assets mode) can be written by its library name, e.g.
+    # @Hero, when the name is a valid alias and no other attached asset or alias uses it.
+    names = {}
+    for e in entries:
+        key = e["asset"]["name"].casefold()
+        if not e["alias"] and _NAME_TOKEN.fullmatch(e["asset"]["name"]):
+            names.setdefault(key, []).append(e)
+    for key, owners in names.items():
+        if len(owners) == 1 and key not in by_alias:
+            by_alias[key] = owners[0]
+            owners[0]["mention"] = owners[0]["asset"]["name"]
 
     def substitute(m):
         body = m.group(1)
@@ -197,7 +209,8 @@ def resolve(mode, project, assets, prompt, overrides=None, verify_hash=False):
         "errors": errors,
         "warnings": warnings,
         "attached": [{
-            "id": e["asset"]["id"], "alias": e["alias"], "kind": e["asset"]["kind"], "name": e["asset"]["name"],
+            "id": e["asset"]["id"], "alias": e["alias"], "mention": e["alias"] or e.get("mention"),
+            "kind": e["asset"]["kind"], "name": e["asset"]["name"],
             "category": e["asset"]["category"], "label": e["label"], "audio_label": e.get("audio_label"),
             "source": e["source"], "settings": e["settings"], "members": e["asset"].get("members"),
         } for e in entries],

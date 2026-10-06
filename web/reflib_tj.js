@@ -265,6 +265,15 @@ const assetIdOf = (value) => {
     return tagged ? Number(tagged[1]) : null;
 };
 
+// An asset without an alias can be written by its library name when that is a valid alias and unique
+// among what is attached (same rule as resolve.py).
+const NAME_TOKEN = /^[\p{L}_][\p{L}\p{N}_]*$/u;
+function nameToken(asset, byId, items) {
+    if (!NAME_TOKEN.test(asset.name)) return null;
+    const same = (items || []).filter((i) => !i.alias && byId.get(i.asset_id)?.name.toLowerCase() === asset.name.toLowerCase());
+    return same.length === 1 ? asset.name : null;
+}
+
 async function mentionCandidates(node) {
     if (!node._tjAssets) node._tjAssets = (await getJson("/tj_node/reflib/assets?limit=2000")).assets || [];
     const byId = new Map(node._tjAssets.map((a) => [a.id, a]));
@@ -274,14 +283,20 @@ async function mentionCandidates(node) {
         const project = pid == null ? null : (await getJson(`/tj_node/reflib/projects/${pid}`)).project;
         for (const it of project?.items || []) {
             const a = byId.get(it.asset_id);
-            if (a) out.push({ token: it.alias || String(a.id), id: a.id, alias: it.alias, asset: a });
+            if (a) out.push({ token: it.alias || nameToken(a, byId, project.items) || String(a.id), id: a.id, alias: it.alias, asset: a });
         }
     } else {
         for (let i = 1; i <= MAX_SLOTS; i++) {
             const id = assetIdOf(findW(node, `asset_${i}`)?.value);
             const a = id == null ? null : byId.get(id);
-            if (a && !out.some((c) => c.id === id)) out.push({ token: String(id), id, alias: null, asset: a });
+            if (a && !out.some((c) => c.id === id)) out.push({ token: String(id), id, alias: null, asset: a, _name: true });
         }
+    }
+    // assets mode: the library name when unique and valid, otherwise the id
+    for (const c of out) {
+        if (!c._name) continue;
+        const same = out.filter((o) => o.asset.name.toLowerCase() === c.asset.name.toLowerCase());
+        if (NAME_TOKEN.test(c.asset.name) && same.length === 1) c.token = c.asset.name;
     }
     return out;
 }
