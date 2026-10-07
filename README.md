@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.19.0
+# ✨ TJ_NODE v2.20.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -27,11 +27,13 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
 
-## 🗂 Reference Asset Library · MiniMax H3 Reference / Image to Video (TJ) — v2.18.0
+## 🗂 Reference Asset Library · MiniMax H3 Reference / Image to Video (TJ) — v2.18.0 ~ v2.20.0
 
 레퍼런스 이미지/영상/오디오를 한 번 등록해 ID로 재사용하는 라이브러리와, 프롬프트의 `@12` / `@별칭` / `@에셋이름`을
 `<Picture i>`·`<Video k>`·`<Audio j>`로 치환해 코어 노드로 넘기는 H3 노드. `@` 토큰은 손으로 쓴 `<Picture 1>`과
-픽셀 단위로 동일한 결과를 냅니다. 자세한 내용은 아래 [Reference Asset Library](#-reference-asset-library-tj--레퍼런스-에셋-라이브러리) 섹션.
+픽셀 단위로 동일한 결과를 냅니다. v2.19.0부터 라이브러리는 `ComfyUI-TJ_NODE/assetDB`에 저장되고 첨부 한도(이미지 9 · 영상 3 ·
+오디오 3)가 슬롯/프로젝트 추가 시점에 적용됩니다. v2.20.0: Asset Browser의 `+ Add ▾` 메뉴(`Single Image` / `Images as a set (2-10)` /
+`Video` / `Audio` / `From Gallery` — STUDIO_ONE 갤러리 선택창 연동, 미설치 시 비활성화). 자세한 내용은 아래 [Reference Asset Library](#-reference-asset-library-tj--레퍼런스-에셋-라이브러리) 섹션.
 
 ## 🧠 LLM (TJ) — v2.18.0
 
@@ -1266,6 +1268,9 @@ MiniMax H3 레퍼런스(이미지 / 영상 / 오디오)를 **한 번 등록해 �
   음악·음성은 파형 위 in/out 핸들, 영상은 in/out + 소리 포함 여부 — 구간을 저장한 카드에는 `✂ in–out` 표시).
   프로젝트 탭: 프로젝트 목록 | 라이브러리(클릭해서 추가) | 프로젝트 구성(별칭·순서)에서 만들기·수정·삭제.
   출력 `asset_id`, `project_id`(→ `Reference to Video`의 `project_id`에 연결). UI 문구는 영어.
+  **`+ Add ▾` 메뉴**: `Single Image` / `Images as a set (2-10, 선택 순서대로 세트 1개)` / `Video` / `Audio`(각각 해당 확장자만 선택) /
+  `From Gallery`(ONE STUDIO의 갤러리 선택창 — 이미지 최대 10장 다중 선택, 영상·오디오 단일 선택; STUDIO_ONE이 없으면 비활성화).
+  **첨부 한도**: 이미지 9 · 영상 3 · 오디오 3 — 슬롯(에셋 모드, Project Save)과 프로젝트 탭에서 한도를 넘기면 추가되지 않고 경고가 뜹니다.
 * `MiniMax H3 Reference to Video (TJ)` — 프로젝트 모드(전체 로드) / 에셋 모드(콤보). 프롬프트의 `@12`·`@별칭`·`@에셋이름`을
   `<Picture i>`/`<Video k>`/`<Audio j>`로 자동 치환(`@` 입력 시 목록 자동완성; 에셋 모드에서는 별칭이 없어도 라이브러리
   이름이 유효하고 겹치지 않으면 `@Hero`처럼 사용 가능, `report.attached[].mention`에 각 에셋의 토큰 표시), 매칭 검수(`off|warn|strict`),

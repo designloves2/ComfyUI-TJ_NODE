@@ -5,6 +5,9 @@
 ---
 ## [Unreleased]
 
+---
+## [2.20.0] - 2026-10-07
+
 ### [Added]
 
 * **Reference Asset Browser: `+ Add` 메뉴.** `Single Image` / `Images as a set (2-10)` / `Video` / `Audio` / `From Gallery` 5개 항목, 각각
