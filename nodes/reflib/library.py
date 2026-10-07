@@ -23,6 +23,7 @@ from PIL import Image
 from . import media
 
 CATEGORIES = ("character", "background", "prop", "music", "voice", "video", "etc")
+MAX_SET_IMAGES = 10
 LIMITS = {"image": 9, "video": 3, "video_audio": 3, "audio": 3}
 THUMB_SIZE = 256
 
@@ -310,8 +311,8 @@ def create_set(name, category, subcategory, image_ids, tags="", note="", setting
     """An ordered group of images of one subject (angles of a person / place)."""
     category = check_category(category)
     ids = [int(i) for i in image_ids]
-    if len(ids) < 2:
-        raise LibraryError("BAD_SET", "a set needs at least two images")
+    if not 2 <= len(ids) <= MAX_SET_IMAGES:
+        raise LibraryError("BAD_SET", f"a set needs 2-{MAX_SET_IMAGES} images ({len(ids)} given)")
     members = [get_asset(i) for i in ids]
     for i, m in zip(ids, members):
         if m is None or m["kind"] != "image":

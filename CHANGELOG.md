@@ -5,6 +5,12 @@
 ---
 ## [Unreleased]
 
+### [Added]
+
+* **Reference Asset Browser: `+ Add` 메뉴.** `Single Image` / `Images as a set (2-10)` / `Video` / `Audio` / `From Gallery` 5개 항목, 각각
+  해당 확장자 파일만 선택 가능. 세트는 선택 순서대로 묶이고 2~10장만 허용(서버도 검사). `From Gallery`는 ONE STUDIO의 갤러리 선택창을
+  그대로 열며 STUDIO_ONE이 없으면 비활성화.
+
 ---
 ## [2.19.0] - 2026-10-07
 

@@ -8,11 +8,23 @@ import { api } from "../../scripts/api.js";
 const NODE = "TJ_RefAssetBrowser";
 const CATEGORIES = ["character", "background", "prop", "music", "voice", "video", "etc"];
 const BASE = "/tj_node/reflib";
+const MAX_SET = 10;
+const STUDIO_PICKER = "/extensions/ComfyUI-TJ_NODE_STUDIO_ONE/shared/reflib_gallery_import.js";
 
 const css = `
-.tjrb{display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;gap:6px;color:#ddd;font:12px/1.4 sans-serif}
+.tjrb{position:relative;display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;gap:6px;color:#ddd;font:12px/1.4 sans-serif}
 .tjrb *{box-sizing:border-box}
-.tjrb .top{display:flex;gap:6px}
+.tjrb .top{display:flex;gap:6px;position:relative}
+.tjrb .menu{position:absolute;top:100%;left:0;z-index:20;background:#1f1f1f;border:1px solid #4a4a4a;border-radius:6px;padding:4px;display:flex;flex-direction:column;min-width:190px;box-shadow:0 4px 14px #000a}
+.tjrb .menu button{text-align:left;border:0;background:none;padding:6px 10px}
+.tjrb .menu button:hover:not(:disabled){background:#2f4a66}
+.tjrb .menu button:disabled{color:#666;cursor:not-allowed}
+.tjrb .gal{position:absolute;inset:0;z-index:30;background:#111;border:1px solid #4a4a4a;border-radius:6px;display:flex;flex-direction:column;gap:6px;padding:6px}
+.tjrb .gal .bar{display:flex;gap:6px;align-items:center}
+.tjrb .gal .bar .sp{flex:1}
+.tjrb .gal .card video{width:100%;height:70px;object-fit:cover;display:block;background:#000}
+.tjrb .gal .card .aud{height:70px;display:flex;align-items:center;justify-content:center;font-size:22px;background:#000}
+.tjrb .gal .card .ord{position:absolute;top:2px;right:2px;background:#2f8f4f;color:#fff;border-radius:50%;width:18px;height:18px;text-align:center;line-height:18px;font-size:11px}
 .tjrb input,.tjrb select,.tjrb textarea{background:#1b1b1b;color:#ddd;border:1px solid #3a3a3a;border-radius:4px;padding:4px 6px;font:inherit}
 .tjrb .top input{flex:1}
 .tjrb button{background:#2d2d2d;color:#ddd;border:1px solid #4a4a4a;border-radius:4px;padding:5px 10px;cursor:pointer;font:inherit}
@@ -90,8 +102,36 @@ function build(node) {
     const selP = hideW(node.widgets.find((w) => w.name === "selected_project"));
 
     const search = el("input", { placeholder: "Search: name / tag / ID", oninput: () => { state.query = search.value.toLowerCase(); state.tab === "assets" ? drawList() : drawLibrary(); } });
-    const fileAdd = el("input", { type: "file", multiple: true, style: "display:none", onchange: () => upload(fileAdd.files) });
-    const addBtn = el("button", { textContent: "+ Add", onclick: () => fileAdd.click() });
+    const IMG_ACCEPT = ".png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff";
+    const VID_ACCEPT = ".mp4,.webm,.mov,.mkv,.avi,.m4v";
+    const AUD_ACCEPT = ".wav,.mp3,.flac,.ogg,.m4a,.aac,.opus";
+    const picker = (accept, multiple, mode) => {
+        const inp = el("input", { type: "file", accept, multiple, style: "display:none", onchange: () => { const f = [...inp.files]; inp.value = ""; upload(f, mode); } });
+        return inp;
+    };
+    const pickers = { image: picker(IMG_ACCEPT, false, "image"), set: picker(IMG_ACCEPT, true, "set"), video: picker(VID_ACCEPT, true, "video"), audio: picker(AUD_ACCEPT, true, "audio") };
+    const menu = el("div", { class: "menu", style: "display:none" });
+    const closeMenu = () => { menu.style.display = "none"; };
+    const galleryItem = el("button", { textContent: "From Gallery", style: "width:100%", onclick: () => { closeMenu(); openGallery(); } });
+    const galleryWrap = el("div", {}, galleryItem);
+    menu.append(
+        el("button", { textContent: "Single Image", onclick: () => { closeMenu(); pickers.image.click(); } }),
+        el("button", { textContent: `Images as a set (2-${MAX_SET})`, onclick: () => { closeMenu(); pickers.set.click(); } }),
+        el("button", { textContent: "Video", onclick: () => { closeMenu(); pickers.video.click(); } }),
+        el("button", { textContent: "Audio", onclick: () => { closeMenu(); pickers.audio.click(); } }),
+        galleryWrap);
+    // The tooltip sits on the wrapper: disabled buttons do not receive hover events.
+    const disableGallery = () => {
+        galleryItem.disabled = true;
+        galleryWrap.title = "From Gallery needs TJ_NODE_One_Studio. Install ComfyUI-TJ_NODE_STUDIO_ONE to enable it.";
+    };
+    // From Gallery reuses ONE STUDIO's own picker; without STUDIO_ONE the entry stays disabled.
+    fetch(STUDIO_PICKER, { method: "HEAD" }).then((r) => {
+        if (r.ok) return;
+        disableGallery();
+    }).catch(disableGallery);
+    const addBtn = el("button", { textContent: "+ Add ▾", onclick: (e) => { e.stopPropagation(); menu.style.display = menu.style.display === "none" ? "flex" : "none"; } });
+    document.addEventListener("click", closeMenu);
     const refreshBtn = el("button", { textContent: "Refresh", onclick: () => reload() });
     const catBox = el("div", { class: "scroll" });
     const listBox = el("div", { class: "scroll" });
@@ -106,7 +146,7 @@ function build(node) {
     const heads = ["Categories", "Assets", "Viewer"].map((t) => el("div", { class: "head", textContent: t }));
 
     const root = el("div", { class: "tjrb" },
-        el("div", { class: "top" }, el("div", { class: "tabs" }, tabAssets, tabProjects), search, addBtn, refreshBtn, fileAdd, fileRep),
+        el("div", { class: "top" }, el("div", { class: "tabs" }, tabAssets, tabProjects), search, el("div", { style: "position:relative" }, addBtn, menu), refreshBtn, fileRep, ...Object.values(pickers)),
         el("div", { class: "cols" },
             el("div", { class: "col" }, heads[0], catBox),
             el("div", { class: "col" }, heads[1], listBox),
@@ -461,19 +501,43 @@ function build(node) {
         drawList(); drawView();
     }
 
-    async function upload(files) {
+    const baseName = (n) => n.replace(/\.[^.]+$/, "");
+
+    async function upload(files, mode) {
         const cat = state.category === "all" ? "etc" : state.category;
+        const wanted = { image: IMG_ACCEPT, set: IMG_ACCEPT, video: VID_ACCEPT, audio: AUD_ACCEPT }[mode].split(",");
+        const bad = files.find((f) => !wanted.includes("." + f.name.split(".").pop().toLowerCase()));
+        if (bad) return say(`${bad.name}: not ${{ image: "an image", set: "an image", video: "a video", audio: "an audio" }[mode]} file`, true);
+        if (mode === "set" && (files.length < 2 || files.length > MAX_SET)) return say(`A set needs 2-${MAX_SET} images (${files.length} selected)`, true);
         let ok = 0, dup = 0, last = null;
+        const ids = [];
         for (const file of files) {
             const form = new FormData();
-            form.append("file", file); form.append("category", cat); form.append("name", file.name.replace(/\.[^.]+$/, ""));
+            form.append("file", file); form.append("category", cat); form.append("name", baseName(file.name));
             const r = await (await api.fetchApi(BASE + "/assets", { method: "POST", body: form })).json();
             if (!r.ok) { say(`${file.name}: ${r.code}: ${r.detail}`, true); continue; }
-            r.duplicate ? dup++ : ok++; last = r.asset.id;
+            r.duplicate ? dup++ : ok++; last = r.asset.id; ids.push(r.asset.id);
         }
-        fileAdd.value = "";
-        if (ok || dup) say(`Added ${ok}${dup ? `, already present ${dup}` : ""} (${cat})`);
+        let setMsg = "";
+        if (mode === "set") {
+            if (ids.length !== files.length) setMsg = "Set not created: some files could not be registered";
+            else {
+                const r = await post("/sets", { name: `${baseName(files[0].name)}_set`, category: cat, image_ids: ids });
+                if (r.ok) { last = r.asset.id; setMsg = `${r.duplicate ? "Set already present" : "Set created"}: ${r.asset.name} (${ids.length} images)`; }
+                else setMsg = `${r.code}: ${r.detail}`;
+            }
+        }
+        if (setMsg) say(setMsg, !/^Set (created|already)/.test(setMsg));
+        else if (ok || dup) say(`Added ${ok}${dup ? `, already present ${dup}` : ""} (${cat})`);
         await reload(); if (last != null) select(last);
+    }
+
+    // From Gallery reuses ONE STUDIO's own picker (its per-tool galleries); without STUDIO_ONE the entry stays disabled.
+    async function openGallery() {
+        try {
+            const m = await import(/* @vite-ignore */ STUDIO_PICKER);
+            m.openGalleryImport(async (last) => { await reload(); if (last != null) select(last); }, { maxImages: MAX_SET, singleVideoAudio: true });
+        } catch (e) { say(`Gallery picker unavailable: ${e?.message || e}`, true); }
     }
 
     async function replace(file) {
