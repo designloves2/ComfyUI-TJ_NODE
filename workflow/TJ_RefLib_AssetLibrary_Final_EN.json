@@ -4557,10 +4557,10 @@
    "title": "Notes",
    "properties": {},
    "widgets_values": [
-    "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\u0007ssets_mode` "
+    "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\\assets_mode` "
    ],
    "widgets_values_named": {
-    "text": "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\u0007ssets_mode` "
+    "text": "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\\assets_mode` "
    },
    "color": "#432",
    "bgcolor": "#653"
