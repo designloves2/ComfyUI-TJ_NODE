@@ -5,8 +5,13 @@
 ---
 ## [Unreleased]
 
+---
+## [2.19.0] - 2026-10-07
+
 ### [Changed]
 
+* **Grid Relay 노드 5종 제거.** 파일 없이 등록 코드만 올라가 있던 `TJ_H3_GridRelay` 등을 `__init__.py`에서 삭제
+  (새로 설치하면 import 오류가 나던 문제 수정).
 * **첨부 한도 규칙(이미지 9 · 영상 3 · 오디오 3).** 에셋 슬롯(H3 Reference 에셋 모드, Project Save)과 Asset Browser 프로젝트 탭에서
   한도를 넘기는 에셋은 추가되지 않고 영어 경고가 나온다. 세트는 `set_mode`에 따라 이미지 N장 또는 영상 1개로 센다.
   서버 저장(`LIMIT_EXCEEDED`)도 같은 방식으로 센다.
