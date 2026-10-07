@@ -1,0 +1,5060 @@
+{
+ "id": "599b2906-991d-4a9f-b426-7be5fce94a99",
+ "revision": 0,
+ "last_node_id": 5,
+ "last_link_id": 94,
+ "nodes": [
+  {
+   "id": "br",
+   "type": "TJ_RefAssetBrowser",
+   "pos": [
+    0,
+    270
+   ],
+   "size": [
+    860,
+    600
+   ],
+   "flags": {},
+   "order": 0,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "selected",
+     "name": "selected",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "selected"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "selected_project",
+     "name": "selected_project",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "selected_project"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_id",
+     "name": "asset_id",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "project_id",
+     "name": "project_id",
+     "type": "STRING",
+     "links": [
+      64
+     ]
+    }
+   ],
+   "title": "Reference Asset Browser (assets + projects)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetBrowser"
+   },
+   "widgets_values": [
+    "1",
+    "2",
+    ""
+   ],
+   "widgets_values_named": {
+    "selected": "1",
+    "selected_project": "2",
+    "browser": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "c",
+   "type": "CLIPLoader",
+   "pos": [
+    0,
+    3472
+   ],
+   "size": [
+    270,
+    106
+   ],
+   "flags": {},
+   "order": 1,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "clip_name",
+     "name": "clip_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "clip_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "type",
+     "name": "type",
+     "type": "COMBO",
+     "widget": {
+      "name": "type"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "device",
+     "name": "device",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "device"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "CLIP",
+     "name": "CLIP",
+     "type": "CLIP",
+     "links": [
+      61,
+      74,
+      86
+     ]
+    }
+   ],
+   "title": "CLIP (Qwen3-VL)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "CLIPLoader"
+   },
+   "widgets_values": [
+    "MinimaxH3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "minimax",
+    "default"
+   ],
+   "widgets_values_named": {
+    "clip_name": "MinimaxH3\\qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+    "type": "minimax",
+    "device": "default"
+   }
+  },
+  {
+   "id": "v",
+   "type": "VAELoader",
+   "pos": [
+    0,
+    3632
+   ],
+   "size": [
+    270,
+    58
+   ],
+   "flags": {},
+   "order": 2,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "vae_name",
+     "name": "vae_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "vae_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "VAE",
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      62,
+      70,
+      75,
+      82,
+      87,
+      93
+     ]
+    }
+   ],
+   "title": "Video VAE",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "minimax_h3_video_vae_int8_convrot.safetensors"
+   ],
+   "widgets_values_named": {
+    "vae_name": "minimax_h3_video_vae_int8_convrot.safetensors"
+   }
+  },
+  {
+   "id": "av",
+   "type": "VAELoader",
+   "pos": [
+    0,
+    3744
+   ],
+   "size": [
+    270,
+    58
+   ],
+   "flags": {},
+   "order": 3,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "vae_name",
+     "name": "vae_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "vae_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "VAE",
+     "name": "VAE",
+     "type": "VAE",
+     "links": [
+      63,
+      76
+     ]
+    }
+   ],
+   "title": "Audio VAE",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "VAELoader"
+   },
+   "widgets_values": [
+    "minimax_h3_audio_vae_fp32.safetensors"
+   ],
+   "widgets_values_named": {
+    "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+   }
+  },
+  {
+   "id": "m",
+   "type": "UNETLoader",
+   "pos": [
+    0,
+    3856
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 4,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "unet_name",
+     "name": "unet_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "unet_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "weight_dtype",
+     "name": "weight_dtype",
+     "type": "COMBO",
+     "widget": {
+      "name": "weight_dtype"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      48
+     ]
+    }
+   ],
+   "title": "Model ref2va (Singularity v1.3)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "MinimaxH3\\Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors",
+    "default"
+   ],
+   "widgets_values_named": {
+    "unet_name": "MinimaxH3\\Minimax-h3_Singularity_ref2va_Pruned_v1.3_int8.safetensors",
+    "weight_dtype": "default"
+   }
+  },
+  {
+   "id": "l",
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    0,
+    3992
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 20,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 48
+    },
+    {
+     "localized_name": "lora_name",
+     "name": "lora_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_model",
+     "name": "strength_model",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_model"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      49
+     ]
+    }
+   ],
+   "title": "Turbo LoRA ref2va 8step",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "MinimaxH3\\Turbo_LoRA\\minimax_h3_dmd_ref2va_8step_turbo_pruned.safetensors",
+    1
+   ],
+   "widgets_values_named": {
+    "lora_name": "MinimaxH3\\Turbo_LoRA\\minimax_h3_dmd_ref2va_8step_turbo_pruned.safetensors",
+    "strength_model": 1
+   }
+  },
+  {
+   "id": "sa",
+   "type": "PathchSageAttentionKJ",
+   "pos": [
+    0,
+    4128
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 31,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 49
+    },
+    {
+     "localized_name": "sage_attention",
+     "name": "sage_attention",
+     "type": "COMBO",
+     "widget": {
+      "name": "sage_attention"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "allow_compile",
+     "name": "allow_compile",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "allow_compile"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      50
+     ]
+    }
+   ],
+   "title": "Sage Attention",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-kjnodes",
+    "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+    "Node name for S&R": "PathchSageAttentionKJ"
+   },
+   "widgets_values": [
+    "auto",
+    false
+   ],
+   "widgets_values_named": {
+    "sage_attention": "auto",
+    "allow_compile": false
+   }
+  },
+  {
+   "id": "me",
+   "type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+   "pos": [
+    0,
+    4264
+   ],
+   "size": [
+    320.323828125,
+    26
+   ],
+   "flags": {},
+   "order": 34,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 50
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "links": [
+      65,
+      77
+     ]
+    }
+   ],
+   "title": "Sage MemEff H3",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-kjnodes",
+    "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+    "Node name for S&R": "MiniMaxH3MemoryEfficientSageAttentionPatch"
+   }
+  },
+  {
+   "id": "i1",
+   "type": "LoadImage",
+   "pos": [
+    0,
+    1330
+   ],
+   "size": [
+    282.798828125,
+    102
+   ],
+   "flags": {},
+   "order": 5,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "COMBO",
+     "widget": {
+      "name": "image"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      51
+     ]
+    },
+    {
+     "localized_name": "MASK",
+     "name": "MASK",
+     "type": "MASK",
+     "links": null
+    }
+   ],
+   "title": "Hero image",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadImage"
+   },
+   "widgets_values": [
+    "k2_0e534b3c_K2_00419_.png",
+    "image"
+   ],
+   "widgets_values_named": {
+    "image": "k2_0e534b3c_K2_00419_.png",
+    "upload": "image"
+   }
+  },
+  {
+   "id": "r1",
+   "type": "TJ_RefAssetRegister",
+   "pos": [
+    760,
+    1330
+   ],
+   "size": [
+    296.6041015625,
+    346
+   ],
+   "flags": {},
+   "order": 21,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": 51
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "shape": 7,
+     "type": "VIDEO",
+     "link": null
+    },
+    {
+     "localized_name": "prev_items",
+     "name": "prev_items",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "category",
+     "name": "category",
+     "type": "COMBO",
+     "widget": {
+      "name": "category"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "as_set",
+     "name": "as_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "as_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "set_mode",
+     "name": "set_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "set_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "subcategory",
+     "name": "subcategory",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "subcategory"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "alias",
+     "name": "alias",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "alias"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags",
+     "name": "tags",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "tags"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mp",
+     "name": "mp",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "mp"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_ids",
+     "name": "asset_ids",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "items",
+     "name": "items",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "1 Register: character image",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetRegister"
+   },
+   "widgets_values": [
+    "character",
+    "Hero",
+    false,
+    "video",
+    "demo",
+    "hero",
+    "",
+    0,
+    ""
+   ],
+   "widgets_values_named": {
+    "category": "character",
+    "name": "Hero",
+    "as_set": false,
+    "set_mode": "video",
+    "subcategory": "demo",
+    "alias": "hero",
+    "tags": "",
+    "mp": 0,
+    "last_result": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "i2",
+   "type": "LoadImage",
+   "pos": [
+    0,
+    1486
+   ],
+   "size": [
+    282.798828125,
+    102
+   ],
+   "flags": {},
+   "order": 6,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "COMBO",
+     "widget": {
+      "name": "image"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      52
+     ]
+    },
+    {
+     "localized_name": "MASK",
+     "name": "MASK",
+     "type": "MASK",
+     "links": null
+    }
+   ],
+   "title": "Room image",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadImage"
+   },
+   "widgets_values": [
+    "q21_1791103804197_Q21_00032_.png",
+    "image"
+   ],
+   "widgets_values_named": {
+    "image": "q21_1791103804197_Q21_00032_.png",
+    "upload": "image"
+   }
+  },
+  {
+   "id": "r2",
+   "type": "TJ_RefAssetRegister",
+   "pos": [
+    760,
+    1730
+   ],
+   "size": [
+    296.6041015625,
+    346
+   ],
+   "flags": {},
+   "order": 22,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": 52
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "shape": 7,
+     "type": "VIDEO",
+     "link": null
+    },
+    {
+     "localized_name": "prev_items",
+     "name": "prev_items",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "category",
+     "name": "category",
+     "type": "COMBO",
+     "widget": {
+      "name": "category"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "as_set",
+     "name": "as_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "as_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "set_mode",
+     "name": "set_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "set_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "subcategory",
+     "name": "subcategory",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "subcategory"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "alias",
+     "name": "alias",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "alias"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags",
+     "name": "tags",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "tags"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mp",
+     "name": "mp",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "mp"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_ids",
+     "name": "asset_ids",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "items",
+     "name": "items",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "2 Register: background image",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetRegister"
+   },
+   "widgets_values": [
+    "background",
+    "Room",
+    false,
+    "video",
+    "",
+    "room",
+    "",
+    0.5,
+    ""
+   ],
+   "widgets_values_named": {
+    "category": "background",
+    "name": "Room",
+    "as_set": false,
+    "set_mode": "video",
+    "subcategory": "",
+    "alias": "room",
+    "tags": "",
+    "mp": 0.5,
+    "last_result": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "i3",
+   "type": "LoadImage",
+   "pos": [
+    0,
+    1642
+   ],
+   "size": [
+    282.798828125,
+    102
+   ],
+   "flags": {},
+   "order": 7,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "COMBO",
+     "widget": {
+      "name": "image"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      53
+     ]
+    },
+    {
+     "localized_name": "MASK",
+     "name": "MASK",
+     "type": "MASK",
+     "links": null
+    }
+   ],
+   "title": "Angle 1",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadImage"
+   },
+   "widgets_values": [
+    "k2_439fae52_K2_00419_.png",
+    "image"
+   ],
+   "widgets_values_named": {
+    "image": "k2_439fae52_K2_00419_.png",
+    "upload": "image"
+   }
+  },
+  {
+   "id": "i4",
+   "type": "LoadImage",
+   "pos": [
+    0,
+    1798
+   ],
+   "size": [
+    282.798828125,
+    102
+   ],
+   "flags": {},
+   "order": 8,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "type": "COMBO",
+     "widget": {
+      "name": "image"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      54
+     ]
+    },
+    {
+     "localized_name": "MASK",
+     "name": "MASK",
+     "type": "MASK",
+     "links": null
+    }
+   ],
+   "title": "Angle 2",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadImage"
+   },
+   "widgets_values": [
+    "k2_654178d3_K2_00334_.png",
+    "image"
+   ],
+   "widgets_values_named": {
+    "image": "k2_654178d3_K2_00334_.png",
+    "upload": "image"
+   }
+  },
+  {
+   "id": "b",
+   "type": "ImageBatch",
+   "pos": [
+    360,
+    1330
+   ],
+   "size": [
+    234.61484375,
+    46
+   ],
+   "flags": {},
+   "order": 23,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image1",
+     "name": "image1",
+     "type": "IMAGE",
+     "link": 53
+    },
+    {
+     "localized_name": "image2",
+     "name": "image2",
+     "type": "IMAGE",
+     "link": 54
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      55
+     ]
+    }
+   ],
+   "title": "Batch of angles",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "ImageBatch"
+   }
+  },
+  {
+   "id": "r3",
+   "type": "TJ_RefAssetRegister",
+   "pos": [
+    760,
+    2130
+   ],
+   "size": [
+    296.6041015625,
+    370
+   ],
+   "flags": {},
+   "order": 32,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": 55
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "shape": 7,
+     "type": "VIDEO",
+     "link": null
+    },
+    {
+     "localized_name": "prev_items",
+     "name": "prev_items",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "category",
+     "name": "category",
+     "type": "COMBO",
+     "widget": {
+      "name": "category"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "as_set",
+     "name": "as_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "as_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "set_mode",
+     "name": "set_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "set_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "subcategory",
+     "name": "subcategory",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "subcategory"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "alias",
+     "name": "alias",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "alias"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags",
+     "name": "tags",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "tags"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mp",
+     "name": "mp",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "mp"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_ids",
+     "name": "asset_ids",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "items",
+     "name": "items",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "3 Register: image SET (as_set)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetRegister"
+   },
+   "widgets_values": [
+    "character",
+    "Angles",
+    true,
+    "video",
+    "",
+    "angles",
+    "",
+    0,
+    ""
+   ],
+   "widgets_values_named": {
+    "category": "character",
+    "name": "Angles",
+    "as_set": true,
+    "set_mode": "video",
+    "subcategory": "",
+    "alias": "angles",
+    "tags": "",
+    "mp": 0,
+    "last_result": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "a",
+   "type": "LoadAudio",
+   "pos": [
+    360,
+    1430
+   ],
+   "size": [
+    282.798828125,
+    136
+   ],
+   "flags": {},
+   "order": 9,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "type": "COMBO",
+     "widget": {
+      "name": "audio"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "audioUI",
+     "name": "audioUI",
+     "type": "AUDIO_UI",
+     "widget": {
+      "name": "audioUI"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "AUDIOUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "AUDIO",
+     "name": "AUDIO",
+     "type": "AUDIO",
+     "links": [
+      56
+     ]
+    }
+   ],
+   "title": "Voice audio",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadAudio"
+   },
+   "widgets_values": [
+    "mmh3_0e1ea6da_MMH3-4_clip001_00056.mp4",
+    ""
+   ],
+   "widgets_values_named": {
+    "audio": "mmh3_0e1ea6da_MMH3-4_clip001_00056.mp4",
+    "upload": ""
+   }
+  },
+  {
+   "id": "r4",
+   "type": "TJ_RefAssetRegister",
+   "pos": [
+    760,
+    2554
+   ],
+   "size": [
+    296.6041015625,
+    322
+   ],
+   "flags": {},
+   "order": 24,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": 56
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "shape": 7,
+     "type": "VIDEO",
+     "link": null
+    },
+    {
+     "localized_name": "prev_items",
+     "name": "prev_items",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "category",
+     "name": "category",
+     "type": "COMBO",
+     "widget": {
+      "name": "category"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "as_set",
+     "name": "as_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "as_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "set_mode",
+     "name": "set_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "set_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "subcategory",
+     "name": "subcategory",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "subcategory"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "alias",
+     "name": "alias",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "alias"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags",
+     "name": "tags",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "tags"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mp",
+     "name": "mp",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "mp"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_ids",
+     "name": "asset_ids",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "items",
+     "name": "items",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "4 Register: audio",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetRegister"
+   },
+   "widgets_values": [
+    "voice",
+    "Voice",
+    false,
+    "video",
+    "",
+    "voice",
+    "",
+    0,
+    ""
+   ],
+   "widgets_values_named": {
+    "category": "voice",
+    "name": "Voice",
+    "as_set": false,
+    "set_mode": "video",
+    "subcategory": "",
+    "alias": "voice",
+    "tags": "",
+    "mp": 0,
+    "last_result": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "vv",
+   "type": "LoadVideo",
+   "pos": [
+    360,
+    1620
+   ],
+   "size": [
+    282.798828125,
+    590.4152513586956
+   ],
+   "flags": {},
+   "order": 10,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "file",
+     "name": "file",
+     "type": "COMBO",
+     "widget": {
+      "name": "file"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "choose file to upload",
+     "name": "upload",
+     "type": "IMAGEUPLOAD",
+     "widget": {
+      "name": "upload"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "VIDEO",
+     "name": "VIDEO",
+     "type": "VIDEO",
+     "links": [
+      57
+     ]
+    }
+   ],
+   "title": "Motion video",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoadVideo"
+   },
+   "widgets_values": [
+    "mmh3_0e1ea6da_MMH3-4_clip001_00056.mp4",
+    "image"
+   ],
+   "widgets_values_named": {
+    "file": "mmh3_0e1ea6da_MMH3-4_clip001_00056.mp4",
+    "upload": "image"
+   }
+  },
+  {
+   "id": "r5",
+   "type": "TJ_RefAssetRegister",
+   "pos": [
+    760,
+    2930
+   ],
+   "size": [
+    296.6041015625,
+    322
+   ],
+   "flags": {},
+   "order": 25,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "image",
+     "name": "image",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "video",
+     "name": "video",
+     "shape": 7,
+     "type": "VIDEO",
+     "link": 57
+    },
+    {
+     "localized_name": "prev_items",
+     "name": "prev_items",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "category",
+     "name": "category",
+     "type": "COMBO",
+     "widget": {
+      "name": "category"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "name",
+     "name": "name",
+     "type": "STRING",
+     "widget": {
+      "name": "name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "as_set",
+     "name": "as_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "as_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "set_mode",
+     "name": "set_mode",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "set_mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "subcategory",
+     "name": "subcategory",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "subcategory"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "alias",
+     "name": "alias",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "alias"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "tags",
+     "name": "tags",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "tags"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mp",
+     "name": "mp",
+     "shape": 7,
+     "type": "FLOAT",
+     "widget": {
+      "name": "mp"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "asset_ids",
+     "name": "asset_ids",
+     "type": "STRING",
+     "links": null
+    },
+    {
+     "localized_name": "items",
+     "name": "items",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "5 Register: video",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_RefAssetRegister"
+   },
+   "widgets_values": [
+    "video",
+    "Motion",
+    false,
+    "video",
+    "",
+    "motion",
+    "",
+    0,
+    ""
+   ],
+   "widgets_values_named": {
+    "category": "video",
+    "name": "Motion",
+    "as_set": false,
+    "set_mode": "video",
+    "subcategory": "",
+    "alias": "motion",
+    "tags": "",
+    "mp": 0,
+    "last_result": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "m2",
+   "type": "UNETLoader",
+   "pos": [
+    0,
+    5056
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 11,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "unet_name",
+     "name": "unet_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "unet_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "weight_dtype",
+     "name": "weight_dtype",
+     "type": "COMBO",
+     "widget": {
+      "name": "weight_dtype"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      58
+     ]
+    }
+   ],
+   "title": "Model fl2va",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "UNETLoader"
+   },
+   "widgets_values": [
+    "MinimaxH3\\minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "default"
+   ],
+   "widgets_values_named": {
+    "unet_name": "MinimaxH3\\minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+    "weight_dtype": "default"
+   }
+  },
+  {
+   "id": "l2",
+   "type": "LoraLoaderModelOnly",
+   "pos": [
+    0,
+    5192
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 26,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 58
+    },
+    {
+     "localized_name": "lora_name",
+     "name": "lora_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "lora_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "strength_model",
+     "name": "strength_model",
+     "type": "FLOAT",
+     "widget": {
+      "name": "strength_model"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      59
+     ]
+    }
+   ],
+   "title": "Turbo LoRA fl2va 8step",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "LoraLoaderModelOnly"
+   },
+   "widgets_values": [
+    "MinimaxH3\\Turbo_LoRA\\minimax_h3_dmd_fl2va_8step_turbo_pruned.safetensors",
+    1
+   ],
+   "widgets_values_named": {
+    "lora_name": "MinimaxH3\\Turbo_LoRA\\minimax_h3_dmd_fl2va_8step_turbo_pruned.safetensors",
+    "strength_model": 1
+   }
+  },
+  {
+   "id": "sa2",
+   "type": "PathchSageAttentionKJ",
+   "pos": [
+    0,
+    5328
+   ],
+   "size": [
+    270,
+    82
+   ],
+   "flags": {},
+   "order": 33,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 59
+    },
+    {
+     "localized_name": "sage_attention",
+     "name": "sage_attention",
+     "type": "COMBO",
+     "widget": {
+      "name": "sage_attention"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "allow_compile",
+     "name": "allow_compile",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "allow_compile"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "MODEL",
+     "name": "MODEL",
+     "type": "MODEL",
+     "links": [
+      60
+     ]
+    }
+   ],
+   "title": "Sage Attention (i2v)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-kjnodes",
+    "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+    "Node name for S&R": "PathchSageAttentionKJ"
+   },
+   "widgets_values": [
+    "auto",
+    false
+   ],
+   "widgets_values_named": {
+    "sage_attention": "auto",
+    "allow_compile": false
+   }
+  },
+  {
+   "id": "me2",
+   "type": "MiniMaxH3MemoryEfficientSageAttentionPatch",
+   "pos": [
+    0,
+    5464
+   ],
+   "size": [
+    320.323828125,
+    26
+   ],
+   "flags": {},
+   "order": 35,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 60
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "links": [
+      88
+     ]
+    }
+   ],
+   "title": "Sage MemEff H3 (i2v)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-kjnodes",
+    "ver": "d3cfe21625e5170126ce06fbfcfe1d88108688c3",
+    "Node name for S&R": "MiniMaxH3MemoryEfficientSageAttentionPatch"
+   }
+  },
+  {
+   "id": "Ph",
+   "type": "TJ_H3Reference",
+   "pos": [
+    520,
+    3742
+   ],
+   "size": [
+    400,
+    728
+   ],
+   "flags": {},
+   "order": 18,
+   "mode": 0,
+   "inputs": [
+    {
+     "label": "",
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 61
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": 62
+    },
+    {
+     "localized_name": "audio_vae",
+     "name": "audio_vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": 63
+    },
+    {
+     "localized_name": "project_id",
+     "name": "project_id",
+     "shape": 7,
+     "type": "*",
+     "link": 64
+    },
+    {
+     "localized_name": "prompt",
+     "name": "prompt",
+     "type": "STRING",
+     "widget": {
+      "name": "prompt"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "widget": {
+      "name": "width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "widget": {
+      "name": "height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "length",
+     "name": "length",
+     "type": "INT",
+     "widget": {
+      "name": "length"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "ref_image_size",
+     "name": "ref_image_size",
+     "type": "COMBO",
+     "widget": {
+      "name": "ref_image_size"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mode",
+     "name": "mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "match_check",
+     "name": "match_check",
+     "type": "COMBO",
+     "widget": {
+      "name": "match_check"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "project",
+     "name": "project",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "project"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_count",
+     "name": "asset_count",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "asset_count"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_1",
+     "name": "asset_1",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_2",
+     "name": "asset_2",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_3",
+     "name": "asset_3",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_4",
+     "name": "asset_4",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_4"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_5",
+     "name": "asset_5",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_5"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_6",
+     "name": "asset_6",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_6"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_7",
+     "name": "asset_7",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_7"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_8",
+     "name": "asset_8",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_8"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_9",
+     "name": "asset_9",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_9"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_10",
+     "name": "asset_10",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_10"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_11",
+     "name": "asset_11",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_11"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_12",
+     "name": "asset_12",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_12"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_13",
+     "name": "asset_13",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_13"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_14",
+     "name": "asset_14",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_14"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_15",
+     "name": "asset_15",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_15"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "compress_refs",
+     "name": "compress_refs",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "compress_refs"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "encode_cache",
+     "name": "encode_cache",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "encode_cache"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "overrides",
+     "name": "overrides",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "overrides"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "get_name",
+     "name": "get_name",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "get_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "auto_set",
+     "name": "auto_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "auto_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "setnode_name",
+     "name": "setnode_name",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "setnode_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "H3Ref_1 ▶",
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "links": [
+      66,
+      67
+     ]
+    },
+    {
+     "label": "latent",
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "LATENT",
+     "links": [
+      68
+     ]
+    },
+    {
+     "label": "snapshot",
+     "localized_name": "snapshot",
+     "name": "snapshot",
+     "type": "STRING",
+     "links": [
+      73
+     ]
+    },
+    {
+     "label": "report",
+     "localized_name": "report",
+     "name": "report",
+     "type": "STRING",
+     "links": [
+      72
+     ]
+    }
+   ],
+   "title": "MiniMax H3 Reference to Video - project mode",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_H3Reference",
+    "auto_sets": {}
+   },
+   "widgets_values": [
+    "@hero stands in @room and moves like @motion, same person as @angles, speaking with @voice",
+    512,
+    320,
+    73,
+    "match",
+    "project",
+    "strict",
+    "demo project [id:2]",
+    1,
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    false,
+    true,
+    "",
+    "(none)",
+    false,
+    "H3Ref_1",
+    ""
+   ],
+   "widgets_values_named": {
+    "prompt": "@hero stands in @room and moves like @motion, same person as @angles, speaking with @voice",
+    "width": 512,
+    "height": 320,
+    "length": 73,
+    "ref_image_size": "match",
+    "mode": "project",
+    "match_check": "strict",
+    "project": "demo project [id:2]",
+    "asset_count": 1,
+    "asset_1": "(none)",
+    "asset_2": "(none)",
+    "asset_3": "(none)",
+    "asset_4": "(none)",
+    "asset_5": "(none)",
+    "asset_6": "(none)",
+    "asset_7": "(none)",
+    "asset_8": "(none)",
+    "asset_9": "(none)",
+    "asset_10": "(none)",
+    "asset_11": "(none)",
+    "asset_12": "(none)",
+    "asset_13": "(none)",
+    "asset_14": "(none)",
+    "asset_15": "(none)",
+    "compress_refs": false,
+    "encode_cache": true,
+    "overrides": "",
+    "get_name": "(none)",
+    "auto_set": false,
+    "setnode_name": "H3Ref_1",
+    "ref_info": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "Pk",
+   "type": "KSampler",
+   "pos": [
+    960,
+    3742
+   ],
+   "size": [
+    270,
+    262
+   ],
+   "flags": {},
+   "order": 36,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 65
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 66
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 67
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 68
+    },
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      69
+     ]
+    }
+   ],
+   "title": "P KSampler 8 steps",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    7,
+    "randomize",
+    8,
+    1,
+    "euler",
+    "simple",
+    1
+   ],
+   "widgets_values_named": {
+    "seed": 7,
+    "control_after_generate": "randomize",
+    "steps": 8,
+    "cfg": 1,
+    "sampler_name": "euler",
+    "scheduler": "simple",
+    "denoise": 1
+   }
+  },
+  {
+   "id": "Pd",
+   "type": "VAEDecode",
+   "pos": [
+    960,
+    4058
+   ],
+   "size": [
+    140,
+    46
+   ],
+   "flags": {},
+   "order": 39,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 69
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 70
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      71
+     ]
+    }
+   ],
+   "title": "P VAE Decode",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": "Po",
+   "type": "VHS_VideoCombine",
+   "pos": [
+    1300,
+    3742
+   ],
+   "size": [
+    366.5234375,
+    334
+   ],
+   "flags": {},
+   "order": 42,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 71
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "meta_batch",
+     "name": "meta_batch",
+     "shape": 7,
+     "type": "VHS_BatchManager",
+     "link": null
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": null
+    },
+    {
+     "localized_name": "frame_rate",
+     "name": "frame_rate",
+     "type": "FLOAT",
+     "widget": {
+      "name": "frame_rate"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "loop_count",
+     "name": "loop_count",
+     "type": "INT",
+     "widget": {
+      "name": "loop_count"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "format",
+     "name": "format",
+     "type": "COMBO",
+     "widget": {
+      "name": "format"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "pingpong",
+     "name": "pingpong",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "pingpong"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "save_output",
+     "name": "save_output",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_output"
+     },
+     "link": null
+    },
+    {
+     "name": "pix_fmt#1",
+     "type": [
+      "yuv420p",
+      "yuv420p10le"
+     ],
+     "widget": {
+      "name": "pix_fmt#1"
+     },
+     "link": null
+    },
+    {
+     "name": "crf#1",
+     "type": "INT",
+     "widget": {
+      "name": "crf#1"
+     },
+     "link": null
+    },
+    {
+     "name": "save_metadata#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_metadata#1"
+     },
+     "link": null
+    },
+    {
+     "name": "trim_to_audio#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "trim_to_audio#1"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "Filenames",
+     "name": "Filenames",
+     "type": "VHS_FILENAMES",
+     "links": null
+    }
+   ],
+   "title": "P Save video (output/TJ_RefLib/project_mode)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-videohelpersuite",
+    "ver": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+    "Node name for S&R": "VHS_VideoCombine"
+   },
+   "widgets_values": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/project_mode",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   },
+   "widgets_values_named": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/project_mode",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   }
+  },
+  {
+   "id": "Pr",
+   "type": "PreviewAny",
+   "pos": [
+    1300,
+    4130
+   ],
+   "size": [
+    210,
+    122
+   ],
+   "flags": {},
+   "order": 28,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "source",
+     "name": "source",
+     "type": "*",
+     "link": 72
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "STRING",
+     "name": "STRING",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "P report (match check JSON)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "PreviewAny"
+   },
+   "widgets_values": [],
+   "widgets_values_named": {}
+  },
+  {
+   "id": "Ps",
+   "type": "PreviewAny",
+   "pos": [
+    1300,
+    4306
+   ],
+   "size": [
+    210,
+    122
+   ],
+   "flags": {},
+   "order": 27,
+   "mode": 0,
+   "inputs": [
+    {
+     "localized_name": "source",
+     "name": "source",
+     "type": "*",
+     "link": 73
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "STRING",
+     "name": "STRING",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "P snapshot (what went in)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "PreviewAny"
+   },
+   "widgets_values": [],
+   "widgets_values_named": {}
+  },
+  {
+   "id": "Sh",
+   "type": "TJ_H3Reference",
+   "pos": [
+    1820,
+    3742
+   ],
+   "size": [
+    400,
+    824
+   ],
+   "flags": {},
+   "order": 19,
+   "mode": 2,
+   "inputs": [
+    {
+     "label": "",
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 74
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": 75
+    },
+    {
+     "localized_name": "audio_vae",
+     "name": "audio_vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": 76
+    },
+    {
+     "localized_name": "project_id",
+     "name": "project_id",
+     "shape": 7,
+     "type": "*",
+     "link": null
+    },
+    {
+     "localized_name": "prompt",
+     "name": "prompt",
+     "type": "STRING",
+     "widget": {
+      "name": "prompt"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "widget": {
+      "name": "width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "widget": {
+      "name": "height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "length",
+     "name": "length",
+     "type": "INT",
+     "widget": {
+      "name": "length"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "ref_image_size",
+     "name": "ref_image_size",
+     "type": "COMBO",
+     "widget": {
+      "name": "ref_image_size"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "mode",
+     "name": "mode",
+     "type": "COMBO",
+     "widget": {
+      "name": "mode"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "match_check",
+     "name": "match_check",
+     "type": "COMBO",
+     "widget": {
+      "name": "match_check"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "project",
+     "name": "project",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "project"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_count",
+     "name": "asset_count",
+     "shape": 7,
+     "type": "INT",
+     "widget": {
+      "name": "asset_count"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_1",
+     "name": "asset_1",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_1"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_2",
+     "name": "asset_2",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_2"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_3",
+     "name": "asset_3",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_3"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_4",
+     "name": "asset_4",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_4"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_5",
+     "name": "asset_5",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_5"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_6",
+     "name": "asset_6",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_6"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_7",
+     "name": "asset_7",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_7"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_8",
+     "name": "asset_8",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_8"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_9",
+     "name": "asset_9",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_9"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_10",
+     "name": "asset_10",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_10"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_11",
+     "name": "asset_11",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_11"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_12",
+     "name": "asset_12",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_12"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_13",
+     "name": "asset_13",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_13"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_14",
+     "name": "asset_14",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_14"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "asset_15",
+     "name": "asset_15",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "asset_15"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "compress_refs",
+     "name": "compress_refs",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "compress_refs"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "encode_cache",
+     "name": "encode_cache",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "encode_cache"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "overrides",
+     "name": "overrides",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "overrides"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "get_name",
+     "name": "get_name",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "get_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "auto_set",
+     "name": "auto_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "auto_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "setnode_name",
+     "name": "setnode_name",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "setnode_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "H3Ref ▶",
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "links": [
+      78,
+      79
+     ]
+    },
+    {
+     "label": "latent",
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "LATENT",
+     "links": [
+      80
+     ]
+    },
+    {
+     "label": "snapshot",
+     "localized_name": "snapshot",
+     "name": "snapshot",
+     "type": "STRING",
+     "links": [
+      85
+     ]
+    },
+    {
+     "label": "report",
+     "localized_name": "report",
+     "name": "report",
+     "type": "STRING",
+     "links": [
+      84
+     ]
+    }
+   ],
+   "title": "MiniMax H3 Reference to Video - assets mode",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_H3Reference",
+    "auto_sets": {}
+   },
+   "widgets_values": [
+    "@1 stands in @2 and moves like @3 while @4 plays",
+    512,
+    320,
+    73,
+    "match",
+    "assets",
+    "strict",
+    "(none)",
+    5,
+    "character/test/Hero [id:1]",
+    "background/Room [id:2]",
+    "video/Motion [id:10]",
+    "voice/Voice [id:9]",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    "(none)",
+    false,
+    true,
+    "",
+    "(none)",
+    false,
+    "H3Ref",
+    ""
+   ],
+   "widgets_values_named": {
+    "prompt": "@1 stands in @2 and moves like @3 while @4 plays",
+    "width": 512,
+    "height": 320,
+    "length": 73,
+    "ref_image_size": "match",
+    "mode": "assets",
+    "match_check": "strict",
+    "project": "(none)",
+    "asset_count": 5,
+    "asset_1": "character/test/Hero [id:1]",
+    "asset_2": "background/Room [id:2]",
+    "asset_3": "video/Motion [id:10]",
+    "asset_4": "voice/Voice [id:9]",
+    "asset_5": "(none)",
+    "asset_6": "(none)",
+    "asset_7": "(none)",
+    "asset_8": "(none)",
+    "asset_9": "(none)",
+    "asset_10": "(none)",
+    "asset_11": "(none)",
+    "asset_12": "(none)",
+    "asset_13": "(none)",
+    "asset_14": "(none)",
+    "asset_15": "(none)",
+    "compress_refs": false,
+    "encode_cache": true,
+    "overrides": "",
+    "get_name": "(none)",
+    "auto_set": false,
+    "setnode_name": "H3Ref",
+    "ref_info": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "Sk",
+   "type": "KSampler",
+   "pos": [
+    2260,
+    3742
+   ],
+   "size": [
+    270,
+    262
+   ],
+   "flags": {},
+   "order": 37,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 77
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 78
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 79
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 80
+    },
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      81
+     ]
+    }
+   ],
+   "title": "S KSampler 8 steps",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    7,
+    "randomize",
+    8,
+    1,
+    "euler",
+    "simple",
+    1
+   ],
+   "widgets_values_named": {
+    "seed": 7,
+    "control_after_generate": "randomize",
+    "steps": 8,
+    "cfg": 1,
+    "sampler_name": "euler",
+    "scheduler": "simple",
+    "denoise": 1
+   }
+  },
+  {
+   "id": "Sd",
+   "type": "VAEDecode",
+   "pos": [
+    2260,
+    4058
+   ],
+   "size": [
+    140,
+    46
+   ],
+   "flags": {},
+   "order": 40,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 81
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 82
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      83
+     ]
+    }
+   ],
+   "title": "S VAE Decode",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": "So",
+   "type": "VHS_VideoCombine",
+   "pos": [
+    2600,
+    3742
+   ],
+   "size": [
+    363.064453125,
+    334
+   ],
+   "flags": {},
+   "order": 43,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 83
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "meta_batch",
+     "name": "meta_batch",
+     "shape": 7,
+     "type": "VHS_BatchManager",
+     "link": null
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": null
+    },
+    {
+     "localized_name": "frame_rate",
+     "name": "frame_rate",
+     "type": "FLOAT",
+     "widget": {
+      "name": "frame_rate"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "loop_count",
+     "name": "loop_count",
+     "type": "INT",
+     "widget": {
+      "name": "loop_count"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "format",
+     "name": "format",
+     "type": "COMBO",
+     "widget": {
+      "name": "format"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "pingpong",
+     "name": "pingpong",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "pingpong"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "save_output",
+     "name": "save_output",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_output"
+     },
+     "link": null
+    },
+    {
+     "name": "pix_fmt#1",
+     "type": [
+      "yuv420p",
+      "yuv420p10le"
+     ],
+     "widget": {
+      "name": "pix_fmt#1"
+     },
+     "link": null
+    },
+    {
+     "name": "crf#1",
+     "type": "INT",
+     "widget": {
+      "name": "crf#1"
+     },
+     "link": null
+    },
+    {
+     "name": "save_metadata#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_metadata#1"
+     },
+     "link": null
+    },
+    {
+     "name": "trim_to_audio#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "trim_to_audio#1"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "Filenames",
+     "name": "Filenames",
+     "type": "VHS_FILENAMES",
+     "links": null
+    }
+   ],
+   "title": "S Save video (output/TJ_RefLib/assets_mode)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-videohelpersuite",
+    "ver": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+    "Node name for S&R": "VHS_VideoCombine"
+   },
+   "widgets_values": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/assets_mode",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   },
+   "widgets_values_named": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/assets_mode",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   }
+  },
+  {
+   "id": "Sr",
+   "type": "PreviewAny",
+   "pos": [
+    2600,
+    4130
+   ],
+   "size": [
+    210,
+    122
+   ],
+   "flags": {},
+   "order": 30,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "source",
+     "name": "source",
+     "type": "*",
+     "link": 84
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "STRING",
+     "name": "STRING",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "S report (match check JSON)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "PreviewAny"
+   },
+   "widgets_values": [],
+   "widgets_values_named": {}
+  },
+  {
+   "id": "Ss",
+   "type": "PreviewAny",
+   "pos": [
+    2600,
+    4306
+   ],
+   "size": [
+    210,
+    122
+   ],
+   "flags": {},
+   "order": 29,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "source",
+     "name": "source",
+     "type": "*",
+     "link": 85
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "STRING",
+     "name": "STRING",
+     "type": "STRING",
+     "links": null
+    }
+   ],
+   "title": "S snapshot (what went in)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "PreviewAny"
+   },
+   "widgets_values": [],
+   "widgets_values_named": {}
+  },
+  {
+   "id": "Ih",
+   "type": "TJ_H3ImageToVideo",
+   "pos": [
+    400,
+    5056
+   ],
+   "size": [
+    400,
+    524
+   ],
+   "flags": {},
+   "order": 17,
+   "mode": 2,
+   "inputs": [
+    {
+     "label": "",
+     "localized_name": "clip",
+     "name": "clip",
+     "type": "CLIP",
+     "link": 86
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 87
+    },
+    {
+     "localized_name": "first_frame",
+     "name": "first_frame",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "localized_name": "last_frame",
+     "name": "last_frame",
+     "shape": 7,
+     "type": "IMAGE",
+     "link": null
+    },
+    {
+     "localized_name": "prompt",
+     "name": "prompt",
+     "type": "STRING",
+     "widget": {
+      "name": "prompt"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "width",
+     "name": "width",
+     "type": "INT",
+     "widget": {
+      "name": "width"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "height",
+     "name": "height",
+     "type": "INT",
+     "widget": {
+      "name": "height"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "length",
+     "name": "length",
+     "type": "INT",
+     "widget": {
+      "name": "length"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "first_asset",
+     "name": "first_asset",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "first_asset"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "last_asset",
+     "name": "last_asset",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "last_asset"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "encode_cache",
+     "name": "encode_cache",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "encode_cache"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "get_name",
+     "name": "get_name",
+     "shape": 7,
+     "type": "COMBO",
+     "widget": {
+      "name": "get_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "auto_set",
+     "name": "auto_set",
+     "shape": 7,
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "auto_set"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "setnode_name",
+     "name": "setnode_name",
+     "shape": 7,
+     "type": "STRING",
+     "widget": {
+      "name": "setnode_name"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "label": "H3I2V ▶",
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "links": [
+      89,
+      90
+     ]
+    },
+    {
+     "label": "latent",
+     "localized_name": "latent",
+     "name": "latent",
+     "type": "LATENT",
+     "links": [
+      91
+     ]
+    }
+   ],
+   "title": "MiniMax H3 Image to Video",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-tj_node",
+    "ver": "46d7631df8c4ed0eb8da07e7777a4ecec423dbf0",
+    "Node name for S&R": "TJ_H3ImageToVideo",
+    "auto_sets": {}
+   },
+   "widgets_values": [
+    "The girl slowly turns toward the camera and smiles, soft cinematic light.",
+    512,
+    320,
+    73,
+    "character/test/Hero [id:1]",
+    "background/Room [id:2]",
+    true,
+    "(none)",
+    false,
+    "H3I2V",
+    ""
+   ],
+   "widgets_values_named": {
+    "prompt": "The girl slowly turns toward the camera and smiles, soft cinematic light.",
+    "width": 512,
+    "height": 320,
+    "length": 73,
+    "first_asset": "character/test/Hero [id:1]",
+    "last_asset": "background/Room [id:2]",
+    "encode_cache": true,
+    "get_name": "(none)",
+    "auto_set": false,
+    "setnode_name": "H3I2V",
+    "frame_preview": ""
+   },
+   "color": "#7612DA",
+   "bgcolor": "#000000"
+  },
+  {
+   "id": "Ik",
+   "type": "KSampler",
+   "pos": [
+    840,
+    5056
+   ],
+   "size": [
+    270,
+    262
+   ],
+   "flags": {},
+   "order": 38,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "model",
+     "name": "model",
+     "type": "MODEL",
+     "link": 88
+    },
+    {
+     "localized_name": "positive",
+     "name": "positive",
+     "type": "CONDITIONING",
+     "link": 89
+    },
+    {
+     "localized_name": "negative",
+     "name": "negative",
+     "type": "CONDITIONING",
+     "link": 90
+    },
+    {
+     "localized_name": "latent_image",
+     "name": "latent_image",
+     "type": "LATENT",
+     "link": 91
+    },
+    {
+     "localized_name": "seed",
+     "name": "seed",
+     "type": "INT",
+     "widget": {
+      "name": "seed"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "steps",
+     "name": "steps",
+     "type": "INT",
+     "widget": {
+      "name": "steps"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "cfg",
+     "name": "cfg",
+     "type": "FLOAT",
+     "widget": {
+      "name": "cfg"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "sampler_name",
+     "name": "sampler_name",
+     "type": "COMBO",
+     "widget": {
+      "name": "sampler_name"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "scheduler",
+     "name": "scheduler",
+     "type": "COMBO",
+     "widget": {
+      "name": "scheduler"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "denoise",
+     "name": "denoise",
+     "type": "FLOAT",
+     "widget": {
+      "name": "denoise"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "LATENT",
+     "name": "LATENT",
+     "type": "LATENT",
+     "links": [
+      92
+     ]
+    }
+   ],
+   "title": "I KSampler 8 steps",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "KSampler"
+   },
+   "widgets_values": [
+    7,
+    "randomize",
+    8,
+    1,
+    "euler",
+    "simple",
+    1
+   ],
+   "widgets_values_named": {
+    "seed": 7,
+    "control_after_generate": "randomize",
+    "steps": 8,
+    "cfg": 1,
+    "sampler_name": "euler",
+    "scheduler": "simple",
+    "denoise": 1
+   }
+  },
+  {
+   "id": "Id",
+   "type": "VAEDecode",
+   "pos": [
+    840,
+    5372
+   ],
+   "size": [
+    140,
+    46
+   ],
+   "flags": {},
+   "order": 41,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "samples",
+     "name": "samples",
+     "type": "LATENT",
+     "link": 92
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "type": "VAE",
+     "link": 93
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "IMAGE",
+     "name": "IMAGE",
+     "type": "IMAGE",
+     "links": [
+      94
+     ]
+    }
+   ],
+   "title": "I VAE Decode",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfy-core",
+    "ver": "0.38.2",
+    "Node name for S&R": "VAEDecode"
+   }
+  },
+  {
+   "id": "Io",
+   "type": "VHS_VideoCombine",
+   "pos": [
+    1180,
+    5056
+   ],
+   "size": [
+    372.1083984375,
+    334
+   ],
+   "flags": {},
+   "order": 44,
+   "mode": 2,
+   "inputs": [
+    {
+     "localized_name": "images",
+     "name": "images",
+     "type": "IMAGE",
+     "link": 94
+    },
+    {
+     "localized_name": "audio",
+     "name": "audio",
+     "shape": 7,
+     "type": "AUDIO",
+     "link": null
+    },
+    {
+     "localized_name": "meta_batch",
+     "name": "meta_batch",
+     "shape": 7,
+     "type": "VHS_BatchManager",
+     "link": null
+    },
+    {
+     "localized_name": "vae",
+     "name": "vae",
+     "shape": 7,
+     "type": "VAE",
+     "link": null
+    },
+    {
+     "localized_name": "frame_rate",
+     "name": "frame_rate",
+     "type": "FLOAT",
+     "widget": {
+      "name": "frame_rate"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "loop_count",
+     "name": "loop_count",
+     "type": "INT",
+     "widget": {
+      "name": "loop_count"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "filename_prefix",
+     "name": "filename_prefix",
+     "type": "STRING",
+     "widget": {
+      "name": "filename_prefix"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "format",
+     "name": "format",
+     "type": "COMBO",
+     "widget": {
+      "name": "format"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "pingpong",
+     "name": "pingpong",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "pingpong"
+     },
+     "link": null
+    },
+    {
+     "localized_name": "save_output",
+     "name": "save_output",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_output"
+     },
+     "link": null
+    },
+    {
+     "name": "pix_fmt#1",
+     "type": [
+      "yuv420p",
+      "yuv420p10le"
+     ],
+     "widget": {
+      "name": "pix_fmt#1"
+     },
+     "link": null
+    },
+    {
+     "name": "crf#1",
+     "type": "INT",
+     "widget": {
+      "name": "crf#1"
+     },
+     "link": null
+    },
+    {
+     "name": "save_metadata#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "save_metadata#1"
+     },
+     "link": null
+    },
+    {
+     "name": "trim_to_audio#1",
+     "type": "BOOLEAN",
+     "widget": {
+      "name": "trim_to_audio#1"
+     },
+     "link": null
+    }
+   ],
+   "outputs": [
+    {
+     "localized_name": "Filenames",
+     "name": "Filenames",
+     "type": "VHS_FILENAMES",
+     "links": null
+    }
+   ],
+   "title": "I Save video (output/TJ_RefLib/image_to_video)",
+   "properties": {
+    "ue_properties": {
+     "widget_ue_connectable": {},
+     "input_ue_unconnectable": {}
+    },
+    "cnr_id": "comfyui-videohelpersuite",
+    "ver": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+    "Node name for S&R": "VHS_VideoCombine"
+   },
+   "widgets_values": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/image_to_video",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   },
+   "widgets_values_named": {
+    "frame_rate": 24,
+    "loop_count": 0,
+    "filename_prefix": "TJ_RefLib/image_to_video",
+    "format": "video/h264-mp4",
+    "pix_fmt#1": "yuv420p",
+    "crf#1": 19,
+    "save_metadata#1": true,
+    "trim_to_audio#1": false,
+    "pingpong": false,
+    "save_output": true,
+    "videopreview": {
+     "hidden": false,
+     "paused": false,
+     "params": {}
+    }
+   }
+  },
+  {
+   "id": 1,
+   "type": "MarkdownNote",
+   "pos": [
+    0,
+    0
+   ],
+   "size": [
+    860,
+    190
+   ],
+   "flags": {},
+   "order": 12,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "Notes",
+   "properties": {},
+   "widgets_values": [
+    "## ⓪ Asset Browser — assets + project management\n**Assets tab**: Categories | Assets | Viewer. `+ Add`, preview, edit name / category / tags, set audio/video range (in/out), **Replace** (swap the file, keep the ID), **Delete** (press twice to confirm).\n**Projects tab**: Projects | Project contents (alias / order) | Library (click to add) → **Save / New project / Delete**.\nOutputs: `asset_id` (selected asset), **`project_id` (selected project)** → wired to `project_id` of ② project mode. "
+   ],
+   "widgets_values_named": {
+    "text": "## ⓪ Asset Browser — assets + project management\n**Assets tab**: Categories | Assets | Viewer. `+ Add`, preview, edit name / category / tags, set audio/video range (in/out), **Replace** (swap the file, keep the ID), **Delete** (press twice to confirm).\n**Projects tab**: Projects | Project contents (alias / order) | Library (click to add) → **Save / New project / Delete**.\nOutputs: `asset_id` (selected asset), **`project_id` (selected project)** → wired to `project_id` of ② project mode. "
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 2,
+   "type": "MarkdownNote",
+   "pos": [
+    0,
+    1030
+   ],
+   "size": [
+    560,
+    230
+   ],
+   "flags": {},
+   "order": 13,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "Notes",
+   "properties": {},
+   "widgets_values": [
+    "## ① Register\nCopies images / image sets / audio / video into the library. The same file is never stored twice and returns the same ID. The box under each node shows `new #ID` / `existing #ID`.\n- `alias` = the name used in prompts, e.g. `@hero`\n- `as_set` = (shown only when an image is connected) bundles several images into one set\nGroup registered assets into a project on the **Projects tab** of ⓪. "
+   ],
+   "widgets_values_named": {
+    "text": "## ① Register\nCopies images / image sets / audio / video into the library. The same file is never stored twice and returns the same ID. The box under each node shows `new #ID` / `existing #ID`.\n- `alias` = the name used in prompts, e.g. `@hero`\n- `as_set` = (shown only when an image is connected) bundles several images into one set\nGroup registered assets into a project on the **Projects tab** of ⓪. "
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 3,
+   "type": "MarkdownNote",
+   "pos": [
+    520,
+    3412
+   ],
+   "size": [
+    560,
+    250
+   ],
+   "flags": {},
+   "order": 14,
+   "mode": 0,
+   "inputs": [],
+   "outputs": [],
+   "title": "Notes",
+   "properties": {},
+   "widgets_values": [
+    "## ② MiniMax H3 Reference to Video - project mode\n`mode = project`: **all** assets of the project are loaded at once. The project comes from the `project_id` output of the ⓪ Asset Browser (when connected it takes priority over the combo). The node's **Load / Refresh library** button fills the info box with asset IDs, aliases, final labels, limits and the match check. Type `@` in the prompt to get the asset list.\nDrag the bar below the prompt box and the info box to resize each one.\n**compress_refs**: off = best quality; on = reference tokens ¼, faster, less detail.\nOutput video: `C:\\AI\\output\\TJ_RefLib\\project_mode` "
+   ],
+   "widgets_values_named": {
+    "text": "## ② MiniMax H3 Reference to Video - project mode\n`mode = project`: **all** assets of the project are loaded at once. The project comes from the `project_id` output of the ⓪ Asset Browser (when connected it takes priority over the combo). The node's **Load / Refresh library** button fills the info box with asset IDs, aliases, final labels, limits and the match check. Type `@` in the prompt to get the asset list.\nDrag the bar below the prompt box and the info box to resize each one.\n**compress_refs**: off = best quality; on = reference tokens ¼, faster, less detail.\nOutput video: `C:\\AI\\output\\TJ_RefLib\\project_mode` "
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 4,
+   "type": "MarkdownNote",
+   "pos": [
+    1820,
+    3412
+   ],
+   "size": [
+    560,
+    250
+   ],
+   "flags": {},
+   "order": 15,
+   "mode": 2,
+   "inputs": [],
+   "outputs": [],
+   "title": "Notes",
+   "properties": {},
+   "widgets_values": [
+    "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\u0007ssets_mode` "
+   ],
+   "widgets_values_named": {
+    "text": "## ③ MiniMax H3 Reference to Video - assets mode (default: Muted)\n`mode = assets`: combos open one at a time (pick `asset_1` and `asset_2` appears); choose assets from the library. In the prompt, call them by number (`@1`) or by library name (`@Hero`).\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Mute ② and enable ③ to compare. Output video: `C:\\AI\\output\\TJ_RefLib\u0007ssets_mode` "
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  },
+  {
+   "id": 5,
+   "type": "MarkdownNote",
+   "pos": [
+    0,
+    4766
+   ],
+   "size": [
+    560,
+    220
+   ],
+   "flags": {},
+   "order": 16,
+   "mode": 2,
+   "inputs": [],
+   "outputs": [],
+   "title": "Notes",
+   "properties": {},
+   "widgets_values": [
+    "## ④ MiniMax H3 Image to Video (default: Muted)\nGive the first / last frame as a **connected image** or a **library asset combo** (`first_asset`, `last_asset`); a connected image takes priority. The selected asset's thumbnail is shown on the node. The fl2va model and the 8-step LoRA are loaded separately.\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Output video: `C:\\AI\\output\\TJ_RefLib\\image_to_video` "
+   ],
+   "widgets_values_named": {
+    "text": "## ④ MiniMax H3 Image to Video (default: Muted)\nGive the first / last frame as a **connected image** or a **library asset combo** (`first_asset`, `last_asset`); a connected image takes priority. The selected asset's thumbnail is shown on the node. The fl2va model and the 8-step LoRA are loaded separately.\n**To enable:** Ctrl+drag to select the group → Ctrl+M. Output video: `C:\\AI\\output\\TJ_RefLib\\image_to_video` "
+   },
+   "color": "#432",
+   "bgcolor": "#653"
+  }
+ ],
+ "links": [
+  [
+   48,
+   "m",
+   0,
+   "l",
+   0,
+   "MODEL"
+  ],
+  [
+   49,
+   "l",
+   0,
+   "sa",
+   0,
+   "MODEL"
+  ],
+  [
+   50,
+   "sa",
+   0,
+   "me",
+   0,
+   "MODEL"
+  ],
+  [
+   51,
+   "i1",
+   0,
+   "r1",
+   0,
+   "IMAGE"
+  ],
+  [
+   52,
+   "i2",
+   0,
+   "r2",
+   0,
+   "IMAGE"
+  ],
+  [
+   53,
+   "i3",
+   0,
+   "b",
+   0,
+   "IMAGE"
+  ],
+  [
+   54,
+   "i4",
+   0,
+   "b",
+   1,
+   "IMAGE"
+  ],
+  [
+   55,
+   "b",
+   0,
+   "r3",
+   0,
+   "IMAGE"
+  ],
+  [
+   56,
+   "a",
+   0,
+   "r4",
+   1,
+   "AUDIO"
+  ],
+  [
+   57,
+   "vv",
+   0,
+   "r5",
+   2,
+   "VIDEO"
+  ],
+  [
+   58,
+   "m2",
+   0,
+   "l2",
+   0,
+   "MODEL"
+  ],
+  [
+   59,
+   "l2",
+   0,
+   "sa2",
+   0,
+   "MODEL"
+  ],
+  [
+   60,
+   "sa2",
+   0,
+   "me2",
+   0,
+   "MODEL"
+  ],
+  [
+   61,
+   "c",
+   0,
+   "Ph",
+   0,
+   "CLIP"
+  ],
+  [
+   62,
+   "v",
+   0,
+   "Ph",
+   1,
+   "VAE"
+  ],
+  [
+   63,
+   "av",
+   0,
+   "Ph",
+   2,
+   "VAE"
+  ],
+  [
+   64,
+   "br",
+   1,
+   "Ph",
+   3,
+   "STRING"
+  ],
+  [
+   65,
+   "me",
+   0,
+   "Pk",
+   0,
+   "MODEL"
+  ],
+  [
+   66,
+   "Ph",
+   0,
+   "Pk",
+   1,
+   "CONDITIONING"
+  ],
+  [
+   67,
+   "Ph",
+   0,
+   "Pk",
+   2,
+   "CONDITIONING"
+  ],
+  [
+   68,
+   "Ph",
+   1,
+   "Pk",
+   3,
+   "LATENT"
+  ],
+  [
+   69,
+   "Pk",
+   0,
+   "Pd",
+   0,
+   "LATENT"
+  ],
+  [
+   70,
+   "v",
+   0,
+   "Pd",
+   1,
+   "VAE"
+  ],
+  [
+   71,
+   "Pd",
+   0,
+   "Po",
+   0,
+   "IMAGE"
+  ],
+  [
+   72,
+   "Ph",
+   3,
+   "Pr",
+   0,
+   "STRING"
+  ],
+  [
+   73,
+   "Ph",
+   2,
+   "Ps",
+   0,
+   "STRING"
+  ],
+  [
+   74,
+   "c",
+   0,
+   "Sh",
+   0,
+   "CLIP"
+  ],
+  [
+   75,
+   "v",
+   0,
+   "Sh",
+   1,
+   "VAE"
+  ],
+  [
+   76,
+   "av",
+   0,
+   "Sh",
+   2,
+   "VAE"
+  ],
+  [
+   77,
+   "me",
+   0,
+   "Sk",
+   0,
+   "MODEL"
+  ],
+  [
+   78,
+   "Sh",
+   0,
+   "Sk",
+   1,
+   "CONDITIONING"
+  ],
+  [
+   79,
+   "Sh",
+   0,
+   "Sk",
+   2,
+   "CONDITIONING"
+  ],
+  [
+   80,
+   "Sh",
+   1,
+   "Sk",
+   3,
+   "LATENT"
+  ],
+  [
+   81,
+   "Sk",
+   0,
+   "Sd",
+   0,
+   "LATENT"
+  ],
+  [
+   82,
+   "v",
+   0,
+   "Sd",
+   1,
+   "VAE"
+  ],
+  [
+   83,
+   "Sd",
+   0,
+   "So",
+   0,
+   "IMAGE"
+  ],
+  [
+   84,
+   "Sh",
+   3,
+   "Sr",
+   0,
+   "STRING"
+  ],
+  [
+   85,
+   "Sh",
+   2,
+   "Ss",
+   0,
+   "STRING"
+  ],
+  [
+   86,
+   "c",
+   0,
+   "Ih",
+   0,
+   "CLIP"
+  ],
+  [
+   87,
+   "v",
+   0,
+   "Ih",
+   1,
+   "VAE"
+  ],
+  [
+   88,
+   "me2",
+   0,
+   "Ik",
+   0,
+   "MODEL"
+  ],
+  [
+   89,
+   "Ih",
+   0,
+   "Ik",
+   1,
+   "CONDITIONING"
+  ],
+  [
+   90,
+   "Ih",
+   0,
+   "Ik",
+   2,
+   "CONDITIONING"
+  ],
+  [
+   91,
+   "Ih",
+   1,
+   "Ik",
+   3,
+   "LATENT"
+  ],
+  [
+   92,
+   "Ik",
+   0,
+   "Id",
+   0,
+   "LATENT"
+  ],
+  [
+   93,
+   "v",
+   0,
+   "Id",
+   1,
+   "VAE"
+  ],
+  [
+   94,
+   "Id",
+   0,
+   "Io",
+   0,
+   "IMAGE"
+  ]
+ ],
+ "groups": [
+  {
+   "id": 1,
+   "title": "⓪ Asset Browser (assets / projects)",
+   "bounding": [
+    -30,
+    -110,
+    920,
+    1010
+   ],
+   "color": "#7a5aa0",
+   "flags": {}
+  },
+  {
+   "id": 2,
+   "title": "① Register",
+   "bounding": [
+    -30,
+    920,
+    1116.6041015625,
+    2362
+   ],
+   "color": "#3f789e",
+   "flags": {}
+  },
+  {
+   "id": 3,
+   "title": "Models (shared + Reference to Video)",
+   "bounding": [
+    -30,
+    3362,
+    380.323828125,
+    958
+   ],
+   "color": "#8A8",
+   "flags": {}
+  },
+  {
+   "id": 4,
+   "title": "② Reference to Video - project mode",
+   "bounding": [
+    490,
+    3302,
+    1206.5234375,
+    1198
+   ],
+   "color": "#b58b2a",
+   "flags": {}
+  },
+  {
+   "id": 5,
+   "title": "③ Reference to Video - assets mode",
+   "bounding": [
+    1790,
+    3302,
+    1203.064453125,
+    1294
+   ],
+   "color": "#a1309b",
+   "flags": {}
+  },
+  {
+   "id": 6,
+   "title": "④ Image to Video (first / last frame = assets)",
+   "bounding": [
+    -30,
+    4656,
+    1612.1083984375,
+    954
+   ],
+   "color": "#2f8f9f",
+   "flags": {}
+  }
+ ],
+ "config": {},
+ "extra": {
+  "ue_links": [],
+  "ds": {
+   "scale": 4.043576227994355,
+   "offset": [
+    -37.446853972437935,
+    -142.49828547784332
+   ]
+  }
+ },
+ "version": 0.4
+}
