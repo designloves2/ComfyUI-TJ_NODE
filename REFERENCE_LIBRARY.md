@@ -6,7 +6,7 @@ MiniMax H3 레퍼런스(이미지 / 영상 / 오디오)를 **한 번 등록해 �
 
 ## 저장 위치
 
-기본: `custom_nodes/ComfyUI-TJ_NODE_STUDIO_ONE/assetDB/` (STUDIO_ONE 폴더가 없으면 이 팩의 `assetDB/`). 폴더 안에
+기본: 이 팩의 `custom_nodes/ComfyUI-TJ_NODE/assetDB/`. 폴더 안에
 `.gitignore`(`*`)가 있어서 미디어·DB는 git에 올라가지 않습니다. 바꾸려면 환경변수 `TJ_REFLIB_ROOT`
 또는 `POST /tj_node/reflib/settings {"root": "D:\\내폴더"}`.
 

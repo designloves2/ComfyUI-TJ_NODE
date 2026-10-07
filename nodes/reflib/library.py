@@ -58,10 +58,8 @@ def _config_path():
 
 
 def default_root():
-    """<custom_nodes>/ComfyUI-TJ_NODE_STUDIO_ONE/assetDB, or <this pack>/assetDB without STUDIO_ONE."""
-    pack = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    studio = os.path.join(os.path.dirname(pack), "ComfyUI-TJ_NODE_STUDIO_ONE")
-    return os.path.join(studio if os.path.isdir(studio) else pack, "assetDB")
+    """<this pack>/assetDB"""
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assetDB")
 
 
 def get_root():

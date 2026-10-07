@@ -5,6 +5,11 @@
 ---
 ## [Unreleased]
 
+### [Changed]
+
+* **에셋 라이브러리 기본 위치를 `ComfyUI-TJ_NODE/assetDB`로 고정.** 이전에는 STUDIO_ONE 폴더가 있으면 그 안에 만들었다.
+  기존 라이브러리는 `ComfyUI-TJ_NODE_STUDIO_ONE/assetDB`를 이 폴더로 옮기면 된다. `assetDB/`는 git에서 제외.
+
 ---
 ## [2.18.0] - 2026-10-07
 
