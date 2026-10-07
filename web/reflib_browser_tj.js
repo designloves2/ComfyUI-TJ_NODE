@@ -395,11 +395,27 @@ function build(node) {
         listBox.append(grid);
     }
 
+    // Same rule as library.count_kinds: a set kept as images counts every member, a set packed as video counts once.
+    const LIMITS = { image: 9, video: 3, audio: 3 };
+    function countKinds(assets) {
+        const n = { image: 0, video: 0, audio: 0 };
+        for (const a of assets) {
+            if (a.kind !== "set") n[a.kind]++;
+            else if (a.settings?.set_mode === "images") n.image += a.members.length;
+            else n.video++;
+        }
+        return n;
+    }
+
     function addToDraft(a) {
         if (!state.draft) newProject();
         if (draftItems().some((i) => i.asset_id === a.id)) return say(`#${a.id} is already in the project`, true);
+        const n = countKinds([...draftItems().map((i) => assetById(i.asset_id)).filter(Boolean), a]);
+        for (const k of Object.keys(LIMITS)) {
+            if (n[k] > LIMITS[k]) return say(`Limit reached: a project can hold at most ${LIMITS[k]} ${k}s (${n[k]} selected). Remove one first.`, true);
+        }
         state.draft.items.push({ asset_id: a.id, alias: "" });
-        say(""); drawDraft(); drawLibrary();
+        say(`images ${n.image}/${LIMITS.image}   videos ${n.video}/${LIMITS.video}   audio ${n.audio}/${LIMITS.audio}`); drawDraft(); drawLibrary();
     }
 
     async function saveProject() {

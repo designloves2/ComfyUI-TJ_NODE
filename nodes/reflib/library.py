@@ -568,12 +568,20 @@ def _check_alias(alias):
     return alias
 
 
-def _count_kinds(assets):
-    return {
-        "image": sum(a["kind"] == "image" for a in assets),
-        "video": sum(a["kind"] == "video" for a in assets),
-        "audio": sum(a["kind"] == "audio" for a in assets),
-    }
+def count_kinds(pairs):
+    """pairs: [(asset, item_settings)]. What the project becomes for the core: a set kept as images
+    counts every member as an image, a set packed as video counts as one video."""
+    out = {"image": 0, "video": 0, "audio": 0}
+    for asset, item_settings in pairs:
+        if asset["kind"] == "set":
+            mode = {**asset["settings"], **item_settings}["set_mode"]
+            if mode == "images":
+                out["image"] += len(asset["members"])
+            else:
+                out["video"] += 1
+        else:
+            out[asset["kind"]] += 1
+    return out
 
 
 def save_project(name, items, note="", project_id=None, update_existing=False):
@@ -590,16 +598,16 @@ def save_project(name, items, note="", project_id=None, update_existing=False):
         asset = get_asset(aid)
         if asset is None:
             raise LibraryError("ASSET_MISSING", f"asset_id={aid} is not in the library")
-        assets.append(asset)
+        assets.append((asset, normalize_settings(it.get("settings"))))
         alias = _check_alias(it.get("alias"))
         if alias:
             if alias.lower() in aliases:
                 raise LibraryError("DUPLICATE_ALIAS", f"alias '{alias}' is used twice")
             aliases.add(alias.lower())
-    kinds = _count_kinds(assets)
+    kinds = count_kinds(assets)
     for kind in ("image", "video", "audio"):
         if kinds[kind] > LIMITS[kind]:
-            raise LibraryError("LIMIT_EXCEEDED", f"project holds {kinds[kind]} {kind} assets, the limit is {LIMITS[kind]}")
+            raise LibraryError("LIMIT_EXCEEDED", f"a project can hold at most {LIMITS[kind]} {kind}s ({kinds[kind]} selected)")
 
     with db() as conn:
         now = time.time()

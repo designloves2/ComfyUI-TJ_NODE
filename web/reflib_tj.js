@@ -173,8 +173,58 @@ function openSlots(node) {
     return count;
 }
 
+// Attachment limits (same rule as library.count_kinds): a set kept as images counts every member,
+// a set packed as video counts once.
+const LIMITS = { image: 9, video: 3, audio: 3 };
+
+function countKinds(assets) {
+    const n = { image: 0, video: 0, audio: 0 };
+    for (const a of assets) {
+        if (a.kind !== "set") n[a.kind]++;
+        else if (a.settings?.set_mode === "images") n.image += a.members.length;
+        else n.video++;
+    }
+    return n;
+}
+
+function warn(node, text) {
+    app.extensionManager?.toast?.add({ severity: "warn", summary: "Reference limit", detail: text, life: 6000 });
+    if (node._tjInfoBox) node._tjInfoBox.value = text;
+}
+
+// A slot change that would push an attachment kind over its limit is reverted with a warning.
+function guardSlot(node, w) {
+    let prev = w.value;
+    const orig = w.callback;
+    w.callback = function (v) {
+        const byId = new Map((node._tjAssets || []).map((a) => [a.id, a]));
+        const chosen = [];
+        for (let i = 1; i <= MAX_SLOTS; i++) {
+            const sw = findW(node, `asset_${i}`);
+            const a = byId.get(assetIdOf(sw?.value));
+            if (a) chosen.push(a);
+        }
+        const before = countKinds(chosen.filter((a) => a.id !== assetIdOf(w.value)));
+        const after = countKinds(chosen);
+        const over = Object.keys(LIMITS).find((k) => after[k] > LIMITS[k]);
+        if (over) {
+            w.value = prev;
+            warn(node, before[over] >= LIMITS[over]
+                ? `${LIMITS[over]} ${over}s are already added. To add another one, replace an added asset.`
+                : `This asset would exceed the limit of ${LIMITS[over]} ${over}s. Replace or remove an added asset first.`);
+            return;
+        }
+        prev = w.value;
+        if (orig) orig.apply(this, arguments);
+    };
+}
+
 function hookSlots(node, onChange) {
-    for (let i = 1; i <= MAX_SLOTS; i++) hook(findW(node, `asset_${i}`), onChange);
+    for (let i = 1; i <= MAX_SLOTS; i++) {
+        const w = findW(node, `asset_${i}`);
+        if (w && !w._tjGuard) { w._tjGuard = true; guardSlot(node, w); }
+        hook(w, onChange);
+    }
 }
 
 function updateVisibility(node, opts) {
