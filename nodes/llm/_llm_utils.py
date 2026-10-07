@@ -626,7 +626,19 @@ def _infer_clip_loader_candidates(clip_name, clip_loader_type="Auto"):
     return candidates
 
 
+def _installed_text_encoder_name(name):
+    """CLIPLoader only accepts names relative to a text_encoders root. A name that lacks its
+    subfolder (the built-in default, or one saved by another install) is matched by file name."""
+    import folder_paths
+    installed = folder_paths.get_filename_list("text_encoders")
+    if name in installed:
+        return name
+    base = os.path.basename(str(name).replace("\\", "/")).lower()
+    return next((n for n in installed if os.path.basename(n.replace("\\", "/")).lower() == base), name)
+
+
 def _load_clip_from_text_encoder(clip_name, clip_loader_type="Auto"):
+    clip_name = _installed_text_encoder_name(clip_name)
     errors = []
     for candidate in _infer_clip_loader_candidates(clip_name, clip_loader_type):
         try:
