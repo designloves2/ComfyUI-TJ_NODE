@@ -6,6 +6,15 @@
 ## [Unreleased]
 
 ---
+## [2.21.0] - 2026-10-07
+
+### [Fixed]
+
+* **`LLM (TJ)` / TextGenerate: 텍스트 인코더 이름에 하위 폴더가 없어도 로드.** 기본값 `gemma4_e4b_it_fp8_scaled.safetensors`처럼 폴더가
+  빠진 이름(또는 다른 설치에서 저장된 이름)은 `text_encoders` 안에서 파일 이름이 같은 항목으로 찾아 CLIPLoader에 넘긴다.
+  이전에는 `LTX\` 같은 하위 폴더에 있으면 "filename not found"로 실패했다.
+
+---
 ## [2.20.0] - 2026-10-07
 
 ### [Added]
