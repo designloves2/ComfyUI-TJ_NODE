@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.17.0
+# ✨ TJ_NODE v2.18.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,23 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 🗂 Reference Asset Library · MiniMax H3 Reference / Image to Video (TJ) — v2.18.0
+
+레퍼런스 이미지/영상/오디오를 한 번 등록해 ID로 재사용하는 라이브러리와, 프롬프트의 `@12` / `@별칭` / `@에셋이름`을
+`<Picture i>`·`<Video k>`·`<Audio j>`로 치환해 코어 노드로 넘기는 H3 노드. `@` 토큰은 손으로 쓴 `<Picture 1>`과
+픽셀 단위로 동일한 결과를 냅니다. 자세한 내용은 아래 [Reference Asset Library](#-reference-asset-library-tj--레퍼런스-에셋-라이브러리) 섹션.
+
+## 🧠 LLM (TJ) — v2.18.0
+
+`GGUF / llama.cpp` · `ComfyUI TextGenerate` · `Open Router` · `Connect Custom` 4개 백엔드를 고르는 범용 LLM 노드.
+시스템 프롬프트 프리셋 저장/수정/삭제, API 키는 서버 메모리에만 보관.
+
+## 🖼 Text Encode Qwen Image 2.1 (TJ) · RTX VSR 크기 지정 확장 — v2.18.0
+
+`Batch to MinimaxH3` + `ModelSamplingFlux` + `Qwen Image 2.1 Cache` + `Text Encode Qwen Image 2.1`을 하나로 접은 노드.
+Prompt Enhancer / Prompt Studio / Image to Prompt에 `Qwen Image 2.1 (T2I)` / `(Edit)` 포맷 추가(서술 프로즈는 항상 영어).
+`RTX VSR (TJ)`에 `short edge` / `long edge` / `target dimensions (crop to fit)`(+ `crop_anchor`) 크기 지정 방식 추가.
 
 ## 🧴 Skin Retouch (TJ) — v2.17.0
 
@@ -1094,8 +1111,8 @@ NVIDIA VFX SDK 필터 3종을 독립 노드로 뺐습니다. SDK 는 이 셋을 
 
 * **RTX Deblur (TJ)** — `strength`(LOW/MEDIUM/HIGH/ULTRA), 흔들리거나 흐릿한 영상 선명화
 * **RTX Denoise (TJ)** — `strength`(LOW/MEDIUM/HIGH/ULTRA), 센서/압축 노이즈 제거
-* **RTX VSR (TJ)** — `resize_type`(scale by multiplier / target dimensions) + `scale`
-  또는 `width`/`height` + `quality`(LOW/MEDIUM/HIGH/ULTRA), 실제 업스케일
+* **RTX VSR (TJ)** — `resize_type`(scale by multiplier / target dimensions / short edge / long edge /
+  target dimensions (crop to fit)) + `scale` 또는 `width`/`height` 또는 `edge`(+ `crop_anchor`) + `quality`(LOW/MEDIUM/HIGH/ULTRA), 실제 업스케일
 * 셋 다 입력/출력: `images` (IMAGE) → `images` / `upscaled_images` (IMAGE)
 * 무선: `get_name`(images 입력 수신) + `setnode_name`(출력 발행)
 * 요구: NVIDIA RTX GPU + `comfyui_nvidia_rtx_nodes` 런타임(NVIDIA VFX SDK)
@@ -1245,9 +1262,13 @@ MiniMax H3 레퍼런스(이미지 / 영상 / 오디오)를 **한 번 등록해 �
 
 * `Reference Asset Register (TJ)` — 이미지/오디오/영상 등록(이미지 배치를 세트로 묶기 가능)
 * `Reference Project Save (TJ)` — 등록된 에셋을 콤보로 골라 프로젝트로 저장(슬롯이 하나씩 열림)
-* `Reference Asset Browser (TJ)` — 카테고리 | 에셋 | 뷰어 3단 화면: 미리보기, 이름·카테고리 수정, 교체, 삭제
-* `MiniMax H3 Reference to Video (TJ)` — 프로젝트 모드(전체 로드) / 에셋 모드(콤보). 프롬프트의 `@12`·`@별칭`을
-  `<Picture i>`/`<Video k>`/`<Audio j>`로 자동 치환(`@` 입력 시 목록 자동완성), 매칭 검수(`off|warn|strict`),
+* `Reference Asset Browser (TJ)` — **에셋 / 프로젝트 탭**. 에셋 탭: 카테고리 | 에셋 | 뷰어(미리보기, 이름·카테고리 수정, 교체, 삭제,
+  음악·음성은 파형 위 in/out 핸들, 영상은 in/out + 소리 포함 여부 — 구간을 저장한 카드에는 `✂ in–out` 표시).
+  프로젝트 탭: 프로젝트 목록 | 라이브러리(클릭해서 추가) | 프로젝트 구성(별칭·순서)에서 만들기·수정·삭제.
+  출력 `asset_id`, `project_id`(→ `Reference to Video`의 `project_id`에 연결). UI 문구는 영어.
+* `MiniMax H3 Reference to Video (TJ)` — 프로젝트 모드(전체 로드) / 에셋 모드(콤보). 프롬프트의 `@12`·`@별칭`·`@에셋이름`을
+  `<Picture i>`/`<Video k>`/`<Audio j>`로 자동 치환(`@` 입력 시 목록 자동완성; 에셋 모드에서는 별칭이 없어도 라이브러리
+  이름이 유효하고 겹치지 않으면 `@Hero`처럼 사용 가능, `report.attached[].mention`에 각 에셋의 토큰 표시), 매칭 검수(`off|warn|strict`),
   `compress_refs`(토큰 1/4) / `encode_cache`(VAE 인코딩 캐시) 스위치
 * `MiniMax H3 Image to Video (TJ)` — 첫/마지막 프레임을 이미지 연결 또는 에셋 콤보로 지정
 * CATEGORY: `✨ TJ_Node/Reference`

@@ -5,8 +5,16 @@
 ---
 ## [Unreleased]
 
+---
+## [2.18.0] - 2026-10-07
+
 ### [Added]
 
+* **에셋 이름으로 `@` 호출.** 에셋 모드에서도 별칭이 없는 에셋을 라이브러리 이름(`@Hero`, 대소문자 무시)으로 쓸 수 있다
+  (이름이 별칭 규칙에 맞고, 붙은 에셋·별칭과 겹치지 않을 때). 프로젝트 별칭이 우선, 없는 이름은 `UNKNOWN_ALIAS`.
+  `@` 자동완성도 같은 규칙, 결과 보고 `attached[].mention`에 에셋별 토큰 표시.
+* **`RTX VSR (TJ)` 크기 지정 확장.** `resize_type`에 `short edge` / `long edge` / `target dimensions (crop to fit)`와
+  `edge`, `crop_anchor` 입력 추가.
 * **Reference Asset Browser: 프로젝트 관리.** 에셋/프로젝트 탭 — 프로젝트 목록 | 라이브러리(클릭해서 추가) | 프로젝트 구성(별칭·순서)에서
   만들기·수정·삭제하고, 고른 프로젝트의 ID를 새 출력 `project_id`로 내보낸다(`Reference to Video`의 `project_id`에 연결). 두 탭의
   열 폭이 같고, 브라우저 UI 문구는 모두 영어.
