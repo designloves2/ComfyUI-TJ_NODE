@@ -25,6 +25,7 @@ import numpy as np
 from aiohttp import web
 from PIL import Image
 
+import comfy.model_management
 from server import PromptServer
 
 from ._llm_utils import (
@@ -194,43 +195,119 @@ def _http_chat(backend, api_base, model, system, prompt, images, context, max_to
     return (text or "").strip(), reply.get("usage") or {}
 
 
-def _gguf_chat(gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, system, prompt, images, max_tokens, temperature, seed):
-    from llama_cpp import Llama
-    if _is_bad_choice(gguf_model):
-        raise FileNotFoundError("No .gguf model found in models/text_encoders.")
-    model_path = _resolve_text_encoder_path(gguf_model)
-    if not model_path or not os.path.isfile(model_path):
-        raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
-    handler = None
-    content = prompt
-    kwargs = {}
-    if images is not None and images.shape[0]:
-        if mmproj_file == MMPROJ_NONE or not _HANDLER_CLASSES:
-            raise RuntimeError("Images with a GGUF model need an mmproj file and a vision chat handler.")
-        mmproj_path = _resolve_text_encoder_path(mmproj_file)
-        if not mmproj_path or not os.path.isfile(mmproj_path):
-            raise FileNotFoundError(f"mmproj not found: {mmproj_path}")
-        handler_cls, _ = TJ_ImageToPrompt._resolve_handler(None, chat_handler, gguf_model)
-        handler = handler_cls(clip_model_path=mmproj_path, verbose=False)
-        kwargs = {"chat_handler": handler, "logits_all": True}
-        content = [{"type": "image_url", "image_url": {"url": tensor_to_data_uri(images[i:i + 1])}} for i in range(images.shape[0])]
-        content.append({"type": "text", "text": prompt})
-    _free_comfy_vram()
-    llm = Llama(model_path=model_path, n_gpu_layers=int(n_gpu_layers), verbose=False, n_ctx=int(n_ctx), seed=int(seed), **kwargs)
-    try:
+def model_inputs(n_ctx=4096):
+    """The model section shared by LLM (TJ) and Scene Maker (TJ); LLMSession consumes these values."""
+    handler_options = ["Auto-detect"] + list(_HANDLER_CLASSES.keys()) if _HANDLER_CLASSES else ["NO_VISION_HANDLERS_AVAILABLE"]
+    return {
+        # GGUF / llama.cpp
+        "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
+        "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
+        "chat_handler": (handler_options,),
+        "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999}),
+        "n_ctx": ("INT", {"default": n_ctx, "min": 512, "max": 131072, "step": 512}),
+        # ComfyUI TextGenerate
+        "text_encoder_name": (_text_encoder_model_options(), {"default": DEFAULT_TEXT_ENCODER_MODEL}),
+        "clip_loader_type": (CLIP_LOADER_TYPE_OPTIONS, {"default": "Auto"}),
+        # Open Router / Connect Custom
+        "api_base": ("STRING", {"default": "http://localhost:3000/v1",
+                                "tooltip": "Connect Custom: OpenAI-compatible base URL. Public hosts need https://; http:// only for localhost / LAN."}),
+        "model": ("STRING", {"default": "gemini-3.7-flash",
+                             "tooltip": "Open Router / Connect Custom model id (Open Router example: google/gemini-2.5-flash). Press 'Connect & test' to list the server's models."}),
+        "context": ("INT", {"default": 0, "min": 0, "max": 2_000_000,
+                            "tooltip": "Known context window; max_tokens is capped to half of it. 0 = unknown."}),
+        "max_image_px": ("INT", {"default": 1024, "min": 0, "max": 8192,
+                                 "tooltip": "Longest image edge sent to Open Router / Custom (downscale only). 0 = original size."}),
+    }
+
+
+class LLMSession:
+    """One backend configured from the model_inputs() values. A GGUF model stays loaded across
+    generate() calls (Scene Maker asks several times) until close()."""
+
+    def __init__(self, backend, clip=None, gguf_model="", mmproj_file=MMPROJ_NONE, chat_handler="Auto-detect", n_gpu_layers=-1,
+                 n_ctx=4096, text_encoder_name="", clip_loader_type="Auto", api_base="", model="", context=0, max_image_px=1024,
+                 temperature=0.7, strip_thinking=True):
+        if backend not in BACKENDS:
+            raise ValueError(f"unknown backend: {backend}")
+        self.backend, self.clip = backend, clip
+        self.gguf_model, self.mmproj_file, self.chat_handler = gguf_model, mmproj_file, chat_handler
+        self.n_gpu_layers, self.n_ctx = n_gpu_layers, n_ctx
+        self.text_encoder_name, self.clip_loader_type = text_encoder_name, clip_loader_type
+        self.api_base, self.model, self.context, self.max_image_px = api_base, model, context, max_image_px
+        self.temperature, self.strip_thinking = temperature, strip_thinking
+        self.label = {"GGUF / llama.cpp": gguf_model, "ComfyUI TextGenerate": text_encoder_name}.get(backend, model.strip())
+        self._llm = self._handler = None
+        self._vision = False
+        self.unload_after_call = False  # callers that ask several times in one node run (Scene Maker)
+
+    def _load_gguf(self, vision, seed):
+        from llama_cpp import Llama
+        if _is_bad_choice(self.gguf_model):
+            raise FileNotFoundError("No .gguf model found in models/text_encoders.")
+        model_path = _resolve_text_encoder_path(self.gguf_model)
+        if not model_path or not os.path.isfile(model_path):
+            raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
+        kwargs = {}
+        if vision:
+            if self.mmproj_file == MMPROJ_NONE or not _HANDLER_CLASSES:
+                raise RuntimeError("Images with a GGUF model need an mmproj file and a vision chat handler.")
+            mmproj_path = _resolve_text_encoder_path(self.mmproj_file)
+            if not mmproj_path or not os.path.isfile(mmproj_path):
+                raise FileNotFoundError(f"mmproj not found: {mmproj_path}")
+            handler_cls, _ = TJ_ImageToPrompt._resolve_handler(None, self.chat_handler, self.gguf_model)
+            self._handler = handler_cls(clip_model_path=mmproj_path, verbose=False)
+            kwargs = {"chat_handler": self._handler, "logits_all": True}
+        _free_comfy_vram()
+        self._llm = Llama(model_path=model_path, n_gpu_layers=int(self.n_gpu_layers), verbose=False, n_ctx=int(self.n_ctx), seed=int(seed), **kwargs)
+        self._vision = vision
+
+    def _gguf(self, system, prompt, images, max_tokens, seed):
+        vision = images is not None and images.shape[0] > 0
+        if self._llm is not None and vision and not self._vision:
+            self.close()
+        if self._llm is None:
+            self._load_gguf(vision, seed)
+        content = prompt
+        if vision:
+            content = [{"type": "image_url", "image_url": {"url": tensor_to_data_uri(images[i:i + 1])}} for i in range(images.shape[0])]
+            content.append({"type": "text", "text": prompt})
         messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": content}]
-        out = llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(temperature))
+        out = self._llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(self.temperature), seed=int(seed))
         return out["choices"][0]["message"]["content"].strip()
-    finally:
-        _free_llm(llm)
-        if handler is not None:
-            _free_chat_handler(handler)
+
+    def generate(self, prompt, system="", images=None, max_tokens=2000, seed=0):
+        """Returns (text, usage)."""
+        usage = {}
+        if self.backend == "GGUF / llama.cpp":
+            text = self._gguf(system, prompt, images, max_tokens, seed)
+        elif self.backend == "ComfyUI TextGenerate":
+            if self.clip is None:
+                if _is_bad_choice(self.text_encoder_name):
+                    raise FileNotFoundError("No model found in models/text_encoders.")
+                self.clip = _load_clip_from_text_encoder(self.text_encoder_name, self.clip_loader_type)
+            text = str(_generate_with_textgenerate(self.clip, f"{system}\n\n{prompt}" if system else prompt, max_tokens, seed, image=images)).strip()
+            if self.unload_after_call:
+                comfy.model_management.unload_all_models()
+                comfy.model_management.soft_empty_cache()
+        else:
+            text, usage = _http_chat(self.backend, self.api_base, self.model, system, prompt, images, self.context, max_tokens, self.temperature, self.max_image_px)
+        if self.strip_thinking:
+            text = _strip_thinking_process_block(_strip_thinking_tags(text)).strip()
+        if not text:
+            raise RuntimeError("The model returned no text.")
+        return text, usage
+
+    def close(self):
+        if self._llm is not None:
+            _free_llm(self._llm)
+        if self._handler is not None:
+            _free_chat_handler(self._handler)
+        self._llm = self._handler = None
 
 
 class TJ_CustomLLM:
     @classmethod
     def INPUT_TYPES(cls):
-        handler_options = ["Auto-detect"] + list(_HANDLER_CLASSES.keys()) if _HANDLER_CLASSES else ["NO_VISION_HANDLERS_AVAILABLE"]
         return {
             "required": {
                 "backend": (BACKENDS, {"default": "Connect Custom"}),
@@ -243,24 +320,7 @@ class TJ_CustomLLM:
                                              "tooltip": "Used as written. When empty, the picked preset's text is used."}),
                 "images": ("IMAGE", {"tooltip": "Optional images for a vision model (every frame is sent)."}),
                 "clip": ("CLIP", {"tooltip": "TextGenerate backend: use this loaded text encoder instead of text_encoder_name."}),
-                # GGUF / llama.cpp
-                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
-                "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
-                "chat_handler": (handler_options,),
-                "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999}),
-                "n_ctx": ("INT", {"default": 4096, "min": 512, "max": 131072, "step": 512}),
-                # ComfyUI TextGenerate
-                "text_encoder_name": (_text_encoder_model_options(), {"default": DEFAULT_TEXT_ENCODER_MODEL}),
-                "clip_loader_type": (CLIP_LOADER_TYPE_OPTIONS, {"default": "Auto"}),
-                # Open Router / Connect Custom
-                "api_base": ("STRING", {"default": "http://localhost:3000/v1",
-                                        "tooltip": "Connect Custom: OpenAI-compatible base URL. Public hosts need https://; http:// only for localhost / LAN."}),
-                "model": ("STRING", {"default": "gemini-3.7-flash",
-                                     "tooltip": "Open Router / Connect Custom model id (Open Router example: google/gemini-2.5-flash). Press 'Connect & test' to list the server's models."}),
-                "context": ("INT", {"default": 0, "min": 0, "max": 2_000_000,
-                                    "tooltip": "Known context window; max_tokens is capped to half of it. 0 = unknown."}),
-                "max_image_px": ("INT", {"default": 1024, "min": 0, "max": 8192,
-                                         "tooltip": "Longest image edge sent to Open Router / Custom (downscale only). 0 = original size."}),
+                **model_inputs(),
                 # all backends
                 "max_tokens": ("INT", {"default": 2000, "min": 16, "max": 200_000}),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
@@ -293,27 +353,13 @@ class TJ_CustomLLM:
             max_tokens=2000, temperature=0.7, seed=0, strip_thinking=True, **kw):
         system = system_prompt.strip() or _preset_text(system_preset)
         started = time.time()
-        usage = {}
-        if backend == "GGUF / llama.cpp":
-            text = _gguf_chat(gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, system, prompt, images, max_tokens, temperature, seed)
-            label = gguf_model
-        elif backend == "ComfyUI TextGenerate":
-            if clip is None:
-                if _is_bad_choice(text_encoder_name):
-                    raise FileNotFoundError("No model found in models/text_encoders.")
-                clip = _load_clip_from_text_encoder(text_encoder_name, clip_loader_type)
-            text = str(_generate_with_textgenerate(clip, f"{system}\n\n{prompt}" if system else prompt, max_tokens, seed, image=images)).strip()
-            label = text_encoder_name
-        elif backend in ("Open Router", "Connect Custom"):
-            text, usage = _http_chat(backend, api_base, model, system, prompt, images, context, max_tokens, temperature, max_image_px)
-            label = model.strip()
-        else:
-            raise ValueError(f"unknown backend: {backend}")
-        if strip_thinking:
-            text = _strip_thinking_process_block(_strip_thinking_tags(text)).strip()
-        if not text:
-            raise RuntimeError("The model returned no text.")
-        info = f"{backend} · {label} · {int((time.time() - started) * 1000)} ms"
+        session = LLMSession(backend, clip, gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, text_encoder_name,
+                             clip_loader_type, api_base, model, context, max_image_px, temperature, strip_thinking)
+        try:
+            text, usage = session.generate(prompt, system, images, max_tokens, seed)
+        finally:
+            session.close()
+        info = f"{backend} · {session.label} · {int((time.time() - started) * 1000)} ms"
         if usage.get("total_tokens"):
             info += f" · {usage.get('prompt_tokens', '?')} in / {usage.get('completion_tokens', '?')} out tokens"
         return (text, info)

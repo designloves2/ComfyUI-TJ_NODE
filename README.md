@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.21.0
+# ✨ TJ_NODE v2.22.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -459,6 +459,9 @@ STRING 값을 확인하고 필요시 잠그는(lock) Inspect 노드. 워크플�
 Visual Beat(장면 단위) 기반으로 여러 개의 프롬프트를 구성·관리하는 노드. Embedded Get/Set,
 Auto Set, 번역(KO/EN/JP/CN) 지원. `Scene Maker Result - pipe(TJ)` 로 결과를 pipe 형태로
 다른 노드에 전달 가능.
+
+v2.22.0부터 모델 부분이 `LLM (TJ)`와 같습니다: `backend`(GGUF / llama.cpp, ComfyUI TextGenerate, Open Router,
+Connect Custom)와 그 설정, API 키 칸, `Connect & test`. 이전의 `Model_Type` / `clip_name` 입력은 없어졌습니다.
 
 ## ✨ Ollama LLM Loader (TJ)
 

@@ -12,6 +12,7 @@
 // -----------------------------------------------------------------------------
 
 import { app } from "../../scripts/app.js";
+import { setupLlmModelUi, updateVisibility } from "./tj_llm_model_ui.js";
 
 function attachSetSync(node) {
     if (window.TJ_NODE_attachProviderNameSync) return window.TJ_NODE_attachProviderNameSync(node);
@@ -233,13 +234,20 @@ function tjSceneApplyWidgetLabels(node) {
 
 function tjSceneReorderWidgets(node) {
     const order = [
-        "Model_Type",
-        "clip_name",
+        "backend",
         "gguf_model",
         "mmproj_file",
         "chat_handler",
         "n_gpu_layers",
         "n_ctx",
+        "text_encoder_name",
+        "clip_loader_type",
+        "api_base",
+        "model",
+        "context",
+        "max_image_px",
+        "temperature",
+        "strip_thinking",
         "get_name",
         "auto_set",
         "mode",
@@ -369,20 +377,6 @@ function moveWidgetAfter(node, widgetName, afterName) {
     }
 }
 
-function hideWidget(node, name, hidden = true) {
-    const w = node.widgets?.find(x => x.name === name);
-    if (!w) return;
-    if (!w._tj_orig_type) {
-        w._tj_orig_type = w.type;
-        w._tj_orig_compute = w.computeSize;
-    }
-    w.type = hidden ? "hidden" : w._tj_orig_type;
-    w.computeSize = hidden ? () => [0, -4] : w._tj_orig_compute;
-    w.disabled = hidden;
-    w.hidden = hidden;
-    node.setDirtyCanvas?.(true, true);
-}
-
 function setWidgetHeight(node, name, prop, defaultH = 120) {
     const w = node.widgets?.find(x => x.name === name);
     if (!w || w._tj_resize_attached) return;
@@ -448,10 +442,9 @@ function tjSceneShowMmprojAlert() {
 }
 
 function tjSceneNeedsMmproj(node) {
-    const typeW = node.widgets?.find(x => x.name === "Model_Type");
     const mmW = node.widgets?.find(x => x.name === "mmproj_file");
     const imageInput = node.inputs?.find(i => i.name === "input_image");
-    const isGguf = String(typeW?.value || "textencode") === "llama(gguf)";
+    const isGguf = node.widgets?.find(x => x.name === "backend")?.value === "GGUF / llama.cpp";
     const imageConnected = !!(imageInput && imageInput.link != null);
     const mmprojNone = !mmW?.value || String(mmW.value) === "none";
     return isGguf && imageConnected && mmprojNone;
@@ -461,30 +454,18 @@ function tjSceneCheckMmproj(node) {
     if (tjSceneNeedsMmproj(node)) tjSceneShowMmprojAlert();
 }
 
-function tjSceneApplyModelType(node) {
-    const w = node.widgets?.find(x => x.name === "Model_Type");
-    const isGguf = String(w?.value || "textencode") === "llama(gguf)";
-    // textencode uses clip_name; llama(gguf) uses the gguf model + vision options.
-    hideWidget(node, "clip_name", isGguf);
-    hideWidget(node, "gguf_model", !isGguf);
-    hideWidget(node, "mmproj_file", !isGguf);
-    hideWidget(node, "chat_handler", !isGguf);
-    hideWidget(node, "n_gpu_layers", !isGguf);
-    hideWidget(node, "n_ctx", !isGguf);
-    node.setDirtyCanvas?.(true, true);
-    app.canvas?.setDirty(true, true);
-}
-
 function installSceneModelType(node) {
-    const w = node.widgets?.find(x => x.name === "Model_Type");
-    if (w && !w._tj_model_type_attached) {
-        w._tj_model_type_attached = true;
-        const orig = w.callback;
-        w.callback = function(v) {
-            if (orig) orig.call(this, v);
-            tjSceneApplyModelType(node);
-            tjSceneCheckMmproj(node);
-        };
+    if (!node._tj_llm_ui_attached) {
+        node._tj_llm_ui_attached = true;
+        setupLlmModelUi(node, "max_image_px");
+        const w = node.widgets?.find(x => x.name === "backend");
+        if (w) {
+            const orig = w.callback;
+            w.callback = function(v) {
+                if (orig) orig.call(this, v);
+                tjSceneCheckMmproj(node);
+            };
+        }
     }
     const mmW = node.widgets?.find(x => x.name === "mmproj_file");
     if (mmW && !mmW._tj_mmproj_attached) {
@@ -509,7 +490,6 @@ function installSceneModelType(node) {
             }
         };
     }
-    tjSceneApplyModelType(node);
 }
 
 function findSceneWidget(node, name) {
@@ -653,7 +633,7 @@ app.registerExtension({
             installSceneModelType(this);
             installSceneButtons(this);
 
-            requestAnimationFrame(() => { updateAutoSets(this); updateSceneSummary(this); tjSceneApplyModelType(this); });
+            requestAnimationFrame(() => { updateAutoSets(this); updateSceneSummary(this); updateVisibility(this); });
         };
 
         const origOnConfigure = nodeType.prototype.onConfigure;
@@ -667,6 +647,7 @@ app.registerExtension({
                 tjSceneApplyWidgetLabels(this);
                 tjSceneReorderWidgets(this);
                 installSceneModelType(this);
+                updateVisibility(this, { keepSize: true });
                 installSceneButtons(this);
                 updateAutoSets(this);
                 tjApplyOutputArrowState(this, tjAutosetEnabled(this));

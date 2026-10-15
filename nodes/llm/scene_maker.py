@@ -4,92 +4,10 @@
 # Original: 너무바쁜베짱이 / https://github.com/nicekriss/toobusy
 # -----------------------------------------------------------------------------
 
-import inspect
-import os
+from .custom_llm import BACKENDS, LLMSession, model_inputs
 
-from ._llm_utils import (
-    MMPROJ_NONE, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL, _HANDLER_CLASSES,
-    _text_encoder_ggufs, _text_encoder_mmproj_options,
-    _resolve_text_encoder_path, _is_bad_choice, _free_llm, _free_chat_handler, _free_comfy_vram, tensor_to_data_uri,
-)
-
-
-def _call_node(class_name, **kwargs):
-    import nodes
-    try:
-        cls = nodes.NODE_CLASS_MAPPINGS[class_name]
-    except KeyError as e:
-        raise RuntimeError(f"Required ComfyUI node '{class_name}' is not available.") from e
-    node = cls()
-    fn_name = getattr(cls, "FUNCTION", None)
-    if not fn_name:
-        raise RuntimeError(f"Node '{class_name}' does not define FUNCTION.")
-    fn = getattr(node, fn_name)
-    sig = inspect.signature(fn)
-    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-        return fn(**kwargs)
-    return fn(**{k: v for k, v in kwargs.items() if k in sig.parameters})
-
-
-def _folder_list(kind, fallback):
-    try:
-        import folder_paths
-        names = list(folder_paths.get_filename_list(kind))
-        return names or fallback
-    except Exception:
-        return fallback
-
-
-def _clip_names():
-    names = _folder_list("clip", [])
-    if not names:
-        names = _folder_list("text_encoders", [])
-    return names or ["t5xxl_fp16.safetensors"]
-
-
-def _first_existing(names, preferred):
-    for name in preferred:
-        if name in names:
-            return name
-    return names[0]
-
-
-def _load_clip(clip_name):
-    try:
-        import nodes as _nodes
-        cls = _nodes.NODE_CLASS_MAPPINGS.get("CLIPLoader")
-        if cls is not None:
-            spec = cls.INPUT_TYPES().get("required", {}).get("type", [None])[0]
-            types = list(spec) if isinstance(spec, (list, tuple)) else []
-        else:
-            types = []
-    except Exception:
-        types = []
-    if not types:
-        types = ["stable_diffusion"]
-    errors = []
-    for t in types:
-        try:
-            return _call_node("CLIPLoader", clip_name=clip_name, type=t)[0]
-        except Exception as e:
-            errors.append(f"{t}: {e}")
-    try:
-        return _call_node("CLIPLoader", clip_name=clip_name)[0]
-    except Exception as e:
-        errors.append(f"no type: {e}")
-        raise RuntimeError("CLIPLoader failed. Tried: " + " | ".join(errors))
-
-
-def _sampling_mode(seed, temperature=0.7, top_k=64, top_p=0.95, min_p=0.05, repetition_penalty=1.05):
-    return {
-        "sampling_mode": "on",
-        "temperature": float(temperature),
-        "top_k": int(top_k),
-        "top_p": float(top_p),
-        "min_p": float(min_p),
-        "repetition_penalty": float(repetition_penalty),
-        "seed": int(seed),
-    }
+# Scene Maker → Result pipe 전용 타입. 두 노드가 동일 문자열을 써야 슬롯이 연결된다.
+SCENE_PIPE_TYPE = "TJ_SCENE_PIPE"
 
 
 def _format_template(template, **values):
@@ -125,97 +43,6 @@ def _prompt_lines(text):
 
 def _cut_list(shot_count):
     return "\n".join(f"{i}cut: ..." for i in range(1, int(shot_count) + 1))
-
-
-def _generate_text(clip, prompt, max_length, seed, image=None):
-    kwargs = {
-        "clip": clip, "prompt": prompt, "max_length": int(max_length),
-        "sampling_mode": _sampling_mode(seed), "thinking": False, "use_default_template": True,
-    }
-    if image is not None:
-        kwargs["image"] = image
-    return _call_node("TextGenerate", **kwargs)[0]
-
-
-# ── GGUF / llama.cpp backend ───────────────────────────────────────────────
-MODEL_TYPE_OPTIONS = ["textencode", "llama(gguf)"]
-
-# Scene Maker → Result pipe 전용 타입. 두 노드가 동일 문자열을 써야 슬롯이 연결된다.
-SCENE_PIPE_TYPE = "TJ_SCENE_PIPE"
-
-
-def _resolve_vision_handler(chat_handler_choice, model_file):
-    """Return a llama-cpp vision chat-handler class (or None if unavailable)."""
-    if not _HANDLER_CLASSES:
-        return None
-    if chat_handler_choice and chat_handler_choice != "Auto-detect":
-        return _HANDLER_CLASSES.get(chat_handler_choice)
-    mf = str(model_file or "").lower()
-    if "moondream" in mf and "Moondream" in _HANDLER_CLASSES:
-        return _HANDLER_CLASSES["Moondream"]
-    if "qwen" in mf and "Qwen2.5-VL" in _HANDLER_CLASSES:
-        return _HANDLER_CLASSES["Qwen2.5-VL"]
-    if "minicpm" in mf and "MiniCPM-V 2.6" in _HANDLER_CLASSES:
-        return _HANDLER_CLASSES["MiniCPM-V 2.6"]
-    if "nano" in mf and "llava" in mf and "NanoLLaVA" in _HANDLER_CLASSES:
-        return _HANDLER_CLASSES["NanoLLaVA"]
-    if "llava" in mf:
-        if "LLaVA 1.6" in _HANDLER_CLASSES:
-            return _HANDLER_CLASSES["LLaVA 1.6"]
-        if "LLaVA 1.5" in _HANDLER_CLASSES:
-            return _HANDLER_CLASSES["LLaVA 1.5"]
-    return _HANDLER_CLASSES.get("LLaVA 1.5")
-
-
-class _GGUFRunner:
-    """Loads a GGUF model once and generates text for every scene step.
-    If an mmproj file + vision handler are available, image-based briefs use
-    vision; otherwise image is ignored and the text brief path is used."""
-
-    def __init__(self, gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, seed):
-        from llama_cpp import Llama
-        if _is_bad_choice(gguf_model):
-            raise FileNotFoundError("No .gguf model found in models/text_encoders.")
-        model_path = _resolve_text_encoder_path(gguf_model)
-        if not model_path or not os.path.isfile(model_path):
-            raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
-
-        self.has_vision = False
-        self.chat_handler_instance = None
-        kwargs = dict(model_path=model_path, n_gpu_layers=int(n_gpu_layers),
-                      verbose=False, n_ctx=int(n_ctx), seed=int(seed))
-
-        if mmproj_file and mmproj_file != MMPROJ_NONE:
-            mmproj_path = _resolve_text_encoder_path(mmproj_file)
-            handler_cls = _resolve_vision_handler(chat_handler, gguf_model)
-            if mmproj_path and os.path.isfile(mmproj_path) and handler_cls is not None:
-                self.chat_handler_instance = handler_cls(clip_model_path=mmproj_path, verbose=False)
-                kwargs["chat_handler"] = self.chat_handler_instance
-                kwargs["logits_all"] = True
-                self.has_vision = True
-
-        _free_comfy_vram()   # GGUF 로드 전 ComfyUI 모델을 VRAM 에서 내려 공간 확보
-        self.llm = Llama(**kwargs)
-
-    def generate(self, prompt, max_length, seed, image=None):
-        if image is not None and self.has_vision:
-            messages = [{"role": "user", "content": [
-                {"type": "image_url", "image_url": {"url": tensor_to_data_uri(image)}},
-                {"type": "text", "text": prompt},
-            ]}]
-        else:
-            messages = [{"role": "user", "content": prompt}]
-        output = self.llm.create_chat_completion(
-            messages=messages, max_tokens=int(max_length),
-            temperature=0.7, top_p=0.95, min_p=0.05, repeat_penalty=1.05, seed=int(seed),
-        )
-        return str(output["choices"][0]["message"]["content"])
-
-    def close(self):
-        _free_llm(self.llm)
-        # clip/mtmd 컨텍스트 완전 해제 (exit_stack.close) — 다음 실행 GPU 유지
-        _free_chat_handler(getattr(self, "chat_handler_instance", None))
-        self.chat_handler_instance = None
 
 
 # ── Prompt Templates ───────────────────────────────────────────────────────
@@ -420,17 +247,9 @@ Output format:
 class TJ_SceneMaker:
     @classmethod
     def INPUT_TYPES(cls):
-        clip_names = _clip_names()
-        handler_options = ["Auto-detect"] + list(_HANDLER_CLASSES.keys())
         return {
             "required": {
-                "Model_Type": (MODEL_TYPE_OPTIONS, {"default": "textencode"}),
-                "clip_name": (clip_names, {"default": _first_existing(clip_names, ["t5xxl_fp16.safetensors", "clip_l.safetensors"])}),
-                "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
-                "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
-                "chat_handler": (handler_options, {"default": "Auto-detect"}),
-                "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999, "step": 1}),
-                "n_ctx": ("INT", {"default": 8192, "min": 512, "max": 32768, "step": 512}),
+                "backend": (BACKENDS, {"default": "ComfyUI TextGenerate"}),
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "label_on": "Auto Set ON", "label_off": "Auto Set OFF"}),
                 "mode": (["Product Commercial", "Music Video", "Short Drama"], {"default": "Product Commercial"}),
@@ -443,9 +262,12 @@ class TJ_SceneMaker:
             },
             "optional": {
                 "input_image": ("IMAGE",),
-                "clip": ("CLIP",),
+                "clip": ("CLIP", {"tooltip": "TextGenerate backend: use this loaded text encoder instead of text_encoder_name."}),
                 "brief_override": ("STRING", {"default": "", "multiline": True}),
                 "visual_beat_override": ("STRING", {"default": "", "multiline": True}),
+                **model_inputs(n_ctx=8192),
+                "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
+                "strip_thinking": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -459,35 +281,17 @@ class TJ_SceneMaker:
     FUNCTION = "make"
     CATEGORY = " ✨ TJ_Node/LLM"
 
-    def make(self, Model_Type="textencode", clip_name=None, gguf_model="", mmproj_file=MMPROJ_NONE,
-             chat_handler="Auto-detect", n_gpu_layers=-1, n_ctx=8192,
-             get_name="(none)", auto_set=False, mode="Product Commercial", translate="KO",
-             idea="", style="", fixed_elements="", shot_count=6, seed=1,
-             brief_override="", visual_beat_override="", input_image=None, clip=None):
-
-        # An externally connected CLIP always forces the textencode backend.
+    def make(self, backend="ComfyUI TextGenerate", get_name="(none)", auto_set=False, mode="Product Commercial", translate="KO",
+             idea="", style="", fixed_elements="", shot_count=6, seed=1, brief_override="", visual_beat_override="",
+             input_image=None, clip=None, temperature=0.7, strip_thinking=True, **model):
+        # An externally connected CLIP always forces the TextGenerate backend.
         if clip is not None:
-            Model_Type = "textencode"
+            backend = "ComfyUI TextGenerate"
+        session = LLMSession(backend, clip, temperature=temperature, strip_thinking=strip_thinking, **model)
+        session.unload_after_call = True
 
-        runner = None
-        if Model_Type == "llama(gguf)":
-            runner = _GGUFRunner(gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, seed)
-            if input_image is not None and not runner.has_vision:
-                runner.close()
-                raise RuntimeError(
-                    "Scene Maker (TJ): An input image is connected but GGUF vision is not ready. "
-                    "Select an 'mmproj_file' (not 'none') and ensure a vision chat handler is available "
-                    "(update/install llama-cpp-python), or disconnect the image to use text-only brief."
-                )
-
-            def gen(prompt, max_length, s, image=None):
-                return runner.generate(prompt, max_length, s, image=image)
-        else:
-            if clip is None:
-                clip = _load_clip(clip_name)
-
-            def gen(prompt, max_length, s, image=None):
-                return _generate_text(clip, prompt, max_length, s, image=image)
+        def gen(prompt, max_length, s, image=None):
+            return session.generate(prompt, images=image, max_tokens=max_length, seed=s)[0]
 
         try:
             effective_shot_count = int(shot_count)
@@ -528,8 +332,7 @@ class TJ_SceneMaker:
                     STYLE=style, BEATS=shot_beats, FINAL_PROMPTS=keyframe_prompts, CUT_LIST=_cut_list(effective_shot_count)),
                 2048, seed + 4).strip()
         finally:
-            if runner is not None:
-                runner.close()
+            session.close()
 
         pipe = {
             "scene_brief": product_brief,
