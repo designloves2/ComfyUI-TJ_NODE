@@ -6,6 +6,16 @@
 ## [Unreleased]
 
 ---
+## [2.22.0] - 2026-10-15
+
+### [Changed]
+
+* **`Scene Maker (TJ)`: 모델 부분을 `LLM (TJ)`로 교체.** `Model_Type` / `clip_name` 대신 `LLM (TJ)`와 같은 `backend`
+  (GGUF / llama.cpp, ComfyUI TextGenerate, Open Router, Connect Custom)와 모델 설정, `temperature`, `strip_thinking`을 쓴다. API 키 칸과
+  `Connect & test`도 같다. 공용 코드는 `LLMSession`(`custom_llm.py`)과 `web/tj_llm_model_ui.js`. 한 번 실행 안에서 gemma를 여러 번 부를 때
+  메모리 오류가 나지 않도록 호출마다 모델을 내린다. 이전 `Scene Maker` 워크플로우는 모델 설정을 다시 골라야 한다.
+
+---
 ## [2.21.0] - 2026-10-07
 
 ### [Fixed]
