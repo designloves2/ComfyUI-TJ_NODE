@@ -4,10 +4,63 @@
 # Original: 너무바쁜베짱이 / https://github.com/nicekriss/toobusy
 # -----------------------------------------------------------------------------
 
+import json
+import re
+
 from .custom_llm import BACKENDS, LLMSession, model_inputs
 
 # Scene Maker → Result pipe 전용 타입. 두 노드가 동일 문자열을 써야 슬롯이 연결된다.
 SCENE_PIPE_TYPE = "TJ_SCENE_PIPE"
+
+
+def _parse_reference_plan(text):
+    """The model's JSON array as a list of normalised items; [] when it is not usable."""
+    text = str(text or "")
+    start, end = text.find("["), text.rfind("]")
+    if start < 0 or end <= start:
+        return []
+    try:
+        raw = json.loads(text[start:end + 1])
+    except ValueError:
+        return []
+    items, used = [], set()
+    for entry in raw if isinstance(raw, list) else []:
+        if not isinstance(entry, dict):
+            continue
+        name = re.sub(r"[^0-9A-Za-z_]", "", str(entry.get("name", "")))
+        if not name or name[0].isdigit():
+            name = "Ref" + name
+        base, n = name, 2
+        while name.lower() in used:
+            name, n = f"{base}{n}", n + 1
+        used.add(name.lower())
+        source = str(entry.get("source", "missing")).strip().lower()
+        source = source if source in ("provided image", "existing") else "missing"
+        shots = [int(x) for x in entry.get("shots", []) if str(x).isdigit()] if isinstance(entry.get("shots"), list) else []
+        items.append({
+            "name": name, "role": str(entry.get("role", "")).strip(), "shots": shots, "source": source,
+            "description": str(entry.get("description", "")).strip(), "image_suggestion": str(entry.get("image_suggestion", "")).strip(),
+            "generation_prompt": str(entry.get("generation_prompt", "")).strip() if source == "missing" else "",
+        })
+    return items[:6]
+
+
+def _reference_plan_text(items):
+    lines = []
+    for it in items:
+        shots = ", ".join(str(n) for n in it["shots"]) or "-"
+        lines.append(f"@{it['name']} ({it['role'] or 'reference'}) - shots {shots} - {it['source']}: {it['description']}")
+        if it["source"] == "missing":
+            lines.append(f"    suggested image: {it['image_suggestion']}")
+            lines.append(f"    generation prompt: {it['generation_prompt']}")
+    return "\n".join(lines)
+
+
+def _reference_block(items):
+    if not items:
+        return ""
+    lines = "\n".join(f"@{it['name']}: {it['description']}" for it in items)
+    return ("\nReferences (write each as @Name, keeping the @, wherever it appears in a shot):\n" + lines + "\n")
 
 
 def _format_template(template, **values):
@@ -136,7 +189,7 @@ Style:
 
 Fixed elements:
 {FIXED}
-
+{REFERENCES}
 Rules:
 - Output exactly {SHOT_COUNT} lines. Each line must describe one shot beat only.
 - Each line must be short, under 12 words.
@@ -144,6 +197,36 @@ Rules:
 - Keep the same product/main subject and same character identity when present.
 - If the reference shows a human in a costume, keep them human.
 - No numbering. No explanations. No blank lines. English only."""
+
+REFERENCE_PLAN_TEMPLATE = """You are a storyboard planner deciding which reference images a {MODE_LABEL} needs.
+
+Reference brief:
+{BRIEF}
+
+Core idea:
+{IDEA}
+
+Style:
+{STYLE}
+
+Fixed elements:
+{FIXED}
+
+The storyboard has {SHOT_COUNT} shots.
+Reference images already provided: {PROVIDED}
+References the user already has: {EXISTING}
+
+List the references the shots need so that identity and look stay consistent: characters, key locations, products, important props, and a style reference only if it helps.
+
+Return only a JSON array. Each item has these keys:
+"name": one word, "role": character | location | product | prop | style, "shots": [shot numbers], "source": provided image | existing | missing, "description": what must stay consistent, "image_suggestion": what the reference image should show (angle, framing, background), "generation_prompt": an image-generation prompt, or "" when source is not missing.
+
+Rules:
+- name uses letters, digits and underscore only and starts with a letter (it is written as @name in the shot prompts). English.
+- List only what the shots really need. At most 6 items.
+- source is "provided image" when a provided image already shows it, "existing" when it matches one of the user's existing references, otherwise "missing".
+- generation_prompt is only for missing items: 25 to 40 words, a clean reference image (single subject, neutral background, no text).
+- No markdown fences. No explanations. English only."""
 
 ANCHOR_TEMPLATE = """Extract a compact visual identity anchor from this storyboard brief.
 
@@ -186,7 +269,7 @@ Global style:
 
 Fixed elements that must remain consistent in every shot:
 {FIXED}
-
+{REFERENCES}
 Rules:
 - Output exactly {SHOT_COUNT} lines. One line = one final image prompt.
 - Each line should be 25 to 40 words.
@@ -268,6 +351,8 @@ class TJ_SceneMaker:
                 **model_inputs(n_ctx=8192),
                 "temperature": ("FLOAT", {"default": 0.7, "min": 0.0, "max": 2.0, "step": 0.05}),
                 "strip_thinking": ("BOOLEAN", {"default": True}),
+                "suggest_references": ("BOOLEAN", {"default": True, "tooltip": "Also plan the reference images the shots need (provided / existing / missing) and write generation prompts for the missing ones."}),
+                "existing_references": ("STRING", {"default": "", "multiline": True, "tooltip": "References you already have (for example library asset names), one per line. They are not proposed again."}),
             },
         }
 
@@ -275,15 +360,16 @@ class TJ_SceneMaker:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING", SCENE_PIPE_TYPE)
-    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result", "pipe")
-    OUTPUT_IS_LIST = (False, False, False, False, True, False, False)
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING", SCENE_PIPE_TYPE, "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result", "pipe",
+                    "Reference plan", "Reference plan JSON", "Reference prompts")
+    OUTPUT_IS_LIST = (False, False, False, False, True, False, False, False, False, True)
     FUNCTION = "make"
     CATEGORY = " ✨ TJ_Node/LLM"
 
     def make(self, backend="ComfyUI TextGenerate", get_name="(none)", auto_set=False, mode="Product Commercial", translate="KO",
              idea="", style="", fixed_elements="", shot_count=6, seed=1, brief_override="", visual_beat_override="",
-             input_image=None, clip=None, temperature=0.7, strip_thinking=True, **model):
+             input_image=None, clip=None, temperature=0.7, strip_thinking=True, suggest_references=True, existing_references="", **model):
         # An externally connected CLIP always forces the TextGenerate backend.
         if clip is not None:
             backend = "ComfyUI TextGenerate"
@@ -302,6 +388,15 @@ class TJ_SceneMaker:
                 else:
                     product_brief = gen(_text_brief_prompt(mode, idea, style, fixed_elements), 512, seed).strip()
 
+            references = []
+            if suggest_references:
+                provided = f"{input_image.shape[0]} image(s)" if input_image is not None else "none"
+                plan_prompt = _format_template(REFERENCE_PLAN_TEMPLATE, MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea,
+                    STYLE=style, FIXED=fixed_elements, SHOT_COUNT=effective_shot_count, PROVIDED=provided,
+                    EXISTING=existing_references.strip() or "none")
+                references = _parse_reference_plan(gen(plan_prompt, 1024, seed + 5))
+            ref_block = _reference_block(references)
+
             shot_beats = visual_beat_override.strip()
             if shot_beats:
                 override_count = _line_count(shot_beats)
@@ -309,14 +404,14 @@ class TJ_SceneMaker:
                     effective_shot_count = override_count
             else:
                 shot_beats_prompt = _format_template(SHOT_BEATS_TEMPLATE, SHOT_COUNT=effective_shot_count,
-                    MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea, STYLE=style, FIXED=fixed_elements)
+                    MODE_LABEL=_mode_label(mode), BRIEF=product_brief, IDEA=idea, STYLE=style, FIXED=fixed_elements, REFERENCES=ref_block)
                 shot_beats = gen(shot_beats_prompt, 512, seed + 1).strip()
 
             anchor = gen(_format_template(ANCHOR_TEMPLATE, BRIEF=product_brief, STYLE=style, FIXED=fixed_elements), 256, seed + 2).strip()
 
             keyframe_prompts = gen(
                 _format_template(KEYFRAME_PROMPTS_TEMPLATE, SHOT_COUNT=effective_shot_count, BEATS=shot_beats,
-                    BRIEF=product_brief, ANCHOR=anchor, STYLE=style, FIXED=fixed_elements), 2048, seed + 3).strip()
+                    BRIEF=product_brief, ANCHOR=anchor, STYLE=style, FIXED=fixed_elements, REFERENCES=ref_block), 2048, seed + 3).strip()
             keyframe_prompt_lines = _prompt_lines(keyframe_prompts)
 
             language_map = {"KO": ("Korean", "Korean headings"), "EN": ("English", "English headings"),
@@ -334,6 +429,10 @@ class TJ_SceneMaker:
         finally:
             session.close()
 
+        plan_text = _reference_plan_text(references)
+        plan_json = json.dumps(references, ensure_ascii=False, indent=2)
+        reference_prompts = [it["generation_prompt"] for it in references if it["generation_prompt"]] or [""]
+
         pipe = {
             "scene_brief": product_brief,
             "visual_beat": shot_beats,
@@ -341,11 +440,16 @@ class TJ_SceneMaker:
             "scene_prompt": keyframe_prompts,
             "scene_prompt_line": keyframe_prompt_lines,
             "translated_result": korean_story,
+            "reference_plan": plan_text,
+            "reference_plan_json": plan_json,
+            "reference_prompts": reference_prompts,
         }
 
         return {
             "ui": {"text": ["Reference brief:", product_brief, "Shot beats:", shot_beats,
                             "Visual anchor:", anchor, "Keyframe prompts:", keyframe_prompts,
-                            "Korean story:", korean_story, "Effective shot count:", str(effective_shot_count)]},
-            "result": (product_brief, shot_beats, anchor, keyframe_prompts, keyframe_prompt_lines, korean_story, pipe),
+                            "Korean story:", korean_story, "Effective shot count:", str(effective_shot_count),
+                            "Reference plan:", plan_text]},
+            "result": (product_brief, shot_beats, anchor, keyframe_prompts, keyframe_prompt_lines, korean_story, pipe,
+                       plan_text, plan_json, reference_prompts),
         }

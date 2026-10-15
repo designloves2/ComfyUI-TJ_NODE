@@ -1,8 +1,8 @@
 // -----------------------------------------------------------------------------
 // Scene Maker Result - pipe (TJ)
-// Scene Maker의 pipe 출력을 받아 brief / beat / anchor / prompt / translated 를
+// Scene Maker의 pipe 출력을 받아 brief / beat / anchor / prompt / translated / reference plan 을
 // 한 노드에서 보여준다.
-//  - 노드 크기를 바꾸면 5개 텍스트 필드가 "비율"을 유지한 채 함께 커지고 작아진다.
+//  - 노드 크기를 바꾸면 6개 텍스트 필드가 "비율"을 유지한 채 함께 커지고 작아진다.
 //  - 각 필드는 하단 그립으로 개별 높이 조절이 가능하며, 그 값도 노드 리사이즈 시
 //    비율로 함께 스케일된다.
 //  - 조절한 비율 / 표시된 값은 저장·재로드 후에도 유지된다.
@@ -16,6 +16,7 @@ const FIELDS = [
     ["visual_anchor", "Visual anchor"],
     ["scene_prompt", "Scene prompt"],
     ["translated_result", "Translated result"],
+    ["reference_plan", "Reference plan"],
 ];
 
 const DEFAULT_TA = 264;   // 텍스트 영역 기본 높이(px) — 이전(88)의 3배

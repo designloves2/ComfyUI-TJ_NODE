@@ -258,6 +258,8 @@ function tjSceneReorderWidgets(node) {
         "idea",
         "style",
         "fixed_elements",
+        "suggest_references",
+        "existing_references",
         "brief_override",
         "visual_beat_override",
     ];

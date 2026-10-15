@@ -5,6 +5,17 @@
 ---
 ## [Unreleased]
 
+### [Added]
+
+* **`Scene Maker (TJ)`: 레퍼런스 제안.** `suggest_references`(기본 켬)를 켜면 브리프 다음에 레퍼런스 계획 단계를 돌려, 샷에 필요한 인물·장소·소품·스타일
+  레퍼런스를 `provided image` / `existing` / `missing`으로 나누고 `missing`에는 추천 이미지와 생성 프롬프트를 만든다. 샷 비트와 키프레임 프롬프트에는
+  `@이름`으로 표기된다(Reference Asset Library의 `@별칭`과 같은 규칙). 새 입력 `existing_references`(이미 가진 레퍼런스, 한 줄에 하나), 새 출력
+  `Reference plan` / `Reference plan JSON` / `Reference prompts`(missing 항목의 생성 프롬프트 리스트). `Scene Maker Result - pipe(TJ)`도 같은 출력 3개와
+  `Reference plan` 칸을 추가.
+* **TJ 런처 메뉴에 누락된 노드 22개 등록.** MiniMax H3 Prompt Queue, Free Text Encoder VRAM, MiniMax H3 Audio Lock / Latent Continuation /
+  Save·Load Latent Checkpoint / Sequencer / Output / One-Take Sampler, TJ Studio ONE Text Output, LTX Director 계열(TJ 2.5) 6종, QWEN IMAGE 2.1 /
+  ITDA / LTX 2.5 ONE STUDIO.
+
 ---
 ## [2.22.0] - 2026-10-15
 

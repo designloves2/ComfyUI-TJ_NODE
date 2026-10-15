@@ -51,6 +51,8 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Utility", title: "PromptDBSave(TJ)", type: "PromptDBSave(TJ)" },
   { category: "Utility", title: "PromptDBLoader(TJ)", type: "PromptDBLoader(TJ)" },
   { category: "Utility", title: "PromptDBBridge(TJ)", type: "PromptDBBridge(TJ)" },
+  { category: "Utility", title: "MiniMax H3 Prompt Queue (TJ)", type: "TJ_PromptQueue" },
+  { category: "Utility", title: "Free Text Encoder VRAM (TJ)", type: "TJ_FreeTextEncoderVRAM" },
 
   // Image
   { category: "Image", title: "Multi Image Loader (TJ)", type: "Multi Image Loader (TJ)" },
@@ -83,6 +85,7 @@ export const TJ_LAUNCHER_NODES = [
   // Preview
   { category: "Preview", title: "Show Any (TJ)", type: "Show Any (TJ)" },
   { category: "Preview", title: "Smart show (TJ)", type: "Smart show (TJ)" },
+  { category: "Preview", title: "TJ Studio ONE — Text Output", type: "TJStudioOneTextOutput" },
 
   // Video
   { category: "Video", title: "LTX2. TJ Sampler", type: "LTX2. TJ Sampler" },
@@ -90,6 +93,19 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Video", title: "Wan SCAIL Extend Sampler (TJ)", type: "Wan SCAIL Extend Sampler (TJ)" },
   { category: "Video", title: "LTX25 CLIP GGUF LOADER (TJ)", type: "LTX25 CLIP GGUF LOADER (TJ)" },
   { category: "Video", title: "Video Resize (TJ)", type: "Video Resize (TJ)" },
+  { category: "Video", title: "MiniMax H3 Audio Lock (TJ)", type: "TJ_H3_AudioLock" },
+  { category: "Video", title: "MiniMax H3 Latent Continuation (TJ)", type: "TJ_H3_LatentContinuation" },
+  { category: "Video", title: "MiniMax H3 Save Latent Checkpoint (TJ)", type: "TJ_H3_SaveLatentCheckpoint" },
+  { category: "Video", title: "MiniMax H3 Load Latent Checkpoint (TJ)", type: "TJ_H3_LoadLatentCheckpoint" },
+  { category: "Video", title: "MiniMax H3 Sequencer (TJ)", type: "TJ_H3_Sequencer" },
+  { category: "Video", title: "MiniMax H3 Output (TJ)", type: "TJ_H3_Output" },
+  { category: "Video", title: "MiniMax H3 One-Take Sampler (TJ)", type: "TJ_H3_OneTakeSampler" },
+  { category: "Video", title: "LTX Director (TJ 2.5)", type: "LTXDirectorTJ25" },
+  { category: "Video", title: "LTX Director Guide (TJ 2.5)", type: "LTXDirectorGuideTJ25" },
+  { category: "Video", title: "LTX Director Crop Guides (TJ 2.5)", type: "LTXDirectorCropGuidesTJ25" },
+  { category: "Video", title: "Clean Latent Slice (TJ 2.5)", type: "CleanLatentSliceTJ25" },
+  { category: "Video", title: "LTX Chunk Writer (TJ 2.5)", type: "LTXChunkWriterTJ25" },
+  { category: "Video", title: "LTX Chunk Assembler (TJ 2.5)", type: "LTXChunkAssemblerTJ25" },
   { category: "Image", title: "KREA2 UNET GGUF LOADER (TJ)", type: "TJ_NODE_Krea2UnetLoaderGGUF" },
   { category: "Image", title: "KREA2 CLIP GGUF LOADER (TJ)", type: "TJ_NODE_Krea2ClipLoaderGGUF" },
 
@@ -128,5 +144,8 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Generator", title: "SDXL ONE STUDIO (TJ)", type: "SDXL ONE STUDIO (TJ)" },
   { category: "Generator", title: "MiniMax H3 ONE STUDIO (TJ)", type: "MiniMax H3 ONE STUDIO (TJ)" },
   { category: "Generator", title: "MusicMaker ONE STUDIO (TJ)", type: "MusicMaker ONE STUDIO (TJ)" },
-  { category: "Generator", title: "Anima ONE STUDIO (TJ)", type: "Anima ONE STUDIO (TJ)" }
+  { category: "Generator", title: "Anima ONE STUDIO (TJ)", type: "Anima ONE STUDIO (TJ)" },
+  { category: "Generator", title: "QWEN IMAGE 2.1 ONE STUDIO (TJ)", type: "QwenImage21OneTJNode" },
+  { category: "Generator", title: "ITDA ONE STUDIO (TJ)", type: "ItdaStudioOneTJNode" },
+  { category: "Generator", title: "LTX 2.5 ONE STUDIO (TJ)", type: "LTX25OneTJNode" }
 ];

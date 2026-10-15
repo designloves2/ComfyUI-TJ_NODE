@@ -14,9 +14,10 @@ class TJ_SceneMakerResultPipe:
     def VALIDATE_INPUTS(cls, **kwargs):
         return True
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING")
-    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result")
-    OUTPUT_IS_LIST = (False, False, False, False, True, False)
+    RETURN_TYPES = ("STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING", "STRING")
+    RETURN_NAMES = ("Scene brief", "Visual Beat", "Visual anchor", "Scene prompt", "Scene prompt line", "Translated result",
+                    "Reference plan", "Reference plan JSON", "Reference prompts")
+    OUTPUT_IS_LIST = (False, False, False, False, True, False, False, False, True)
     FUNCTION = "unpack"
     OUTPUT_NODE = True
     CATEGORY = " ✨ TJ_Node/LLM"
@@ -31,9 +32,13 @@ class TJ_SceneMakerResultPipe:
         if not isinstance(lines, list) or not lines:
             lines = _prompt_lines(prompt)
         translated = str(data.get("translated_result", "") or "")
+        prompts = data.get("reference_prompts")
+        if not isinstance(prompts, list) or not prompts:
+            prompts = [""]
 
         return {
-            # 표시 순서: brief / beat / anchor / prompt / translated
-            "ui": {"tj_scene_pipe": [brief, beat, anchor, prompt, translated]},
-            "result": (brief, beat, anchor, prompt, lines, translated),
+            # 표시 순서: brief / beat / anchor / prompt / translated / reference plan
+            "ui": {"tj_scene_pipe": [brief, beat, anchor, prompt, translated, str(data.get("reference_plan", "") or "")]},
+            "result": (brief, beat, anchor, prompt, lines, translated, str(data.get("reference_plan", "") or ""),
+                       str(data.get("reference_plan_json", "") or ""), prompts),
         }
