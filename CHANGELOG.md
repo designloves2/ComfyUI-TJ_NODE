@@ -5,6 +5,9 @@
 ---
 ## [Unreleased]
 
+---
+## [2.24.0] - 2026-10-19
+
 ### [Added]
 
 * **`mtp` 스위치(`LLM (TJ)`, `Scene Maker (TJ)`).** `ComfyUI TextGenerate` 백엔드에서만 보이는 켜짐/꺼짐 하나(기본 켬). 켜면 MTP 가중치가 있는
