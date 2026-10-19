@@ -3,6 +3,7 @@
 // library, or Browse to create/point at a new .xlsx) that opens the same Library tabs
 // modal PromptDBLoader uses.
 import { app } from "../../../scripts/app.js";
+import { api } from "../../../scripts/api.js";
 import {
     fetchLibraries, saveLibraries, browseForFile, openLibraryModal,
     notify, sameLibraryPath, askUniqueLibraryName, toSandboxRelative,
@@ -61,11 +62,89 @@ function installGetReceiver(node) {
     });
 }
 
+// While json_input is linked the JSON supplies these fields, so they are greyed out.
+const JSON_FIELDS = ["model_name", "seed", "steps", "cfg", "sampler_name", "scheduler", "positive_prompt", "negative_prompt"];
+
+function updateJsonLock(node) {
+    const slot = node.inputs?.find((i) => i.name === "json_input");
+    if (slot) slot.label = "JSON input";
+    const linked = !!(slot && slot.link != null);
+    for (const name of JSON_FIELDS) {
+        const w = getW(node, name);
+        if (!w) continue;
+        w.disabled = linked;
+        const el = w.inputEl || w.element;
+        if (el) {
+            el.disabled = linked;
+            el.style.opacity = linked ? "0.45" : "";
+            el.style.pointerEvents = linked ? "none" : "";
+        }
+    }
+    node.setDirtyCanvas?.(true, true);
+}
+
+function installJsonLock(node) {
+    const origConn = node.onConnectionsChange;
+    node.onConnectionsChange = function () {
+        const r = origConn?.apply(this, arguments);
+        requestAnimationFrame(() => updateJsonLock(this));
+        return r;
+    };
+    const origConf = node.onConfigure;
+    node.onConfigure = function () {
+        const r = origConf?.apply(this, arguments);
+        requestAnimationFrame(() => {
+            updateJsonLock(this);
+            const last = this.properties?.tj_pdb_status;
+            if (last) showStatus(this, last.text, last.level);
+        });
+        return r;
+    };
+    updateJsonLock(node);
+}
+
+// Save outcome (saved / skipped / error), pushed by the server after every run.
+const STATUS_COLORS = { ok: "#7be08a", skip: "#e6c15a", error: "#ff7b7b" };
+
+function showStatus(node, text, level) {
+    node.properties = node.properties || {};
+    node.properties.tj_pdb_status = { text, level };
+    const el = node.__tjPdbsStatus;
+    if (el) {
+        el.textContent = text;
+        el.style.color = STATUS_COLORS[level] || "#bbb";
+    }
+}
+
+api.addEventListener("tj_promptdb_status", (e) => {
+    const { node: id, text, level } = e.detail || {};
+    const tail = String(id).split(":").pop();
+    const graphs = [app.graph, app.canvas?.graph].filter(Boolean);
+    for (const g of graphs) {
+        const node = (g._nodes || []).find((n) => String(n.id) === tail && (n.type === NODE_TYPE || n.comfyClass === NODE_TYPE));
+        if (node) { showStatus(node, text, level); break; }
+    }
+});
+
+function installStatusBox(node) {
+    const box = document.createElement("div");
+    box.style.cssText = "box-sizing:border-box;width:100%;height:100%;padding:6px 8px;border:1px solid rgba(255,255,255,.12);"
+        + "border-radius:6px;background:rgba(5,5,5,.9);font:11.5px/1.4 sans-serif;color:#bbb;overflow:auto;white-space:pre-wrap;";
+    box.textContent = "상태: 아직 실행 전";
+    node.__tjPdbsStatus = box;
+    const w = node.addDOMWidget("tj_promptdb_save_status", "div", box, { serialize: false, hideOnZoom: false });
+    w.computeSize = (width) => [width, 62];
+    const last = node.properties?.tj_pdb_status;
+    if (last) showStatus(node, last.text, last.level);
+}
+
 function installUI(node) {
     if (node.__tjPdbsInstalled) return;
     node.__tjPdbsInstalled = true;
     installStyle();
     installGetReceiver(node);
+    installJsonLock(node);
+    installStatusBox(node);
 
     const excelWidget = getW(node, "excel_path");
     if (excelWidget) {

@@ -5,8 +5,19 @@
 ---
 ## [Unreleased]
 
+---
+## [2.23.0] - 2026-10-19
+
 ### [Added]
 
+* **`PromptDBSave(TJ)`: `json_input` 슬롯.** 연결하면 model / seed / steps / cfg / sampler / scheduler / positive / negative 위젯이
+  비활성화되고 JSON 값으로 저장한다. 형식은 STUDIO_ONE 이미지 노드의 `settings` 출력(`model, seed, steps, cfg, sampler, scheduler,
+  positive_prompt, negative_prompt`)과 같고 `model`→model_name, `sampler`→sampler_name으로 매핑한다. `{}`/빈 문자열이면 "저장 안 함"으로
+  건너뛰고, 잘못된 JSON은 오류로 알린다. JSON 목록은 이미지 개수와 같으면 이미지마다 한 줄씩 쓴다.
+* **`PromptDBSave(TJ)`: 저장 상태 창.** 실행할 때마다 `저장 완료: N행 → 파일 (출처) 시각` / `저장 안 함: 사유`(BYPASS, 빈 JSON) /
+  `오류: ...`를 노드 아래 상태 칸에 색으로 표시하고, 마지막 상태는 워크플로우와 함께 저장한다.
+* **`Scene Maker Result - pipe(TJ)`: 필드별 높이 조절과 아코디언.** 칸 제목을 누르면(▾/▸) 접고 펼치며 노드 높이가 그만큼 줄고 늘고,
+  접힘 상태는 워크플로우에 저장된다. 칸 오른쪽 아래 손잡이로 칸마다 높이를 따로 조절할 수 있다.
 * **`Scene Maker (TJ)`: 레퍼런스 제안.** `suggest_references`(기본 켬)를 켜면 브리프 다음에 레퍼런스 계획 단계를 돌려, 샷에 필요한 인물·장소·소품·스타일
   레퍼런스를 `provided image` / `existing` / `missing`으로 나누고 `missing`에는 추천 이미지와 생성 프롬프트를 만든다. 샷 비트와 키프레임 프롬프트에는
   `@이름`으로 표기된다(Reference Asset Library의 `@별칭`과 같은 규칙). 새 입력 `existing_references`(이미 가진 레퍼런스, 한 줄에 하나), 새 출력
@@ -15,6 +26,11 @@
 * **TJ 런처 메뉴에 누락된 노드 22개 등록.** MiniMax H3 Prompt Queue, Free Text Encoder VRAM, MiniMax H3 Audio Lock / Latent Continuation /
   Save·Load Latent Checkpoint / Sequencer / Output / One-Take Sampler, TJ Studio ONE Text Output, LTX Director 계열(TJ 2.5) 6종, QWEN IMAGE 2.1 /
   ITDA / LTX 2.5 ONE STUDIO.
+
+### [Fixed]
+
+* **`Scene Maker Result - pipe(TJ)`: 노드를 키우면 줄일 수 없던 문제.** 패널의 최소 높이가 노드 높이를 따라가던 것을 고정값으로 바꿨다.
+  마지막 칸을 접으면 제목이 반쯤 잘리던 것도 수정(노드가 패널 아래에 남기는 여백 20px 반영, 새 노드 기본 높이 보정).
 
 ---
 ## [2.22.0] - 2026-10-15

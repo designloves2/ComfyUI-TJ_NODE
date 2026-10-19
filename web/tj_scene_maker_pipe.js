@@ -23,7 +23,8 @@ const DEFAULT_TA = 264;   // 텍스트 영역 기본 높이(px) — 이전(88)�
 const LABEL_H = 16;       // 라벨 줄 높이(px)
 const GAP = 8;            // 필드 간 간격(px)
 const MIN_TA = 34;        // 텍스트 영역 최소 높이(px)
-const TOP_FALLBACK = 165; // 위젯 시작 y 추정치 (실측 last_y 확보 전까지)
+const TOP_FALLBACK = 186; // 위젯 시작 y 추정치 (실측 last_y 확보 전까지)
+const PANEL_PAD = 20;     // 노드가 패널 아래에 남기는 여백(실측): 이만큼 더 빼야 마지막 칸이 잘리지 않는다
 
 function applyTheme(node) {
     if (window.TJ_NODE_applyTheme) window.TJ_NODE_applyTheme(node);
@@ -43,25 +44,47 @@ function getWeights(node) {
     return w;
 }
 
+function getCollapsed(node) {
+    if (!node.properties) node.properties = {};
+    let c = node.properties.tj_pipe_collapsed;
+    if (!Array.isArray(c) || c.length !== FIELDS.length) {
+        c = FIELDS.map(() => false);
+        node.properties.tj_pipe_collapsed = c;
+    }
+    return c;
+}
+
+function expandedCount(node) {
+    return getCollapsed(node).filter((x) => !x).length;
+}
+
 function chromeHeight() {
     return FIELDS.length * (LABEL_H + GAP);
+}
+
+// 패널 최소 높이: 펼친 칸만 최소 높이를 차지한다 (노드 크기와 무관한 값)
+function minPanelHeight(node) {
+    return expandedCount(node) * MIN_TA + chromeHeight();
 }
 
 // 패널이 채워야 할 세로 공간 (노드 높이에서 위쪽 슬롯/타이틀 영역을 뺀 값)
 function availableH(node) {
     const panel = panelWidgetOf(node);
     const top = panel && panel.last_y ? panel.last_y : TOP_FALLBACK;
-    const min = FIELDS.length * MIN_TA + chromeHeight();
-    return Math.max(min, Number(node.size?.[1] || 0) - top - 6);
+    return Math.max(minPanelHeight(node), Number(node.size?.[1] || 0) - top - PANEL_PAD);
 }
 
 // 저장된 weight(각 텍스트 영역 높이)를 실제 textarea 에 반영
 function applyHeights(node) {
     const w = getWeights(node);
+    const collapsed = getCollapsed(node);
     node._tj_laying_out = true;
-    FIELDS.forEach(([, ], i) => {
+    FIELDS.forEach(([, label], i) => {
         const rec = node._tj_pipe_fields?.[i];
-        if (rec?.ta) rec.ta.style.height = `${Math.max(MIN_TA, Number(w[i]) || MIN_TA)}px`;
+        if (!rec?.ta) return;
+        rec.ta.style.display = collapsed[i] ? "none" : "";
+        rec.lab.textContent = `${collapsed[i] ? "\u25B8" : "\u25BE"} ${label}`;
+        if (!collapsed[i]) rec.ta.style.height = `${Math.max(MIN_TA, Number(w[i]) || MIN_TA)}px`;
     });
     requestAnimationFrame(() => { node._tj_laying_out = false; });
 }
@@ -69,12 +92,25 @@ function applyHeights(node) {
 // 노드 높이에 맞춰 모든 필드를 "비율 유지"하며 다시 분배
 function scaleToFit(node) {
     const w = getWeights(node);
-    const target = Math.max(FIELDS.length * MIN_TA, availableH(node) - chromeHeight());
-    const cur = w.reduce((a, b) => a + (Number(b) || 0), 0) || 1;
+    const collapsed = getCollapsed(node);
+    const target = Math.max(expandedCount(node) * MIN_TA, availableH(node) - chromeHeight());
+    const cur = w.reduce((a, b, i) => a + (collapsed[i] ? 0 : (Number(b) || 0)), 0) || 1;
     const f = target / cur;
-    const nw = w.map((x) => Math.max(MIN_TA, (Number(x) || MIN_TA) * f));
+    const nw = w.map((x, i) => (collapsed[i] ? x : Math.max(MIN_TA, (Number(x) || MIN_TA) * f)));
     node.properties.tj_pipe_weights = nw;
     applyHeights(node);
+}
+
+// 칸 접기/펼치기: 칸 높이만큼 노드가 줄거나 늘고, 다른 칸은 그대로 유지된다.
+function toggleField(node, i) {
+    const collapsed = getCollapsed(node);
+    const h = Math.max(MIN_TA, Number(getWeights(node)[i]) || MIN_TA);
+    collapsed[i] = !collapsed[i];
+    applyHeights(node);
+    node._tj_internal_resize = true;
+    node.setSize([node.size[0], Math.max(0, node.size[1] + (collapsed[i] ? -h : h))]);
+    node._tj_internal_resize = false;
+    node.setDirtyCanvas(true, true);
 }
 
 function applyValues(node) {
@@ -98,8 +134,10 @@ function buildPanel(node) {
         const lab = document.createElement("div");
         lab.textContent = label;
         lab.style.cssText = `flex:0 0 ${LABEL_H}px;height:${LABEL_H}px;line-height:${LABEL_H}px;`
-            + "font-size:11px;font-weight:bold;color:#d9b3ff;padding:0 2px;"
+            + "font-size:11px;font-weight:bold;color:#d9b3ff;padding:0 2px;cursor:pointer;user-select:none;"
             + "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;";
+        lab.title = "클릭: 접기 / 펼치기";
+        lab.addEventListener("click", () => toggleField(node, i));
 
         const ta = document.createElement("textarea");
         ta.readOnly = true;
@@ -116,7 +154,7 @@ function buildPanel(node) {
 
         // 개별 필드 높이 조절: 그립을 드래그하면 그만큼 노드가 커지고 나머지는 유지된다.
         const ro = new ResizeObserver(() => {
-            if (node._tj_laying_out) return;
+            if (node._tj_laying_out || getCollapsed(node)[i]) return;
             const th = ta.offsetHeight;
             const w = getWeights(node);
             const delta = th - (Number(w[i]) || 0);
@@ -133,10 +171,12 @@ function buildPanel(node) {
 
     const widget = node.addDOMWidget("tj_pipe_panel", "panel", panel, { serialize: false, hideOnZoom: false });
     widget._tj_panel = panel;
-    // fill 트릭: 노드 높이에서 위 영역을 뺀 만큼 패널이 채운다 → 노드를 자유롭게 리사이즈 가능.
-    widget.computeSize = function (width) {
-        return [width || 200, availableH(node)];
-    };
+    // 패널은 노드가 허용하는 만큼 늘어나고, 최소 높이는 고정값이다. node.size 를 computeSize 에
+    // 되먹이면 최소 높이가 노드 크기를 따라가서 줄일 수 없게 된다.
+    delete widget.computeSize;
+    widget.computeLayoutSize = () => ({
+        minHeight: minPanelHeight(node) + PANEL_PAD, maxHeight: 1e6, minWidth: 200, maxWidth: 1e6,
+    });
     return widget;
 }
 
@@ -164,7 +204,7 @@ app.registerExtension({
             attachResizeHook(this);
 
             // 새 노드 기본 크기: 5필드 × 기본높이가 모두 보이도록
-            const contentH = TOP_FALLBACK + FIELDS.length * (DEFAULT_TA + LABEL_H + GAP);
+            const contentH = TOP_FALLBACK + PANEL_PAD + FIELDS.length * (DEFAULT_TA + LABEL_H + GAP);
             this.setSize([Math.max(340, this.size?.[0] || 0), contentH]);
             requestAnimationFrame(() => applyHeights(this));
         };

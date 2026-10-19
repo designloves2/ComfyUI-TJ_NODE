@@ -387,6 +387,19 @@ def _notify_updated(excel_path: str) -> None:
         pass
 
 
+STATUS_EVENT = "tj_promptdb_status"
+
+
+def _send_status(unique_id, text: str, level: str) -> None:
+    """Show the outcome of a save on the node itself. Best-effort - never fails a save."""
+    try:
+        sender = getattr(getattr(PromptServer, "instance", None), "send_sync", None)
+        if sender and unique_id is not None:
+            sender(STATUS_EVENT, {"node": str(unique_id), "text": text, "level": level})
+    except Exception:
+        pass
+
+
 def _tensor_to_pil(image_slice: Any) -> Image.Image:
     img = image_slice[0] if hasattr(image_slice, "dim") and image_slice.dim() == 4 else image_slice
     arr = (img.detach().cpu().numpy() * 255.0).clip(0, 255).astype("uint8")
@@ -605,6 +618,44 @@ def _extract_from_prompt(prompt: Dict[str, Any], self_id: str) -> Dict[str, Any]
     return {k: v for k, v in result.items() if v is not None and v != ""}
 
 
+# json_input: the STUDIO_ONE nodes' `settings` output - one flat object with
+# model / seed / steps / cfg / sampler / scheduler / positive_prompt / negative_prompt.
+# A few alternative key names are accepted so other producers work too.
+_JSON_KEYS = {
+    "model_name": ("model", "model_name", "ckpt_name", "checkpoint"),
+    "seed": ("seed",),
+    "steps": ("steps",),
+    "cfg": ("cfg", "cfg_scale"),
+    "sampler_name": ("sampler", "sampler_name"),
+    "scheduler": ("scheduler",),
+    "positive_prompt": ("positive_prompt", "positive", "prompt"),
+    "negative_prompt": ("negative_prompt", "negative"),
+}
+
+
+def _json_input_rows(raw):
+    """json_input as a list of non-empty settings dicts ([] = nothing to save yet)."""
+    if isinstance(raw, (bytes, str)):
+        text = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+        if not text.strip():
+            return []
+        try:
+            raw = json.loads(text)
+        except ValueError as exc:
+            raise ValueError(f"json_input is not valid JSON: {exc}")
+    rows = raw if isinstance(raw, list) else [raw]
+    if not all(isinstance(r, dict) for r in rows):
+        raise ValueError("json_input must be a JSON object (or a list of objects).")
+    return [r for r in rows if r]
+
+
+def _json_value(row, field, fallback):
+    for key in _JSON_KEYS[field]:
+        if key in row and row[key] is not None:
+            return row[key]
+    return fallback
+
+
 class TJ_PromptDBSave:
     DESCRIPTION = "Appends one row per image (prompt/settings/thumbnail) to an Excel workbook."
 
@@ -648,6 +699,10 @@ class TJ_PromptDBSave:
                 # saved before it existed (seen live: positive_prompt=128, steps="euler").
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "setnode_name": ("STRING", {"default": "PromptDB"}),
+                # Link-only, declared "*" (no widget): a widget-less input never shifts the saved
+                # widget values. While linked, the front end disables model / seed / steps / cfg /
+                # sampler / scheduler / positive / negative and these values come from the JSON.
+                "json_input": ("*", {}),
             },
             "hidden": {"prompt": "PROMPT", "unique_id": "UNIQUE_ID"},
         }
@@ -669,14 +724,24 @@ class TJ_PromptDBSave:
     # ComfyUI omits the kwarg entirely, so it is the signature default that gets recorded —
     # not the widget default the user sees on the node. Having them disagree wrote 0/"" into
     # the sheet for a disconnected socket instead of the promised 8 / 1.0 / euler / simple.
-    def log(self, images, positive_prompt, excel_path, thumbnail_size, mode=True, auto_extract=True,
+    def log(self, **kw):
+        unique_id = kw.get("unique_id")
+        try:
+            message = self._save(**kw)
+        except Exception as exc:
+            _send_status(unique_id, f"오류: {exc}", "error")
+            raise
+        _send_status(unique_id, message, "ok" if message.startswith("저장 완료") else "skip")
+        return (kw["images"],)
+
+    def _save(self, images, positive_prompt, excel_path, thumbnail_size, mode=True, auto_extract=True,
             negative_prompt="", model_name="", seed=0, steps=8, cfg=1.0,
             sampler_name="euler", scheduler="simple", extra_settings="", note="",
-            get_name="(none)", setnode_name="PromptDB", prompt=None, unique_id=None):
+            get_name="(none)", setnode_name="PromptDB", json_input=None, prompt=None, unique_id=None):
         # BYPASS: hand the images straight back, touching nothing. Deliberately checked
         # before any validation so an unconfigured excel_path can't fail a bypassed run.
         if not mode:
-            return (images,)
+            return "저장 안 함: BYPASS 모드"
 
         if Workbook is None:
             raise RuntimeError("openpyxl is required for TJ_PromptDBSave. pip install openpyxl")
@@ -685,7 +750,13 @@ class TJ_PromptDBSave:
         if not path:
             raise ValueError("excel_path is required.")
 
-        if auto_extract and prompt and unique_id is not None:
+        json_rows = None
+        if json_input is not None:
+            json_rows = _json_input_rows(json_input)
+            if not json_rows:
+                return "저장 안 함: JSON input이 비어 있음 (생성 전)"    # the producer has not run yet ({})
+
+        if json_rows is None and auto_extract and prompt and unique_id is not None:
             try:
                 found = _extract_from_prompt(prompt, str(unique_id))
             except Exception:
@@ -740,16 +811,21 @@ class TJ_PromptDBSave:
 
             ws.cell(row=row_idx, column=COL_ID, value=row_id)
             ws.cell(row=row_idx, column=COL_DATE, value=now_str)
-            ws.cell(row=row_idx, column=COL_POS, value=str(positive_prompt or ""))
-            ws.cell(row=row_idx, column=COL_NEG, value=str(negative_prompt or ""))
-            ws.cell(row=row_idx, column=COL_MODEL, value=str(model_name or ""))
-            ws.cell(row=row_idx, column=COL_SEED, value=int(seed))
-            ws.cell(row=row_idx, column=COL_STEPS, value=int(steps))
-            ws.cell(row=row_idx, column=COL_CFG, value=float(cfg))
+            vals = dict(positive_prompt=positive_prompt, negative_prompt=negative_prompt, model_name=model_name, seed=seed,
+                        steps=steps, cfg=cfg, sampler_name=sampler_name, scheduler=scheduler)
+            if json_rows is not None:
+                row_json = json_rows[i] if len(json_rows) == count else json_rows[0]
+                vals = {field: _json_value(row_json, field, vals[field]) for field in vals}
+            ws.cell(row=row_idx, column=COL_POS, value=str(vals["positive_prompt"] or ""))
+            ws.cell(row=row_idx, column=COL_NEG, value=str(vals["negative_prompt"] or ""))
+            ws.cell(row=row_idx, column=COL_MODEL, value=str(vals["model_name"] or ""))
+            ws.cell(row=row_idx, column=COL_SEED, value=int(vals["seed"]))
+            ws.cell(row=row_idx, column=COL_STEPS, value=int(vals["steps"]))
+            ws.cell(row=row_idx, column=COL_CFG, value=float(vals["cfg"]))
             ws.cell(row=row_idx, column=COL_EXTRA, value=str(extra_settings or ""))
             ws.cell(row=row_idx, column=COL_NOTE, value=str(note or ""))
-            ws.cell(row=row_idx, column=COL_SAMPLER, value=str(sampler_name or ""))
-            ws.cell(row=row_idx, column=COL_SCHEDULER, value=str(scheduler or ""))
+            ws.cell(row=row_idx, column=COL_SAMPLER, value=str(vals["sampler_name"] or ""))
+            ws.cell(row=row_idx, column=COL_SCHEDULER, value=str(vals["scheduler"] or ""))
 
             try:
                 embed = _embed_pil(thumb_path)
@@ -763,7 +839,8 @@ class TJ_PromptDBSave:
 
         _save_with_retry(wb, path)
         _notify_updated(path)
-        return (images,)
+        source = "JSON input" if json_rows is not None else ("자동 추출" if auto_extract else "수동 입력")
+        return f"저장 완료: {count}행 → {os.path.basename(path)} ({source}) {datetime.now().strftime('%H:%M:%S')}"
 
 
 class TJ_PromptDBLoader:

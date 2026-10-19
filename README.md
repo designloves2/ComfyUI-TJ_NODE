@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.22.0
+# ✨ TJ_NODE v2.23.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,18 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 📊 PromptDBSave(TJ): JSON input · 저장 상태 창 — v2.23.0
+
+`json_input` 슬롯에 STUDIO_ONE 이미지 노드의 `settings`(JSON 문자열)를 연결하면 model / seed / steps / cfg / sampler / scheduler /
+positive / negative 위젯이 회색으로 비활성화되고 JSON 값으로 엑셀에 저장합니다. 노드 아래 상태 창에 `저장 완료`(초록) /
+`저장 안 함`(노랑: BYPASS, 빈 JSON) / `오류`(빨강)가 매 실행마다 표시됩니다.
+
+## 🎬 Scene Maker (TJ) 레퍼런스 제안 · Result pipe 아코디언 — v2.23.0
+
+`suggest_references`(기본 켬)를 켜면 샷에 필요한 레퍼런스(인물·장소·소품·스타일)를 `provided image` / `existing` / `missing`으로 나누고,
+`missing`에는 추천 이미지와 생성 프롬프트를 만듭니다. 키프레임 프롬프트에는 `@이름`이 들어가 Reference Asset Library의 `@별칭`으로
+그대로 쓸 수 있습니다. `Scene Maker Result - pipe(TJ)`는 칸 제목(▾/▸)으로 접고 펼 수 있고 칸마다 높이를 조절할 수 있습니다.
 
 ## 🗂 Reference Asset Library · MiniMax H3 Reference / Image to Video (TJ) — v2.18.0 ~ v2.20.0
 
@@ -127,6 +139,12 @@ upstream nodes on the other side never load. Up to 12 groups, Global / Per-Group
   못한 항목은 위젯 기본값(steps 8 / cfg 1.0 / euler / simple)이 그대로 남습니다.
 * **SAVE / BYPASS 토글** — BYPASS로 두면 아무것도 기록하지 않고 이미지를 그대로
   통과시킵니다. 노드를 그래프에서 뺄 필요 없이 기록만 잠시 끌 때 씁니다.
+* **`json_input`(v2.23.0)** — STUDIO_ONE 이미지 노드의 `settings` JSON(`model, seed, steps,
+  cfg, sampler, scheduler, positive_prompt, negative_prompt`)을 연결하면 해당 8개 위젯이
+  비활성화되고 JSON 값으로 저장합니다(`model`→model_name, `sampler`→sampler_name).
+  `{}`나 빈 값이면 저장하지 않고 건너뜁니다.
+* **저장 상태 창(v2.23.0)** — 노드 아래 칸에 실행마다 `저장 완료: N행 → 파일` /
+  `저장 안 함: 사유` / `오류: ...`가 색으로 표시됩니다.
 * **PromptDBLoader(TJ)** — 사진 라이브러리 앱처럼 썸네일 그리드로 기록된 행을
   훑어보는 조회 노드. 클릭으로 선택(다음 실행에 반영), 더블클릭으로 상세 팝업을 열어
   값 수정 후 저장(해당 행만 갱신)하거나 그 행을 삭제. `TJ_PROMPT_PIPE` 소켓으로 값
@@ -462,6 +480,12 @@ Auto Set, 번역(KO/EN/JP/CN) 지원. `Scene Maker Result - pipe(TJ)` 로 결과
 
 v2.22.0부터 모델 부분이 `LLM (TJ)`와 같습니다: `backend`(GGUF / llama.cpp, ComfyUI TextGenerate, Open Router,
 Connect Custom)와 그 설정, API 키 칸, `Connect & test`. 이전의 `Model_Type` / `clip_name` 입력은 없어졌습니다.
+
+v2.23.0: `suggest_references`(기본 켬)가 샷에 필요한 레퍼런스를 `provided image` / `existing` / `missing`으로 나누고 `missing`에는
+추천 이미지와 생성 프롬프트를 만듭니다. `existing_references`에 이미 가진 레퍼런스(예: 라이브러리 에셋 이름)를 한 줄에 하나씩
+적으면 다시 제안하지 않습니다. 새 출력: `Reference plan`(글), `Reference plan JSON`, `Reference prompts`(missing 항목의 생성 프롬프트
+리스트). 샷 비트와 키프레임 프롬프트에는 `@이름`이 들어갑니다. `Scene Maker Result - pipe(TJ)`는 같은 출력 3개와 `Reference plan` 칸이
+있고, 칸 제목(▾/▸)을 눌러 접고 펼 수 있으며 칸 손잡이로 높이를 따로 조절합니다.
 
 ## ✨ Ollama LLM Loader (TJ)
 
@@ -2577,14 +2601,8 @@ ollama pull gemma3:4b
 
 ## 🖼 Scene Maker (TJ)
 
-**필요 모델** → `ComfyUI/models/clip/` 또는 `ComfyUI/models/text_encoders/` 에 배치:
-
-| 기본 파일명 | 용도 |
-|---|---|
-| `t5xxl_fp16.safetensors` | CLIP 텍스트 인코더 (기본값) |
-| `clip_l.safetensors` | CLIP L (fallback) |
-
-> Scene Maker는 `ComfyUI TextGenerate` 노드를 사용합니다. TextGenerate 노드가 없으면 CLIP 직접 로드 경로를 사용합니다.
+**모델**: v2.22.0부터 `LLM (TJ)`와 같은 4개 백엔드(GGUF / llama.cpp, ComfyUI TextGenerate, Open Router, Connect Custom)에서 고릅니다.
+`ComfyUI TextGenerate`는 `ComfyUI/models/text_encoders/` 의 텍스트 인코더(예: gemma4)나 `clip` 입력을 씁니다.
 
 ---
 
