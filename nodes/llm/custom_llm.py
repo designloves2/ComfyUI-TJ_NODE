@@ -26,6 +26,7 @@ from aiohttp import web
 from PIL import Image
 
 import comfy.model_management
+import comfy.model_prefetch
 from server import PromptServer
 
 from ._llm_utils import (
@@ -226,7 +227,7 @@ class LLMSession:
 
     def __init__(self, backend, clip=None, gguf_model="", mmproj_file=MMPROJ_NONE, chat_handler="Auto-detect", n_gpu_layers=-1,
                  n_ctx=4096, text_encoder_name="", clip_loader_type="Auto", api_base="", model="", context=0, max_image_px=1024,
-                 temperature=0.7, strip_thinking=True):
+                 temperature=0.7, strip_thinking=True, mtp=True):
         if backend not in BACKENDS:
             raise ValueError(f"unknown backend: {backend}")
         self.backend, self.clip = backend, clip
@@ -234,7 +235,7 @@ class LLMSession:
         self.n_gpu_layers, self.n_ctx = n_gpu_layers, n_ctx
         self.text_encoder_name, self.clip_loader_type = text_encoder_name, clip_loader_type
         self.api_base, self.model, self.context, self.max_image_px = api_base, model, context, max_image_px
-        self.temperature, self.strip_thinking = temperature, strip_thinking
+        self.temperature, self.strip_thinking, self.mtp = temperature, strip_thinking, mtp
         self.label = {"GGUF / llama.cpp": gguf_model, "ComfyUI TextGenerate": text_encoder_name}.get(backend, model.strip())
         self._llm = self._handler = None
         self._vision = False
@@ -285,7 +286,16 @@ class LLMSession:
                 if _is_bad_choice(self.text_encoder_name):
                     raise FileNotFoundError("No model found in models/text_encoders.")
                 self.clip = _load_clip_from_text_encoder(self.text_encoder_name, self.clip_loader_type)
-            text = str(_generate_with_textgenerate(self.clip, f"{system}\n\n{prompt}" if system else prompt, max_tokens, seed, image=images)).strip()
+            full_prompt = f"{system}\n\n{prompt}" if system else prompt
+            try:
+                text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
+            except TypeError as exc:
+                if "MTPHead" not in str(exc):
+                    raise
+                # ComfyUI 0.41: an interrupted Qwen3.5 MTP run leaves a prefetch queue entry whose cleanup then
+                # fails on every later run until restart. Drop the stale queue and run again.
+                comfy.model_prefetch.PREFETCH_QUEUES.clear()
+                text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
             if self.unload_after_call:
                 comfy.model_management.unload_all_models()
                 comfy.model_management.soft_empty_cache()
@@ -331,6 +341,7 @@ class TJ_CustomLLM:
                 "get_name": (["(none)"], {"default": "(none)"}),
                 "auto_set": ("BOOLEAN", {"default": False, "tooltip": "켜면 2-출력을 setnode_name 기반 이름으로 자동 Set 등록."}),
                 "setnode_name": ("STRING", {"default": "LLM"}),
+                "mtp": ("BOOLEAN", {"default": True, "tooltip": "ComfyUI TextGenerate: speculative decoding for Qwen3.5 models that ship MTP weights (faster). Turn off if you get MTPHead errors."}),
             },
         }
 
@@ -350,11 +361,11 @@ class TJ_CustomLLM:
     def run(self, backend, prompt, system_preset=NO_PRESET, system_prompt="", images=None, clip=None,
             gguf_model="", mmproj_file=MMPROJ_NONE, chat_handler="Auto-detect", n_gpu_layers=-1, n_ctx=4096,
             text_encoder_name="", clip_loader_type="Auto", api_base="", model="", context=0, max_image_px=1024,
-            max_tokens=2000, temperature=0.7, seed=0, strip_thinking=True, **kw):
+            max_tokens=2000, temperature=0.7, seed=0, strip_thinking=True, mtp=True, **kw):
         system = system_prompt.strip() or _preset_text(system_preset)
         started = time.time()
         session = LLMSession(backend, clip, gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, text_encoder_name,
-                             clip_loader_type, api_base, model, context, max_image_px, temperature, strip_thinking)
+                             clip_loader_type, api_base, model, context, max_image_px, temperature, strip_thinking, mtp)
         try:
             text, usage = session.generate(prompt, system, images, max_tokens, seed)
         finally:

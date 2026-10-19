@@ -23,6 +23,7 @@ const DEFAULT_TA = 264;   // 텍스트 영역 기본 높이(px) — 이전(88)�
 const LABEL_H = 16;       // 라벨 줄 높이(px)
 const GAP = 8;            // 필드 간 간격(px)
 const MIN_TA = 34;        // 텍스트 영역 최소 높이(px)
+const MAX_TA = 3000;      // 이보다 큰 값은 깨진 저장값으로 보고 기본값으로 되돌린다
 const TOP_FALLBACK = 186; // 위젯 시작 y 추정치 (실측 last_y 확보 전까지)
 const PANEL_PAD = 20;     // 노드가 패널 아래에 남기는 여백(실측): 이만큼 더 빼야 마지막 칸이 잘리지 않는다
 
@@ -37,7 +38,7 @@ function panelWidgetOf(node) {
 function getWeights(node) {
     if (!node.properties) node.properties = {};
     let w = node.properties.tj_pipe_weights;
-    if (!Array.isArray(w) || w.length !== FIELDS.length) {
+    if (!Array.isArray(w) || w.length !== FIELDS.length || w.some((x) => !(x >= MIN_TA && x <= MAX_TA))) {
         w = FIELDS.map(() => DEFAULT_TA);
         node.properties.tj_pipe_weights = w;
     }
@@ -155,6 +156,8 @@ function buildPanel(node) {
         // 개별 필드 높이 조절: 그립을 드래그하면 그만큼 노드가 커지고 나머지는 유지된다.
         const ro = new ResizeObserver(() => {
             if (node._tj_laying_out || getCollapsed(node)[i]) return;
+            // 캔버스 밖으로 나가면 ComfyUI 가 DOM 위젯을 숨겨 높이가 0 이 된다 - 사용자가 줄인 것이 아니다
+            if (!ta.offsetParent || ta.offsetHeight < MIN_TA) return;
             const th = ta.offsetHeight;
             const w = getWeights(node);
             const delta = th - (Number(w[i]) || 0);

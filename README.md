@@ -1268,6 +1268,9 @@ GGUF `general.architecture` 태그를 미리 알 수 없어서(TXT_ARCH_LIST 에
 
 ## ✨ LLM (TJ)
 
+> `mtp`(켜짐/꺼짐, 기본 켬): `ComfyUI TextGenerate`일 때만 보입니다. MTP 가중치가 있는 Qwen3.5 모델을 더 빠르게 돌리며, ComfyUI 0.41에서 생성을 취소한 뒤
+> `MTPHead` 오류가 나면 끄거나 ComfyUI를 재시작하세요(자동 복구도 시도합니다). `Scene Maker (TJ)`에도 같은 스위치가 있습니다.
+
 백엔드 4개 중 골라 쓰는 범용 LLM 노드: `GGUF / llama.cpp`(로컬 GGUF, 이미지 입력은 mmproj 필요), `ComfyUI TextGenerate`
 (텍스트 인코더/`clip` 입력), `Open Router`, `Connect Custom`(LM Studio · Ollama · llama.cpp 서버 · 프록시 등 OpenAI 호환
 `/v1`). 선택한 백엔드의 설정만 보입니다.

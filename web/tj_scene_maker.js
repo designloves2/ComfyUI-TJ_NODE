@@ -242,6 +242,7 @@ function tjSceneReorderWidgets(node) {
         "n_ctx",
         "text_encoder_name",
         "clip_loader_type",
+        "mtp",
         "api_base",
         "model",
         "context",

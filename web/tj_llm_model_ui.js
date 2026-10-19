@@ -12,7 +12,7 @@ const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 // which widgets each backend uses (everything else - prompt, presets, tokens... - is always shown)
 const BACKEND_WIDGETS = {
     "GGUF / llama.cpp": ["gguf_model", "mmproj_file", "chat_handler", "n_gpu_layers", "n_ctx"],
-    "ComfyUI TextGenerate": ["text_encoder_name", "clip_loader_type"],
+    "ComfyUI TextGenerate": ["text_encoder_name", "clip_loader_type", "mtp"],
     "Open Router": ["model", "max_image_px"],
     "Connect Custom": ["api_base", "model", "context", "max_image_px"],
 };

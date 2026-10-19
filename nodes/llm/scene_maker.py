@@ -353,6 +353,7 @@ class TJ_SceneMaker:
                 "strip_thinking": ("BOOLEAN", {"default": True}),
                 "suggest_references": ("BOOLEAN", {"default": True, "tooltip": "Also plan the reference images the shots need (provided / existing / missing) and write generation prompts for the missing ones."}),
                 "existing_references": ("STRING", {"default": "", "multiline": True, "tooltip": "References you already have (for example library asset names), one per line. They are not proposed again."}),
+                "mtp": ("BOOLEAN", {"default": True, "tooltip": "ComfyUI TextGenerate: speculative decoding for Qwen3.5 models that ship MTP weights (faster). Turn off if you get MTPHead errors."}),
             },
         }
 
@@ -369,11 +370,11 @@ class TJ_SceneMaker:
 
     def make(self, backend="ComfyUI TextGenerate", get_name="(none)", auto_set=False, mode="Product Commercial", translate="KO",
              idea="", style="", fixed_elements="", shot_count=6, seed=1, brief_override="", visual_beat_override="",
-             input_image=None, clip=None, temperature=0.7, strip_thinking=True, suggest_references=True, existing_references="", **model):
+             input_image=None, clip=None, temperature=0.7, strip_thinking=True, suggest_references=True, existing_references="", mtp=True, **model):
         # An externally connected CLIP always forces the TextGenerate backend.
         if clip is not None:
             backend = "ComfyUI TextGenerate"
-        session = LLMSession(backend, clip, temperature=temperature, strip_thinking=strip_thinking, **model)
+        session = LLMSession(backend, clip, temperature=temperature, strip_thinking=strip_thinking, mtp=mtp, **model)
         session.unload_after_call = True
 
         def gen(prompt, max_length, s, image=None):

@@ -5,6 +5,18 @@
 ---
 ## [Unreleased]
 
+### [Added]
+
+* **`mtp` 스위치(`LLM (TJ)`, `Scene Maker (TJ)`).** `ComfyUI TextGenerate` 백엔드에서만 보이는 켜짐/꺼짐 하나(기본 켬). 켜면 MTP 가중치가 있는
+  Qwen3.5 모델을 예측 디코딩으로 더 빠르게 돌리고, 끄면 코어 `TextGenerate`의 `mtp = off`로 그 경로를 쓰지 않는다.
+* **Qwen3.5 MTP 복구.** ComfyUI 0.41에서 생성을 취소(Interrupt)하면 이후 같은 모델 실행이 `cannot unpack non-iterable MTPHead object`로 계속 실패한다.
+  `LLM (TJ)`는 이 오류를 만나면 남은 prefetch 대기열을 비우고 한 번 더 실행한다(재현이 되지 않아 효과는 확인하지 못함. 안 되면 ComfyUI 재시작).
+
+### [Fixed]
+
+* **`Scene Maker Result - pipe(TJ)`: 노드가 캔버스 밖으로 나갔다 돌아오면 크기가 리셋되고 아래에 투명한 영역이 생기던 문제.** 밖으로 나가면 숨겨진 칸의
+  높이(0)를 사용자 조절로 오인해 저장하던 것을 막고, 말이 안 되는 저장 높이는 기본값으로 되돌린다.
+
 ---
 ## [2.23.0] - 2026-10-19
 

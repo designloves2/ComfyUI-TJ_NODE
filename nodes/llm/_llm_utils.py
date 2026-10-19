@@ -674,7 +674,7 @@ def _textgenerate_image_kwarg_name():
     return None
 
 
-def _generate_with_textgenerate(clip, prompt, max_length, seed, image=None):
+def _generate_with_textgenerate(clip, prompt, max_length, seed, image=None, mtp=True):
     kwargs = {
         "clip": clip,
         "prompt": prompt,
@@ -690,6 +690,7 @@ def _generate_with_textgenerate(clip, prompt, max_length, seed, image=None):
         },
         "thinking": False,
         "use_default_template": True,
+        "mtp": "auto" if mtp else "off",
     }
     if image is not None:
         image_kw = _textgenerate_image_kwarg_name()
