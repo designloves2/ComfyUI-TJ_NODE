@@ -6,6 +6,12 @@
 ## [Unreleased]
 
 ---
+## [2.25.0] - 2026-10-22
+
+### [Fixed]
+- LLM (TJ): GGUF with image input no longer crashes the backend on gemma models (`n_ubatch` is now raised to `n_ctx` when an mmproj is loaded).
+
+---
 ## [2.24.0] - 2026-10-19
 
 ### [Added]

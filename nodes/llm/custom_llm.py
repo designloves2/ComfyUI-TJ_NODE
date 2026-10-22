@@ -257,7 +257,7 @@ class LLMSession:
                 raise FileNotFoundError(f"mmproj not found: {mmproj_path}")
             handler_cls, _ = TJ_ImageToPrompt._resolve_handler(None, self.chat_handler, self.gguf_model)
             self._handler = handler_cls(clip_model_path=mmproj_path, verbose=False)
-            kwargs = {"chat_handler": self._handler, "logits_all": True}
+            kwargs = {"chat_handler": self._handler, "logits_all": True, "n_batch": int(self.n_ctx), "n_ubatch": int(self.n_ctx)}  # gemma image tokens use non-causal attention: must fit in one ubatch
         _free_comfy_vram()
         self._llm = Llama(model_path=model_path, n_gpu_layers=int(self.n_gpu_layers), verbose=False, n_ctx=int(self.n_ctx), seed=int(seed), **kwargs)
         self._vision = vision
