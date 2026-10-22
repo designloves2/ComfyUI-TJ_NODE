@@ -98,6 +98,11 @@ def contain(rel):
     return path
 
 
+def mention_name(text):
+    """@mentions only match word characters, so spaces and hyphens in a name or alias become "_"."""
+    return re.sub(r"[\s-]+", "_", str(text or "").strip())
+
+
 def safe_part(text, fallback=""):
     text = "".join(c for c in str(text or "") if c not in '<>:"/\\|?*' and ord(c) >= 32)
     text = text.strip(" .")[:80]
@@ -273,12 +278,12 @@ def register(data, ext, category, subcategory, name, kind=None, tags="", note=""
         cur = conn.execute(
             "INSERT INTO assets(kind,category,subcategory,name,sha256,size,width,height,duration,sample_rate,has_audio,"
             "tags,note,settings,created,updated) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (kind, category, sub, safe_part(name, "asset"), digest, len(data), info.get("width"), info.get("height"),
+            (kind, category, sub, safe_part(mention_name(name), "asset"), digest, len(data), info.get("width"), info.get("height"),
              info.get("duration"), info.get("sample_rate"), info.get("has_audio"),
              ",".join(tags) if isinstance(tags, (list, tuple)) else str(tags or ""), str(note or ""),
              json.dumps(normalize_settings(settings)), now, now))
         aid = cur.lastrowid
-        rel = "/".join(p for p in (category, sub, f"{aid}_{safe_part(name, 'asset')}{ext}") if p)
+        rel = "/".join(p for p in (category, sub, f"{aid}_{safe_part(mention_name(name), 'asset')}{ext}") if p)
         path = contain(rel)
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".part"
@@ -326,7 +331,7 @@ def create_set(name, category, subcategory, image_ids, tags="", note="", setting
         aid = conn.execute(
             "INSERT INTO assets(kind,category,subcategory,name,sha256,size,tags,note,settings,created,updated)"
             " VALUES('set',?,?,?,?,0,?,?,?,?,?)",
-            (category, safe_part(subcategory), safe_part(name, "set"), digest,
+            (category, safe_part(subcategory), safe_part(mention_name(name), "set"), digest,
              ",".join(tags) if isinstance(tags, (list, tuple)) else str(tags or ""), str(note or ""),
              json.dumps(normalize_settings(settings)), now, now)).lastrowid
         for pos, i in enumerate(ids):
@@ -380,7 +385,7 @@ def update_asset(asset_id, **fields):
         cur = _public(row)
         category = check_category(fields.get("category", cur["category"]))
         sub = safe_part(fields.get("subcategory", cur["subcategory"]))
-        name = safe_part(fields.get("name", cur["name"]), "asset")
+        name = safe_part(mention_name(fields.get("name", cur["name"])), "asset")
         tags = fields.get("tags", cur["tags"])
         tags = ",".join(tags) if isinstance(tags, (list, tuple)) else str(tags or "")
         settings = cur["settings"] if "settings" not in fields else {**cur["settings"], **normalize_settings(fields["settings"])}
@@ -561,7 +566,7 @@ def preview_bytes(asset, max_mp=1.0):
 # ── projects ──────────────────────────────────────────────────────────────────
 
 def _check_alias(alias):
-    alias = str(alias or "").strip()
+    alias = mention_name(alias)
     if not alias:
         return None
     if alias[0].isdigit() or not all(c == "_" or c.isalnum() for c in alias):

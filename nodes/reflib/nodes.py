@@ -108,7 +108,7 @@ class TJ_RefAssetRegister:
             tags="", mp=0.0, set_mode="video", prev_items=""):
         found = []  # (asset, duplicate, alias)
         defaults = {"mp": mp} if mp else None
-        alias = alias.strip()
+        alias = lib.mention_name(alias)
         multi = sum(x is not None for x in (image, audio, video)) > 1  # one alias, several kinds: suffix them
         try:
             if image is not None:

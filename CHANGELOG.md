@@ -6,6 +6,12 @@
 ## [Unreleased]
 
 ---
+## [2.26.0] - 2026-10-23
+
+### [Fixed]
+- Reference library: spaces and hyphens in asset names and aliases become "_" so `@mentions` resolve (existing names change when the asset is edited).
+
+---
 ## [2.25.0] - 2026-10-22
 
 ### [Fixed]
