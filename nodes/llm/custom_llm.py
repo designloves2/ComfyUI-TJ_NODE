@@ -30,19 +30,22 @@ import comfy.model_prefetch
 from server import PromptServer
 
 from ._llm_utils import (
-    CLIP_LOADER_TYPE_OPTIONS, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL, DEFAULT_TEXT_ENCODER_MODEL, MMPROJ_NONE,
+    AESTHETIC_DESCRIPTORS, AESTHETIC_OPTIONS, LANGUAGE_INSTRUCTION, MODEL_FORMAT_INSTRUCTIONS, MODEL_FORMAT_OPTIONS,
+    OUTPUT_ONLY_INSTRUCTION, CLIP_LOADER_TYPE_OPTIONS, DEFAULT_GGUF_MODEL, DEFAULT_MMPROJ_MODEL, DEFAULT_TEXT_ENCODER_MODEL, MMPROJ_NONE,
     TJ_LLM_CATEGORY, _HANDLER_CLASSES, _free_chat_handler, _free_comfy_vram, _free_llm, _generate_with_textgenerate,
     _is_bad_choice, _load_clip_from_text_encoder, _resolve_text_encoder_path, _strip_thinking_process_block,
     _strip_thinking_tags, _text_encoder_ggufs, _text_encoder_mmproj_options, _text_encoder_model_options,
     tensor_to_data_uri,
 )
-from .image_to_prompt import TJ_ImageToPrompt
+from .image_to_prompt import VISION_TASK_INSTRUCTIONS, VISION_TASK_OPTIONS, TJ_ImageToPrompt
 
 _KEYS = {}  # normalised api base -> key (memory only)
 _PACK_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PRESET_FILE = os.path.join(_PACK_ROOT, "customLLM", "system_prompts.json")
 _preset_lock = threading.Lock()
 NO_PRESET = "(custom)"
+NO_CHOICE = "(none)"
+PROGRESS_EVENT = "tj_llm_progress"
 
 _SEED_PRESETS = [
     {"name": "Prompt enhancer", "text": "You rewrite the user's idea into one vivid, concrete, visual prompt for an image or video model. "
@@ -166,6 +169,79 @@ def _preset_text(name):
     return next((p["text"] for p in load_presets() if p["name"] == name), "")
 
 
+class _Progress:
+    """Sends tj_llm_progress websocket events (about every 0.7 s) and a console line every 10 s while a call runs."""
+
+    def __init__(self, backend, model, call_id=""):
+        self.backend, self.model = backend, model
+        self.call_id = call_id or f"llm-{int(time.time() * 1000)}"
+        self.started = self.last_sent = self.last_log = time.time()
+        self.text, self.pending, self.out_tokens, self.in_tokens = "", "", 0, None
+
+    def _phase(self):
+        low = self.text.lower()
+        return "thinking" if "<think" in low and "</think" not in low else "answer"
+
+    def _send(self, phase, delta="", finish=None):
+        elapsed = time.time() - self.started
+        event = {"call_id": self.call_id, "backend": self.backend, "model": self.model, "phase": phase,
+                 "input_tokens": self.in_tokens, "output_tokens": self.out_tokens, "chars": len(self.text),
+                 "tok_per_sec": round(self.out_tokens / elapsed, 1) if elapsed > 0 and self.out_tokens else 0,
+                 "elapsed_ms": int(elapsed * 1000), "delta": delta}
+        if finish:
+            event["finish_reason"] = finish
+        PromptServer.instance.send_sync(PROGRESS_EVENT, event)
+        self.last_sent = time.time()
+
+    def start(self):
+        self._send("prompt")
+
+    def add(self, piece):
+        self.text += piece
+        self.out_tokens += 1
+        self.pending += piece
+        now = time.time()
+        if now - self.last_sent >= 0.7:
+            self._send(self._phase(), self.pending)
+            self.pending = ""
+        if now - self.last_log >= 10:
+            self.last_log = now
+            print(f"[TJ_LLM] … {now - self.started:.1f}s out={self.out_tokens}tok {self.out_tokens / (now - self.started):.1f}tok/s")
+
+    def finish(self, text, finish_reason, usage):
+        """usage: the backend's token counts (any may be missing); returns the normalised usage dict."""
+        elapsed = time.time() - self.started
+        self.in_tokens = usage.get("prompt_tokens", self.in_tokens)
+        self.out_tokens = usage.get("completion_tokens", self.out_tokens)
+        thinking = max(text.lower().rfind("</think>"), text.lower().rfind("</thinking>"))
+        thinking_chars = text.index(">", thinking) + 1 if thinking >= 0 else 0
+        speed = round(self.out_tokens / elapsed, 1) if elapsed > 0 and self.out_tokens else 0
+        result = {"prompt_tokens": self.in_tokens, "completion_tokens": self.out_tokens,
+                  "total_tokens": (self.in_tokens or 0) + self.out_tokens, "input_tokens": self.in_tokens,
+                  "output_tokens": self.out_tokens, "tok_per_sec": speed, "elapsed_ms": int(elapsed * 1000),
+                  "finish_reason": finish_reason, "thinking_chars": thinking_chars, "answer_chars": len(text) - thinking_chars}
+        self.text = text
+        self._send("done", self.pending, finish_reason)
+        print(f"[TJ_LLM] backend={self.backend} model={self.model} in={self.in_tokens}tok out={self.out_tokens}tok "
+              f"time={elapsed:.1f}s speed={speed}tok/s finish={finish_reason}")
+        return result
+
+    def fail(self, exc):
+        self.text = str(exc)
+        self._send("error", finish="error")
+
+
+def compose_system(system, model_format=NO_CHOICE, aesthetic="", vision_task=NO_CHOICE, has_images=False):
+    """The written system prompt plus the optional building blocks from nodes/llm/data (vision task, aesthetic, model format)."""
+    parts = [system.strip()]
+    if has_images and vision_task != NO_CHOICE:
+        parts.append(VISION_TASK_INSTRUCTIONS.get(vision_task, "").strip())
+    parts.append(AESTHETIC_DESCRIPTORS.get(aesthetic, ""))
+    if model_format != NO_CHOICE and model_format in MODEL_FORMAT_INSTRUCTIONS:
+        parts += [MODEL_FORMAT_INSTRUCTIONS[model_format], LANGUAGE_INSTRUCTION, OUTPUT_ONLY_INSTRUCTION]
+    return " ".join(p for p in parts if p)
+
+
 # ── the node ─────────────────────────────────────────────────────────────────────────────────
 
 BACKENDS = ["GGUF / llama.cpp", "ComfyUI TextGenerate", "Open Router", "Connect Custom"]
@@ -262,7 +338,7 @@ class LLMSession:
         self._llm = Llama(model_path=model_path, n_gpu_layers=int(self.n_gpu_layers), verbose=False, n_ctx=int(self.n_ctx), seed=int(seed), **kwargs)
         self._vision = vision
 
-    def _gguf(self, system, prompt, images, max_tokens, seed):
+    def _gguf(self, system, prompt, images, max_tokens, seed, progress):
         vision = images is not None and images.shape[0] > 0
         if self._llm is not None and vision and not self._vision:
             self.close()
@@ -273,34 +349,51 @@ class LLMSession:
             content = [{"type": "image_url", "image_url": {"url": tensor_to_data_uri(images[i:i + 1])}} for i in range(images.shape[0])]
             content.append({"type": "text", "text": prompt})
         messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": content}]
-        out = self._llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(self.temperature), seed=int(seed))
-        return out["choices"][0]["message"]["content"].strip()
+        pieces, finish = [], "stop"
+        for chunk in self._llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(self.temperature),
+                                                      seed=int(seed), stream=True):
+            choice = chunk["choices"][0]
+            piece = (choice.get("delta") or {}).get("content") or ""
+            if piece:
+                pieces.append(piece)
+                progress.add(piece)
+            finish = choice.get("finish_reason") or finish
+        # llama.cpp streams one chunk per token; n_tokens is prompt + generated tokens held in the context
+        progress.in_tokens = max(0, self._llm.n_tokens - len(pieces))
+        return "".join(pieces).strip(), finish
 
-    def generate(self, prompt, system="", images=None, max_tokens=2000, seed=0):
-        """Returns (text, usage)."""
-        usage = {}
-        if self.backend == "GGUF / llama.cpp":
-            text = self._gguf(system, prompt, images, max_tokens, seed)
-        elif self.backend == "ComfyUI TextGenerate":
-            if self.clip is None:
-                if _is_bad_choice(self.text_encoder_name):
-                    raise FileNotFoundError("No model found in models/text_encoders.")
-                self.clip = _load_clip_from_text_encoder(self.text_encoder_name, self.clip_loader_type)
-            full_prompt = f"{system}\n\n{prompt}" if system else prompt
-            try:
-                text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
-            except TypeError as exc:
-                if "MTPHead" not in str(exc):
-                    raise
-                # ComfyUI 0.41: an interrupted Qwen3.5 MTP run leaves a prefetch queue entry whose cleanup then
-                # fails on every later run until restart. Drop the stale queue and run again.
-                comfy.model_prefetch.PREFETCH_QUEUES.clear()
-                text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
-            if self.unload_after_call:
-                comfy.model_management.unload_all_models()
-                comfy.model_management.soft_empty_cache()
-        else:
-            text, usage = _http_chat(self.backend, self.api_base, self.model, system, prompt, images, self.context, max_tokens, self.temperature, self.max_image_px)
+    def generate(self, prompt, system="", images=None, max_tokens=2000, seed=0, call_id=""):
+        """Returns (text, usage); sends tj_llm_progress events while it runs."""
+        progress = _Progress(self.backend, self.label, call_id)
+        progress.start()
+        usage, finish = {}, "stop"
+        try:
+            if self.backend == "GGUF / llama.cpp":
+                text, finish = self._gguf(system, prompt, images, max_tokens, seed, progress)
+            elif self.backend == "ComfyUI TextGenerate":
+                if self.clip is None:
+                    if _is_bad_choice(self.text_encoder_name):
+                        raise FileNotFoundError("No model found in models/text_encoders.")
+                    self.clip = _load_clip_from_text_encoder(self.text_encoder_name, self.clip_loader_type)
+                full_prompt = f"{system}\n\n{prompt}" if system else prompt
+                try:
+                    text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
+                except TypeError as exc:
+                    if "MTPHead" not in str(exc):
+                        raise
+                    # ComfyUI 0.41: an interrupted Qwen3.5 MTP run leaves a prefetch queue entry whose cleanup then
+                    # fails on every later run until restart. Drop the stale queue and run again.
+                    comfy.model_prefetch.PREFETCH_QUEUES.clear()
+                    text = str(_generate_with_textgenerate(self.clip, full_prompt, max_tokens, seed, image=images, mtp=self.mtp)).strip()
+                if self.unload_after_call:
+                    comfy.model_management.unload_all_models()
+                    comfy.model_management.soft_empty_cache()
+            else:
+                text, usage = _http_chat(self.backend, self.api_base, self.model, system, prompt, images, self.context, max_tokens, self.temperature, self.max_image_px)
+            usage = progress.finish(text, finish, usage)
+        except Exception as exc:
+            progress.fail(exc)
+            raise
         if self.strip_thinking:
             text = _strip_thinking_process_block(_strip_thinking_tags(text)).strip()
         if not text:
@@ -342,6 +435,11 @@ class TJ_CustomLLM:
                 "auto_set": ("BOOLEAN", {"default": False, "tooltip": "켜면 2-출력을 setnode_name 기반 이름으로 자동 Set 등록."}),
                 "setnode_name": ("STRING", {"default": "LLM"}),
                 "mtp": ("BOOLEAN", {"default": True, "tooltip": "ComfyUI TextGenerate: speculative decoding for Qwen3.5 models that ship MTP weights (faster). Turn off if you get MTPHead errors."}),
+                "model_format": ([NO_CHOICE] + MODEL_FORMAT_OPTIONS, {"default": NO_CHOICE,
+                                 "tooltip": "Appends that model's prompt-format rules (plus 'English prose' and 'output only the prompt') to the system prompt."}),
+                "aesthetic": (AESTHETIC_OPTIONS, {"default": AESTHETIC_OPTIONS[0], "tooltip": "Appends a visual-style description to the system prompt."}),
+                "vision_task": ([NO_CHOICE] + VISION_TASK_OPTIONS, {"default": NO_CHOICE,
+                                "tooltip": "Only used when images are connected: appends that image-analysis instruction to the system prompt."}),
             },
         }
 
@@ -361,8 +459,10 @@ class TJ_CustomLLM:
     def run(self, backend, prompt, system_preset=NO_PRESET, system_prompt="", images=None, clip=None,
             gguf_model="", mmproj_file=MMPROJ_NONE, chat_handler="Auto-detect", n_gpu_layers=-1, n_ctx=4096,
             text_encoder_name="", clip_loader_type="Auto", api_base="", model="", context=0, max_image_px=1024,
-            max_tokens=2000, temperature=0.7, seed=0, strip_thinking=True, mtp=True, **kw):
-        system = system_prompt.strip() or _preset_text(system_preset)
+            max_tokens=2000, temperature=0.7, seed=0, strip_thinking=True, mtp=True, model_format=NO_CHOICE,
+            aesthetic="", vision_task=NO_CHOICE, **kw):
+        system = compose_system(system_prompt.strip() or _preset_text(system_preset), model_format, aesthetic, vision_task,
+                                images is not None and images.shape[0] > 0)
         started = time.time()
         session = LLMSession(backend, clip, gguf_model, mmproj_file, chat_handler, n_gpu_layers, n_ctx, text_encoder_name,
                              clip_loader_type, api_base, model, context, max_image_px, temperature, strip_thinking, mtp)

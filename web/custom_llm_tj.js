@@ -226,6 +226,33 @@ function setupWireless(node) {
     requestAnimationFrame(() => updateAutoSets(node));
 }
 
+// Show model_format / aesthetic / vision_task above api_base. They sit at the end of the node's inputs so saved
+// workflows keep their values; widgets_values stays in input order on save and load, whatever the display order.
+function placeBeforeApiBase(node) {
+    const inputOrder = node.widgets.filter((w) => w.serialize !== false).map((w) => w.name);
+    const at = node.widgets.findIndex((w) => w.name === "api_base");
+    const moved = ["model_format", "aesthetic", "vision_task"].map((n) => findW(node, n)).filter(Boolean);
+    if (at < 0 || !moved.length) return;
+    node.widgets = node.widgets.filter((w) => !moved.includes(w));
+    node.widgets.splice(node.widgets.findIndex((w) => w.name === "api_base"), 0, ...moved);
+
+    const serialize = node.serialize;
+    node.serialize = function () {
+        const o = serialize.apply(this, arguments);
+        o.widgets_values = inputOrder.map((n) => findW(this, n)?.value);
+        return o;
+    };
+    const configure = node.configure;
+    node.configure = function (info) {
+        if (Array.isArray(info?.widgets_values)) {
+            const saved = new Map(inputOrder.map((n, i) => [n, info.widgets_values[i]]));
+            const values = this.widgets.filter((w) => w.serialize !== false).map((w) => (saved.get(w.name) ?? w.value));
+            info = { ...info, widgets_values: values };
+        }
+        return configure.call(this, info);
+    };
+}
+
 app.registerExtension({
     name: "TJ.CustomLLM",
     async nodeCreated(node) {
@@ -235,6 +262,7 @@ app.registerExtension({
         resizableMultiline(node, "system_prompt", "height_system_prompt", 90);
         setupLlmModelUi(node);
         setupPresets(node);
+        placeBeforeApiBase(node);
         fitToContent(node);
         const origConfigure = node.onConfigure;
         node.onConfigure = function () {

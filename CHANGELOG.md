@@ -5,6 +5,13 @@
 ---
 ## [Unreleased]
 
+### [Added]
+- LLM (TJ): `model_format`, `aesthetic`, `vision_task` inputs (shown above `api_base`) that append the entries from `nodes/llm/data/*.json` to the system prompt.
+- LLM (TJ): live progress. GGUF / llama.cpp streams; every backend sends `tj_llm_progress` websocket events (phase, tokens, speed, finish reason) and prints a `[TJ_LLM]` summary line. `LLMSession.generate(..., call_id="")` returns the same fields in `usage`.
+
+### [Fixed]
+- A reply with a closing `</think>` but no opening tag now keeps only the text after the last `</think>`.
+
 ---
 ## [2.26.0] - 2026-10-23
 

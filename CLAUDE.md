@@ -92,16 +92,25 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - 이 저장소의 노드 이름/입력을 바꾸면 STUDIO_ONE의 그래프 빌더와 웹앱 2종(AI-ONE-STUDIO, Canvers)이 쓰는 지점 확인 필요.
 - Registry 인수인계 이력은 STUDIO_ONE의 `HANDOFF_REGISTRY.md` 참고.
 
-## 8. 현재 진행 상황 (2026-10-28 기준)
+## 8. 현재 진행 상황 (2026-11-03 기준)
 
-- 최근: v2.24.0 `mtp` 스위치 / Qwen3.5 MTP 복구, v2.25.0 GGUF 이미지 입력 크래시 수정(`n_ubatch`), v2.26.0 에셋 이름·별칭의 공백/`-`를 `_`로 변환. 상세는 `CHANGELOG.md`.
-- 미검증: v2.25.0 / v2.26.0 수정은 재시작 후 실제 실행 확인 전. Scene Maker + 입력 이미지 + `suggest_references`.
-  PromptDBSave 빨간 오류 상태. 새 pipe 노드 기본 크기 잘림. MTP 복구 재시도 경로(재현 불가).
-- v2.25.0은 태그/릴리즈 없음 (v2.26.0 노트에 포함).
-- 다음 할 일: 위 미검증 항목 확인. 별도로 확정된 로드맵 문서는 없음 (확인 필요).
+- 릴리즈된 최신: v2.26.0 (v2.25.0 GGUF 이미지 크래시 수정 + 에셋 이름 공백/`-` 변환). 상세는 `CHANGELOG.md`.
+- 커밋 전 작업 (`[Unreleased]`): LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress`
+  (명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`), `</think>` 닫는 태그만 있는 응답 처리.
+  GGUF 텍스트 / 이미지 입력 실행과 이전 워크플로우 값 보존은 확인함.
+- 확인됨: 콘솔 요약 줄 `[TJ_LLM] ...`. 미검증: Open Router / Custom / TextGenerate는 시작·끝 이벤트만(스트리밍 없음),
+  입력 토큰은 근사값(Qwen-VL 이미지 입력은 실제보다 훨씬 작게 나옴), 스튜디오 라우트(`/tj_studio_one/llm/*`)는 이 이벤트를 아직 전달하지 않음(STUDIO_ONE 세션 몫).
+  그 밖: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
+- 다음 할 일: 위 미검증 확인, 스튜디오 → 웹 → 캔버스 순으로 이벤트 명세 전달, 필요하면 OpenRouter/Custom SSE 스트리밍.
 - `SPEC_H3_LATENT_CONTINUATION_SEAM.md` 수정 제안의 적용 여부는 확인 필요.
 
 ## 9. 작업을 끝낼 때
+
+**시작할 때:** 작업 전에 이 파일, `CHANGELOG.md` 맨 위, `git log -20`부터 읽는다. 기존 코드를 "내가 쓴 게 아니다"라고 선을 긋지 말고 프로젝트의 코드로 보고 고친다.
+**끝날 때:** 커밋 요청이 없어도 8번 "현재 진행 상황"에 한 일 / 미검증 / 다음 할 일을 적어 둔다 (파일만 수정, 커밋은 요청 시).
+
+**필수: 사용자가 커밋 / 푸시 / 릴리즈 / 버전업을 요청할 때마다 이 `CLAUDE.md`를 먼저 갱신하고 같은 커밋에 포함.**
+(버전, 8번 "현재 진행 상황", 새 규칙·파일 반영.) 사용량 한도로 작업이 언제 끊길지 몰라서, 다음 모델이 이 파일만 보고 이어받게 하려는 규칙.
 
 1. `CHANGELOG.md`의 `[Unreleased]`에 변경 내용 추가 (사용자에게 보이는 변경은 필수).
 2. 노드/옵션이 바뀌었으면 `README.md` 해당 섹션과 "Latest Additions" 갱신. 에셋 라이브러리면 `REFERENCE_LIBRARY.md`도.

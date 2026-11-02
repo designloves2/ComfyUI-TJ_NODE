@@ -207,6 +207,10 @@ def _strip_thinking_tags(text):
         r"\[THINK(?:ING)?\].*?\[/THINK(?:ING)?\]",
     ):
         text = re.sub(pat, "", text, flags=re.DOTALL | re.IGNORECASE)
+    # a model may write its reasoning without the opening tag; the answer is whatever follows the last closing tag
+    closers = list(re.finditer(r"</think(?:ing)?>", text, flags=re.IGNORECASE))
+    if closers:
+        text = text[closers[-1].end():]
     # 일부 GGUF 모델/핸들러 조합이 채팅 템플릿의 channel/message 제어 토큰을
     # 소비하지 않고 그대로(때로는 파이프 한쪽이 빠진 채) 텍스트로 흘려보내는 경우가
     # 있어 (예: "<|channel>thought\n<channel|>..."). 원문에 남지 않도록 방어적으로 제거.
