@@ -6,7 +6,7 @@
 
 ## 1. 이 저장소는?
 
-ComfyUI 커스텀 노드 팩 (현재 v2.26.0, MIT). 무선(Wireless Set/Get) 워크플로우, 이미지 저장/미리보기,
+ComfyUI 커스텀 노드 팩 (현재 v2.27.0, MIT). 무선(Wireless Set/Get) 워크플로우, 이미지 저장/미리보기,
 LLM 프롬프트 노드, LoRA 분석, Reference Asset Library, MiniMax H3 연동 등 약 100개 노드.
 GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 다에 등록됨.
 
@@ -63,7 +63,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
   화면 밖 DOM 위젯은 높이 0이므로 ResizeObserver에서 숨겨진 요소를 무시.
 - 한국어/영어: README·CHANGELOG·노드 설명은 한/영 병기. **Asset Browser UI 문구는 영어만.**
   LLM이 쓰는 서술 프롬프트는 항상 영어. 예제 워크플로우는 한국어판 + `_EN` 영어판 짝으로 유지.
-- 버전: **가운데 숫자만 올림 (2.26.0 → 2.27.0)**. 마지막 자리는 올리지 않음. 올릴 곳 3군데:
+- 버전: **가운데 숫자만 올림 (2.27.0 → 2.28.0)**. 마지막 자리는 올리지 않음. 올릴 곳 3군데:
   `pyproject.toml`의 `version`, `README.md` 2번째 줄 `# ✨ TJ_NODE vX.Y.0`, `CHANGELOG.md`.
 - CHANGELOG: `## [Unreleased]` 아래에 쓰다가 릴리즈 때 `## [X.Y.0] - YYYY-MM-DD` 로 옮김. `### [Added]` `### [Fixed]` 같은 소제목.
 - 커밋 메시지: 짧은 영어 명령형 제목 (`Add ...`, `Fix ...`, `Bump version to X.Y.0`, `Remove ...`). 한 커밋에 하나의 변경.
@@ -94,14 +94,13 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 
 ## 8. 현재 진행 상황 (2026-11-03 기준)
 
-- 릴리즈된 최신: v2.26.0 (v2.25.0 GGUF 이미지 크래시 수정 + 에셋 이름 공백/`-` 변환). 상세는 `CHANGELOG.md`.
-- 커밋 전 작업 (`[Unreleased]`): LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress`
-  (명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`), `</think>` 닫는 태그만 있는 응답 처리.
-  GGUF 텍스트 / 이미지 입력 실행과 이전 워크플로우 값 보존은 확인함.
-- 확인됨: 콘솔 요약 줄 `[TJ_LLM] ...`. 미검증: Open Router / Custom / TextGenerate는 시작·끝 이벤트만(스트리밍 없음),
-  입력 토큰은 근사값(Qwen-VL 이미지 입력은 실제보다 훨씬 작게 나옴), 스튜디오 라우트(`/tj_studio_one/llm/*`)는 이 이벤트를 아직 전달하지 않음(STUDIO_ONE 세션 몫).
-  그 밖: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
-- 다음 할 일: 위 미검증 확인, 스튜디오 → 웹 → 캔버스 순으로 이벤트 명세 전달, 필요하면 OpenRouter/Custom SSE 스트리밍.
+- 릴리즈된 최신: v2.27.0 — LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress` + 콘솔 `[TJ_LLM]` 줄,
+  `</think>` 닫는 태그만 있는 응답 처리. 상세는 `CHANGELOG.md`. 명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`.
+- 확인됨: GGUF 텍스트 / 이미지 입력 실행, 이벤트, 콘솔 줄, 예전 워크플로우 값 보존.
+- 한계: Open Router / Custom / TextGenerate는 시작·끝 이벤트만(스트리밍 없음). 입력 토큰은 근사값이며 Qwen-VL 이미지 입력은 실제보다 작게 나옴.
+- 진행 중(다른 세션): 스튜디오(TJ_STUDIO_ONE-10월)가 `/tj_studio_one/llm/*` 라우트로 이벤트와 `usage`를 전달 → 웹 → Canvers 순서. 이 저장소 몫은 끝남.
+- 미검증: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
+- 다음 할 일: 필요하면 Open Router / Custom SSE 스트리밍, 위 미검증 확인.
 - `SPEC_H3_LATENT_CONTINUATION_SEAM.md` 수정 제안의 적용 여부는 확인 필요.
 
 ## 9. 작업을 끝낼 때

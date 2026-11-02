@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.26.0
+# ✨ TJ_NODE v2.27.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,12 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 🧠 LLM (TJ): 프롬프트 항목 · 실시간 진행 로그 — v2.27.0
+
+`model_format` / `aesthetic` / `vision_task` 입력(`api_base` 위)을 고르면 `nodes/llm/data/*.json`의 항목이 시스템 프롬프트 뒤에 붙습니다
+(`vision_task`는 이미지를 연결했을 때만). GGUF / llama.cpp는 스트리밍으로 돌며 웹소켓 이벤트 `tj_llm_progress`(단계·토큰 수·속도)를 보내고,
+콘솔에 `[TJ_LLM]` 요약 줄을 남깁니다. 다른 백엔드는 시작/끝 이벤트만 보냅니다. 여는 태그 없이 `</think>`만 있는 응답도 그 뒤의 글만 답으로 씁니다.
 
 ## 📊 PromptDBSave(TJ): JSON input · 저장 상태 창 — v2.23.0
 
