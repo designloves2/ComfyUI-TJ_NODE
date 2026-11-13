@@ -5,6 +5,9 @@
 ---
 ## [Unreleased]
 
+### [Changed]
+- `/extensions/*.js` is now sent with `Cache-Control: no-cache` instead of `no-store` (`core/extensions_cache.py`), so browsers keep the files and revalidate (304) instead of downloading them on every load.
+
 ---
 ## [2.27.0] - 2026-11-03
 

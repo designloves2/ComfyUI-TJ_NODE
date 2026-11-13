@@ -1,7 +1,7 @@
 # __init__.py  — TJ_NODE v2.0.1 리팩토링 완료 버전
 
 # ── 코어 API 라우트 등록 ──────────────────────────────────────────────────
-from .core import tj_api
+from .core import tj_api, extensions_cache
 
 # ── Wireless ──────────────────────────────────────────────────────────────
 from .nodes.wireless import TJ_SetNode, TJ_GetNode, TJ_MultiGetNode, TJ_Send, TJ_SendPoint

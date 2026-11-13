@@ -30,7 +30,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 ## 3. 디렉터리 구조
 
 - `__init__.py` — 모든 노드 등록 (새 노드는 여기에 import + 매핑 추가)
-- `core/` — API 라우트(`tj_api`), 썸네일, 공용 유틸
+- `core/` — API 라우트(`tj_api`), `/extensions/*.js` 캐시 헤더(`extensions_cache`), 썸네일, 공용 유틸
 - `nodes/<분류>/` — 서버(Python) 노드. 분류: `wireless` `etc` `image` `llm` `lora` `reflib` `sampling` `utility` `video` `generator`
   - `llm/custom_llm.py` — LLM (TJ), `LLMSession`; `scene_maker.py`, `scene_maker_pipe.py` — Scene Maker와 Result pipe
   - `reflib/` — 에셋 라이브러리 (`library.py` SQLite+폴더, `resolve.py` `@토큰`, `nodes.py`, `routes.py`)
@@ -98,6 +98,8 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
   `</think>` 닫는 태그만 있는 응답 처리. 상세는 `CHANGELOG.md`. 명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`.
 - 확인됨: GGUF 텍스트 / 이미지 입력 실행, 이벤트, 콘솔 줄, 예전 워크플로우 값 보존.
 - 한계: Open Router / Custom / TextGenerate는 시작·끝 이벤트만(스트리밍 없음). 입력 토큰은 근사값이며 Qwen-VL 이미지 입력은 실제보다 작게 나옴.
+- 커밋됨, 재시작 후 미검증: `core/extensions_cache.py` — `/extensions/*.js`를 `no-store` 대신 `no-cache`로 보내는 미들웨어(Cloudflared 세션 요청, 사용자가 1번만 승인).
+  확인: `curl -sI http://127.0.0.1:8188/extensions/ComfyUI-TJ_NODE/custom_llm_tj.js` → `Cache-Control: no-cache`, ETag, `If-None-Match`로 304. `max-age`/`stale-while-revalidate` 방식(2번)은 일부러 하지 않음(수정이 늦게 보임).
 - 진행 중(다른 세션): 스튜디오(TJ_STUDIO_ONE-10월)가 `/tj_studio_one/llm/*` 라우트로 이벤트와 `usage`를 전달 → 웹 → Canvers 순서. 이 저장소 몫은 끝남.
 - 미검증: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
 - 다음 할 일: 필요하면 Open Router / Custom SSE 스트리밍, 위 미검증 확인.
