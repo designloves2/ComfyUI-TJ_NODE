@@ -121,7 +121,7 @@ class TJ_ImageToPrompt:
             mf = str(model_file or "").lower()
             if "moondream" in mf and "Moondream" in _HANDLER_CLASSES:
                 return _HANDLER_CLASSES["Moondream"], "Moondream"
-            if "qwen" in mf and "Qwen2.5-VL" in _HANDLER_CLASSES:
+            if ("qwen" in mf or "gemma" in mf) and "Qwen2.5-VL" in _HANDLER_CLASSES:
                 return _HANDLER_CLASSES["Qwen2.5-VL"], "Qwen2.5-VL"
             if "minicpm" in mf and "MiniCPM-V 2.6" in _HANDLER_CLASSES:
                 return _HANDLER_CLASSES["MiniCPM-V 2.6"], "MiniCPM-V 2.6"

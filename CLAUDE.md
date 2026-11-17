@@ -101,6 +101,10 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - 커밋됨, 재시작 후 미검증: `core/extensions_cache.py` — `/extensions/*.js`를 `no-store` 대신 `no-cache`로 보내는 미들웨어(Cloudflared 세션 요청, 사용자가 1번만 승인).
   확인: `curl -sI http://127.0.0.1:8188/extensions/ComfyUI-TJ_NODE/custom_llm_tj.js` → `Cache-Control: no-cache`, ETag, `If-None-Match`로 304. `max-age`/`stale-while-revalidate` 방식(2번)은 일부러 하지 않음(수정이 늦게 보임).
 - 진행 중(다른 세션): 스튜디오(TJ_STUDIO_ONE-10월)가 `/tj_studio_one/llm/*` 라우트로 이벤트와 `usage`를 전달 → 웹 → Canvers 순서. 이 저장소 몫은 끝남.
+- 커밋됨(2026-11-18): nodes/llm/custom_llm.py — (1) GGUF 스트리밍 반복문이 Interrupt를 확인(1.6초 만에 멈춤 확인), (2) 이미지 입력 시 n_batch/n_ubatch를 min(n_ctx, 2048)로 제한(n_ctx에 비례해 연산 버퍼가 커져 VRAM이 넘치던 문제, v2.25.0 수정의 부작용). 2048 토큰을 넘는 이미지 한 장은 GGML_ASSERT 크래시 가능.
+- 해결(재시작 후 검증: Gemma 이미지 시드 1~5 중 4회 정상, 시드 2는 `<|channel>thought`만 반복해 빈 출력 오류): chat_handler 기본값을 Qwen2.5-VL로 변경(Gemma 이미지가 5회 중 4회 정상, 시드 2는 여전히 <|channel>thought 반복), Auto-detect가 gemma에도 Qwen2.5-VL 선택, strip_thinking이 Gemma 채널 토큰(<|channel>thought, 단독 <channel|>) 제거(함수 단위 테스트 통과).
+- (이전 진단) Gemma4-12B + 이미지가 시드에 따라 숫자 나열 등 깨진 출력(0.4.3, 0.4.7 공식, 직접 빌드 모두 동일 → 휠 문제 아님). 텍스트 / Qwen 이미지는 정상. 다음에 chat_handler(Auto-detect는 Gemma에 LLaVA 1.5 fallback을 고름) 지정 / 다른 mmproj로 확인. 현재 설치: llama_cpp_python 0.4.3+cu130(원래 버전으로 복원). 휠 백업: C:/AI/*.whl, 임시 폴더 C:/AI/_llama_build(삭제 여부 사용자 확인 필요).
+- LLM 실시간 줄 위치: ComfyUI 화면(STUDIO_ONE web/shared/llm_live.js)은 하단 중앙으로 변경함(브라우저 재현 확인). 웹 세션 빌드 실행파일은 왼쪽 아래 Generate 버튼과 겹쳐 웹 세션에 수정 요청함(결과 대기). Canvers는 떠 있는 줄이 없어 해당 없음.
 - 미검증: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
 - 다음 할 일: 필요하면 Open Router / Custom SSE 스트리밍, 위 미검증 확인.
 - `SPEC_H3_LATENT_CONTINUATION_SEAM.md` 수정 제안의 적용 여부는 확인 필요.

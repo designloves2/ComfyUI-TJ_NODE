@@ -5,7 +5,13 @@
 ---
 ## [Unreleased]
 
+### [Fixed]
+- LLM (TJ): `Interrupt` now stops a running GGUF / llama.cpp generation (the streaming loop checks it every token).
+- LLM (TJ): with images, the llama.cpp batch size is capped at 2048 instead of `n_ctx`. A large `n_ctx` made the compute buffer grow past VRAM and slowed generation to ~1 tok/s.
+- Gemma 4 thinking-channel tokens (`<|channel>thought`, a lone `<channel|>`) are removed by `strip_thinking`.
+
 ### [Changed]
+- LLM (TJ) / Scene Maker: the `chat_handler` default is now `Qwen2.5-VL` (Auto-detect picked LLaVA 1.5 for Gemma and garbled the output). Auto-detect now also picks `Qwen2.5-VL` for file names containing `gemma`. Saved workflows keep their value.
 - `/extensions/*.js` is now sent with `Cache-Control: no-cache` instead of `no-store` (`core/extensions_cache.py`), so browsers keep the files and revalidate (304) instead of downloading them on every load.
 
 ---

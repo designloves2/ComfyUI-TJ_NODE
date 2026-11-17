@@ -279,7 +279,8 @@ def model_inputs(n_ctx=4096):
         # GGUF / llama.cpp
         "gguf_model": (_text_encoder_ggufs(exclude_mmproj=True), {"default": DEFAULT_GGUF_MODEL}),
         "mmproj_file": (_text_encoder_mmproj_options(), {"default": DEFAULT_MMPROJ_MODEL}),
-        "chat_handler": (handler_options,),
+        "chat_handler": (handler_options, {"default": "Qwen2.5-VL" if "Qwen2.5-VL" in handler_options else handler_options[0],
+                                           "tooltip": "Vision handler for the mmproj file. Qwen2.5-VL also works with Gemma 4 and Qwen3.5; Auto-detect falls back to LLaVA 1.5 for other names, which garbles their output."}),
         "n_gpu_layers": ("INT", {"default": -1, "min": -1, "max": 999}),
         "n_ctx": ("INT", {"default": n_ctx, "min": 512, "max": 131072, "step": 512}),
         # ComfyUI TextGenerate
@@ -333,7 +334,7 @@ class LLMSession:
                 raise FileNotFoundError(f"mmproj not found: {mmproj_path}")
             handler_cls, _ = TJ_ImageToPrompt._resolve_handler(None, self.chat_handler, self.gguf_model)
             self._handler = handler_cls(clip_model_path=mmproj_path, verbose=False)
-            kwargs = {"chat_handler": self._handler, "logits_all": True, "n_batch": int(self.n_ctx), "n_ubatch": int(self.n_ctx)}  # gemma image tokens use non-causal attention: must fit in one ubatch
+            kwargs = {"chat_handler": self._handler, "logits_all": True, "n_batch": min(int(self.n_ctx), 2048), "n_ubatch": min(int(self.n_ctx), 2048)}  # image tokens use non-causal attention and must fit in one ubatch; the compute buffer grows with it (~1 GB per 1000)
         _free_comfy_vram()
         self._llm = Llama(model_path=model_path, n_gpu_layers=int(self.n_gpu_layers), verbose=False, n_ctx=int(self.n_ctx), seed=int(seed), **kwargs)
         self._vision = vision
@@ -350,14 +351,19 @@ class LLMSession:
             content.append({"type": "text", "text": prompt})
         messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": content}]
         pieces, finish = [], "stop"
-        for chunk in self._llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(self.temperature),
-                                                      seed=int(seed), stream=True):
-            choice = chunk["choices"][0]
-            piece = (choice.get("delta") or {}).get("content") or ""
-            if piece:
-                pieces.append(piece)
-                progress.add(piece)
-            finish = choice.get("finish_reason") or finish
+        stream = self._llm.create_chat_completion(messages=messages, max_tokens=int(max_tokens), temperature=float(self.temperature),
+                                                  seed=int(seed), stream=True)
+        try:
+            for chunk in stream:
+                comfy.model_management.throw_exception_if_processing_interrupted()  # Interrupt stops the generation
+                choice = chunk["choices"][0]
+                piece = (choice.get("delta") or {}).get("content") or ""
+                if piece:
+                    pieces.append(piece)
+                    progress.add(piece)
+                finish = choice.get("finish_reason") or finish
+        finally:
+            stream.close()
         # llama.cpp streams one chunk per token; n_tokens is prompt + generated tokens held in the context
         progress.in_tokens = max(0, self._llm.n_tokens - len(pieces))
         return "".join(pieces).strip(), finish

@@ -217,6 +217,9 @@ def _strip_thinking_tags(text):
     text = re.sub(r"^\s*<\|?channel\|?>\s*\w+\s*<\|?channel\|?>\s*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"<\|channel\|>.*?<\|message\|>", "", text, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<\|(?:start|end|message|channel)\|>", "", text, flags=re.IGNORECASE)
+    # Gemma 4: the thinking channel opens with "<|channel>thought" and its closing "<channel|>" can arrive alone
+    text = re.sub(r"<\|channel>\s*thought\b\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"<channel\|>\s*", "", text, flags=re.IGNORECASE)
     return text
 
 
