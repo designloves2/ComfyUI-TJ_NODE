@@ -5,6 +5,9 @@
 ---
 ## [Unreleased]
 
+---
+## [2.28.0] - 2026-11-18
+
 ### [Fixed]
 - LLM (TJ): `Interrupt` now stops a running GGUF / llama.cpp generation (the streaming loop checks it every token).
 - LLM (TJ): with images, the llama.cpp batch size is capped at 2048 instead of `n_ctx`. A large `n_ctx` made the compute buffer grow past VRAM and slowed generation to ~1 tok/s.

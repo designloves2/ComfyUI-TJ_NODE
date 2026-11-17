@@ -1,5 +1,5 @@
 # ComfyUI-TJ_NODE
-# ✨ TJ_NODE v2.27.0
+# ✨ TJ_NODE v2.28.0
 
 ## Large Scale Wireless Workflow Architecture Toolkit for ComfyUI
 
@@ -26,6 +26,11 @@ TJ_NODE is an architecture toolkit designed to make large-scale ComfyUI workflow
 [CHANGELOG.md](CHANGELOG.md) 참고). 자세한 옵션은 하단 섹션 참고.
 The newest nodes in the pack — some are pre-release / still being tested (see
 [CHANGELOG.md](CHANGELOG.md) for exact version tags). See the sections below for full detail.
+
+## 🧠 LLM (TJ): Interrupt · 이미지 입력 속도 · chat_handler 기본값 — v2.28.0
+ 중인 GGUF / llama.cpp 생성을 Interrupt로 바로 멈출 수 있습니다. 이미지 입력 시 llama.cpp 배치 크기를 2048로 제한해서 큰 
+_ctx에서도 VRAM이 넘치지 않습니다(이전엔 
+_ctx에 비례해 느려짐). chat_handler 기본값은 Qwen2.5-VL이고(Gemma 4 / Qwen3.5 이미지 입력에도 맞음), strip_thinking이 Gemma의 <|channel>thought 토큰을 지웁니다.
 
 ## 🧠 LLM (TJ): 프롬프트 항목 · 실시간 진행 로그 — v2.27.0
 

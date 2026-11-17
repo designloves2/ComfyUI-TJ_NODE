@@ -6,7 +6,7 @@
 
 ## 1. 이 저장소는?
 
-ComfyUI 커스텀 노드 팩 (현재 v2.27.0, MIT). 무선(Wireless Set/Get) 워크플로우, 이미지 저장/미리보기,
+ComfyUI 커스텀 노드 팩 (현재 v2.28.0, MIT). 무선(Wireless Set/Get) 워크플로우, 이미지 저장/미리보기,
 LLM 프롬프트 노드, LoRA 분석, Reference Asset Library, MiniMax H3 연동 등 약 100개 노드.
 GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 다에 등록됨.
 
@@ -63,7 +63,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
   화면 밖 DOM 위젯은 높이 0이므로 ResizeObserver에서 숨겨진 요소를 무시.
 - 한국어/영어: README·CHANGELOG·노드 설명은 한/영 병기. **Asset Browser UI 문구는 영어만.**
   LLM이 쓰는 서술 프롬프트는 항상 영어. 예제 워크플로우는 한국어판 + `_EN` 영어판 짝으로 유지.
-- 버전: **가운데 숫자만 올림 (2.27.0 → 2.28.0)**. 마지막 자리는 올리지 않음. 올릴 곳 3군데:
+- 버전: **가운데 숫자만 올림 (2.28.0 → 2.29.0)**. 마지막 자리는 올리지 않음. 올릴 곳 3군데:
   `pyproject.toml`의 `version`, `README.md` 2번째 줄 `# ✨ TJ_NODE vX.Y.0`, `CHANGELOG.md`.
 - CHANGELOG: `## [Unreleased]` 아래에 쓰다가 릴리즈 때 `## [X.Y.0] - YYYY-MM-DD` 로 옮김. `### [Added]` `### [Fixed]` 같은 소제목.
 - 커밋 메시지: 짧은 영어 명령형 제목 (`Add ...`, `Fix ...`, `Bump version to X.Y.0`, `Remove ...`). 한 커밋에 하나의 변경.
@@ -92,9 +92,9 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - 이 저장소의 노드 이름/입력을 바꾸면 STUDIO_ONE의 그래프 빌더와 웹앱 2종(AI-ONE-STUDIO, Canvers)이 쓰는 지점 확인 필요.
 - Registry 인수인계 이력은 STUDIO_ONE의 `HANDOFF_REGISTRY.md` 참고.
 
-## 8. 현재 진행 상황 (2026-11-03 기준)
+## 8. 현재 진행 상황 (2026-11-18 기준)
 
-- 릴리즈된 최신: v2.27.0 — LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress` + 콘솔 `[TJ_LLM]` 줄,
+- 릴리즈된 최신: v2.28.0 (Interrupt, 이미지 입력 n_ubatch 제한, chat_handler 기본값 Qwen2.5-VL, Gemma 채널 토큰 제거) / 직전 v2.27.0 — LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress` + 콘솔 `[TJ_LLM]` 줄,
   `</think>` 닫는 태그만 있는 응답 처리. 상세는 `CHANGELOG.md`. 명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`.
 - 확인됨: GGUF 텍스트 / 이미지 입력 실행, 이벤트, 콘솔 줄, 예전 워크플로우 값 보존.
 - 한계: Open Router / Custom / TextGenerate는 시작·끝 이벤트만(스트리밍 없음). 입력 토큰은 근사값이며 Qwen-VL 이미지 입력은 실제보다 작게 나옴.
