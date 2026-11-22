@@ -1,4 +1,5 @@
 import { app } from "../../scripts/app.js";
+import { api } from "../../scripts/api.js";
 
 const MAX_EXTEND_SEGMENTS = 8;
 // Auto mode plans internally, not from slots — mirror the Python sanity cap.
@@ -98,6 +99,42 @@ function applyTJTheme(node) {
 
 // Read-only status line drawn on the canvas (same custom widget pattern as the
 // Z-Image readout): total output frames and rough seconds at 16 fps.
+const READOUT_FONT = "600 12px sans-serif";
+const READOUT_LINE = 16;
+const READOUT_PAD = 12;
+const measureCtx = document.createElement("canvas").getContext("2d");
+
+// Greedy word wrap that keeps explicit line breaks and splits a single over-long word by characters.
+function wrapReadout(ctx, text, maxWidth) {
+    const lines = [];
+    for (const paragraph of String(text || "").split("\n")) {
+        let line = "";
+        for (const word of paragraph.split(" ")) {
+            const test = line ? `${line} ${word}` : word;
+            if (!line || ctx.measureText(test).width <= maxWidth) {
+                line = test;
+                continue;
+            }
+            lines.push(line);
+            line = word;
+        }
+        while (line && ctx.measureText(line).width > maxWidth && line.length > 1) {
+            let cut = line.length - 1;
+            while (cut > 1 && ctx.measureText(line.slice(0, cut)).width > maxWidth) cut -= 1;
+            lines.push(line.slice(0, cut));
+            line = line.slice(cut);
+        }
+        lines.push(line);
+    }
+    return lines;
+}
+
+function readoutHeight(widget, width) {
+    measureCtx.font = READOUT_FONT;
+    const lines = wrapReadout(measureCtx, widget.value, Math.max(60, (width || 300) - READOUT_PAD * 2));
+    return Math.max(40, lines.length * READOUT_LINE + READOUT_PAD);
+}
+
 function makeReadoutWidget() {
     return {
         type: "_readout",
@@ -109,23 +146,61 @@ function makeReadoutWidget() {
             ctx.save();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.font = "600 12px sans-serif";
+            ctx.font = READOUT_FONT;
             ctx.fillStyle = ACCENT;
 
-            const lines = String(this.value || "").split("\n");
-            const centerX = (node?.size?.[0] || widgetWidth) * 0.5;
-            const lineHeight = 16;
-            const startY = widgetY + height * 0.5 - ((lines.length - 1) * lineHeight * 0.5);
+            const width = node?.size?.[0] || widgetWidth;
+            const lines = wrapReadout(ctx, this.value, Math.max(60, width - READOUT_PAD * 2));
+            // draw from the top of the widget: `height` is the stock widget height, not the wrapped block's
+            const startY = widgetY + READOUT_PAD * 0.5 + READOUT_LINE * 0.5;
             lines.forEach((line, index) => {
-                ctx.fillText(line, centerX, startY + index * lineHeight);
+                ctx.fillText(line, width * 0.5, startY + index * READOUT_LINE);
             });
 
             ctx.restore();
         },
         computeSize(width) {
-            return [width || 0, 40];
+            return [width || 0, readoutHeight(this, width)];
         },
     };
+}
+
+// ----- Values fed by other nodes. A widget turned into a linked input keeps its old widget value, so the readout
+// reads the source node instead (primitive / number nodes, through reroutes). Computed sources (math, image size)
+// only have a value after a run: the node reports it with the tj_wan_scail_plan event. -----
+
+function linkOf(graph, id) {
+    if (id == null) return null;
+    return graph?.getLink?.(id) ?? graph?.links?.get?.(id) ?? graph?.links?.[id] ?? null;
+}
+
+function sourceNumber(graph, link, depth = 0) {
+    const origin = link && graph?.getNodeById?.(link.origin_id);
+    if (!origin || depth > 6) return undefined;
+    if (origin.type === "Reroute") {
+        const upstream = linkOf(graph, origin.inputs?.[0]?.link);
+        return upstream ? sourceNumber(graph, upstream, depth + 1) : undefined;
+    }
+    const outputName = origin.outputs?.[link.origin_slot]?.name;
+    const widgets = origin.widgets || [];
+    const pick = widgets.find((w) => w.name === "value")
+        || widgets.find((w) => w.name === outputName)
+        || (widgets.length === 1 ? widgets[0] : undefined);
+    const value = Number(pick?.value);
+    return pick && Number.isFinite(value) ? value : undefined;
+}
+
+// {value, linked, known}: `known` is false when the input is linked to something computed that has not run yet.
+function inputNumber(node, name, fallback = 0) {
+    const widget = findWidget(node, name);
+    const input = node.inputs?.find((i) => i.name === name || i.widget?.name === name);
+    const link = input && linkOf(node.graph, input.link);
+    if (!link) return { value: Number(widget?.value ?? fallback), linked: false, known: true };
+    const live = sourceNumber(node.graph, link);
+    if (live !== undefined) return { value: live, linked: true, known: true };
+    const lastRun = node._tjPlan?.[name];
+    if (lastRun !== undefined) return { value: lastRun, linked: true, known: true };
+    return { value: Number(widget?.value ?? fallback), linked: true, known: false };
 }
 
 function titleHeight() {
@@ -433,24 +508,32 @@ function updateSegments(node) {
 function updateFramesReadout(node) {
     const readout = findWidget(node, "frames_readout");
     if (!readout) return;
-    const overlap = Math.max(0, Number(findWidget(node, "previous_frame_count")?.value ?? 5));
-    const mode = findWidget(node, "replacement_mode")?.value ? "Replacement" : "Animation";
+    const replacement = !!findWidget(node, "replacement_mode")?.value;
+    const mode = replacement ? "Replacement" : "Animation";
+    const overlapInput = inputNumber(node, "previous_frame_count", 5);
+    const overlap = Math.max(0, overlapInput.value);
+    const pending = [];
+    if (!overlapInput.known) pending.push("previous_frame_count");
 
     let parts;
     let extendCount;
     if (isAuto(node)) {
-        const target = Math.max(0, Number(findWidget(node, "target_total_frames")?.value ?? 0));
-        const chunk = Math.max(0, Number(findWidget(node, "base_frames")?.value ?? 81));
-        const lengths = autoPlanLengths(target, chunk, overlap, MAX_AUTO_SEGMENTS);
+        const targetInput = inputNumber(node, "target_total_frames", 0);
+        const chunkInput = inputNumber(node, "base_frames", 81);
+        if (!targetInput.known) pending.push("target_total_frames");
+        if (!chunkInput.known) pending.push("base_frames");
+        const lengths = autoPlanLengths(Math.max(0, targetInput.value), Math.max(0, chunkInput.value), overlap, MAX_AUTO_SEGMENTS);
         parts = lengths.map((len, i) => (i === 0 ? len : Math.max(0, len - overlap)));
         extendCount = lengths.length - 1;
     } else {
-        const base = Math.max(0, Number(findWidget(node, "base_frames")?.value ?? 0));
+        const baseInput = inputNumber(node, "base_frames", 0);
+        if (!baseInput.known) pending.push("base_frames");
         const count = activeSegmentCount(node);
-        parts = [base];
+        parts = [Math.max(0, baseInput.value)];
         for (let slot = 1; slot <= count; slot += 1) {
-            const frames = Math.max(0, Number(findWidget(node, `extend_${slot}_frames`)?.value ?? 0));
-            parts.push(Math.max(0, frames - overlap));
+            const frames = inputNumber(node, `extend_${slot}_frames`, 0);
+            if (!frames.known) pending.push(`extend_${slot}_frames`);
+            parts.push(Math.max(0, frames.value - overlap));
         }
         extendCount = count;
     }
@@ -459,8 +542,35 @@ function updateFramesReadout(node) {
     const seconds = (total / 16).toFixed(1);
     const sum = parts.length > 1 ? `${parts.join(" + ")} = ` : "";
     const extendText = `${extendCount} extend${extendCount === 1 ? "" : "s"}`;
-    readout.value = `${sum}${total} frames\n${seconds}s @ 16fps · ${extendText} · ${mode}`;
+    let text = `${sum}${total} frames\n${seconds}s @ 16fps · ${extendText} · ${mode}`;
+    if (pending.length) {
+        text += `\n⚠ ${pending.join(", ")} is connected to a computed value; the numbers above update after the next run`;
+    }
+    if (replacement) {
+        const linked = (name) => node.inputs?.find((i) => i.name === name)?.link != null;
+        if (!linked("pose_video_mask") || !linked("reference_image_mask")) {
+            text += "\n⚠ Replacement needs pose_video_mask + reference_image_mask from 'Create SCAIL-2 Colored Mask' (replacement on)";
+        }
+    }
+    readout.value = text;
+    node._tjReadoutKey = readoutKey(node);
+
+    // The readout can grow taller when its text wraps; the node must never be shorter than its widgets.
+    const needed = node.computeSize?.();
+    if (needed && node.size && node.size[1] < needed[1]) node.setSize?.([node.size[0], needed[1]]);
     node.setDirtyCanvas?.(true, true);
+}
+
+// Everything the readout depends on; compared on every redraw so an edit in an upstream node shows up at once.
+function readoutKey(node) {
+    const names = ["target_total_frames", "base_frames", "previous_frame_count"];
+    for (let slot = 1; slot <= MAX_EXTEND_SEGMENTS; slot += 1) names.push(`extend_${slot}_frames`);
+    const values = names.map((name) => {
+        const { value, known } = inputNumber(node, name, 0);
+        return `${value}${known ? "" : "?"}`;
+    });
+    const masks = ["pose_video_mask", "reference_image_mask"].map((n) => (node.inputs?.find((i) => i.name === n)?.link != null ? 1 : 0));
+    return `${values.join(",")}|${masks.join("")}|${node.size?.[0]}`;
 }
 
 function hookReadout(node, name) {
@@ -507,6 +617,19 @@ function applyAdvanced(node) {
 
 app.registerExtension({
     name: ".wanScailExtendSampler",
+    setup() {
+        // What the node really used on its last run; the readout falls back on it for values fed by computed nodes.
+        api.addEventListener("tj_wan_scail_plan", ({ detail }) => {
+            const node = app.graph?.getNodeById?.(Number(detail?.node)) ?? app.graph?.getNodeById?.(detail?.node);
+            if (!node) return;
+            node._tjPlan = {
+                target_total_frames: detail.target_total_frames,
+                base_frames: detail.base_frames,
+                previous_frame_count: detail.previous_frame_count,
+            };
+            updateFramesReadout(node);
+        });
+    },
     beforeRegisterNodeDef(nodeType, nodeData) {
         if (nodeData.name !== "WanSCAILExtendSampler") {
             return;
@@ -652,6 +775,7 @@ app.registerExtension({
         const onDrawForeground = nodeType.prototype.onDrawForeground;
         nodeType.prototype.onDrawForeground = function (ctx) {
             onDrawForeground?.apply(this, arguments);
+            if (this._tjReadoutKey !== readoutKey(this)) updateFramesReadout(this);
             try {
                 drawInfoBadge(this, ctx);
             } catch (err) {

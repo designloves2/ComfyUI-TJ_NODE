@@ -109,7 +109,7 @@ function setupConnection(node, after) {
     async function checkKey() {
         try {
             const r = await call(`/status?base_url=${encodeURIComponent(base())}`);
-            if (r.ok) say(r.keyStored ? "key stored in server memory" : "no key stored for this URL (empty key is fine for proxies)", false);
+            if (r.ok) say(r.keyStored ? "key saved (customLLM/.env)" : "no key stored for this URL (empty key is fine for proxies)", false);
             else say(r.error, true);
         } catch (_) { /* server restarting */ }
     }

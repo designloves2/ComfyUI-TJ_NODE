@@ -5,6 +5,14 @@
 ---
 ## [Unreleased]
 
+### [Added]
+- LLM (TJ): the API key is saved to `customLLM/.env` (git-ignored) when you press Connect & test, and read back automatically on every run and after a restart. Entering a different key for the same endpoint replaces the saved one. OpenRouter uses `OPENROUTER_API_KEY`.
+
+### [Fixed]
+- Wan SCAIL Extend Sampler (TJ): `width` / `height` are rounded to a multiple of 32 (console note when changed). Other sizes made the mask and video latents differ by one cell: "size of tensor a (28) must match size of tensor b (29)".
+- Wan SCAIL Extend Sampler (TJ): the frame readout follows a `target_total_frames` / `base_frames` / `previous_frame_count` / `extend_N_frames` input fed by another node (number nodes and reroutes live; computed sources after the next run, through the new `tj_wan_scail_plan` event), and its text wraps inside the node instead of running past it.
+- Wan SCAIL Extend Sampler (TJ): replacement mode warns (console and node readout) when `pose_video_mask` / `reference_image_mask` are missing or their background does not match the mode. The toggle itself was already passed to the core node unchanged.
+
 ---
 ## [2.28.0] - 2026-11-18
 

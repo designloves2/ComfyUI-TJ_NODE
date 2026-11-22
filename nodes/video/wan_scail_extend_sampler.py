@@ -233,6 +233,26 @@ def _kept_frame_counts(plan, previous_frame_count):
     return counts
 
 
+def _send_plan(unique_id, target_total, base_frames, overlap, plan, auto_mode):
+    """Tell the canvas readout the values this run really used. A widget fed by another node has no usable
+    widget value in the browser, so the readout falls back on this after the node has run."""
+    if unique_id is None:
+        return
+    try:
+        from server import PromptServer
+
+        PromptServer.instance.send_sync("tj_wan_scail_plan", {
+            "node": str(unique_id),
+            "target_total_frames": int(target_total),
+            "base_frames": int(base_frames),
+            "previous_frame_count": int(overlap),
+            "lengths": [int(length) for length, _seed in plan],
+            "auto": bool(auto_mode),
+        })
+    except Exception:
+        pass
+
+
 def _round_to_grid(value, minimum):
     """Nearest valid Wan length (4k+1) that is >= minimum. Wan 2.1 wants chunk
     lengths of the form 4k+1 (5, 9, ..., 65, 81); off-grid lengths degrade or
@@ -537,6 +557,7 @@ class WanSCAILExtendSampler:
             },
         )
 
+        base["hidden"] = {"unique_id": "UNIQUE_ID"}
         return base
 
     RETURN_TYPES = ("IMAGE", "INT")
@@ -578,6 +599,7 @@ class WanSCAILExtendSampler:
         clip_vision=None,
         pose_video_mask=None,
         reference_image_mask=None,
+        unique_id=None,
         **segment_kwargs,
     ):
         missing = _scail_missing_params()
@@ -586,6 +608,16 @@ class WanSCAILExtendSampler:
                 "This ComfyUI core's WanSCAILToVideo has no "
                 f"{'/'.join(missing)} input(s). {_SCAIL_HINT}"
             )
+
+        # SCAIL's pose/mask streams are built at half size, so width/height must be
+        # multiples of 32; otherwise the mask and video latents differ by one cell
+        # ("size of tensor a (28) must match size of tensor b (29)").
+        snapped_w = max(32, int(round(int(width) / 32.0)) * 32)
+        snapped_h = max(32, int(round(int(height) / 32.0)) * 32)
+        if (snapped_w, snapped_h) != (int(width), int(height)):
+            print(f"[TJ_WanSCAIL] width/height {int(width)}x{int(height)} is not a multiple of 32; "
+                  f"using {snapped_w}x{snapped_h}.")
+        width, height = snapped_w, snapped_h
 
         overlap = int(previous_frame_count)
         auto_mode = str(frame_mode) == "target total"
@@ -622,17 +654,29 @@ class WanSCAILExtendSampler:
                     "pose — shorten the target or supply a longer pose_video."
                 )
 
-        if pose_video_mask is not None:
-            estimated = _estimate_mask_background(pose_video_mask)
-            expected = "white" if replacement_mode else "black"
+        mode_name = "replacement" if replacement_mode else "animation"
+        if replacement_mode and (pose_video_mask is None or reference_image_mask is None):
+            print(
+                "[Wan SCAIL] Warning: replacement mode needs BOTH pose_video_mask and reference_image_mask "
+                "(from 'Create SCAIL-2 Colored Mask' with its replacement_mode on). Without them the toggle only "
+                "shifts the reference position, so the result barely differs from animation mode."
+            )
+        # SCAIL-2 mask convention: animation = pose mask black / reference mask white; replacement = the opposite.
+        for label, mask, expected in (
+            ("pose_video_mask", pose_video_mask, "white" if replacement_mode else "black"),
+            ("reference_image_mask", reference_image_mask, "black" if replacement_mode else "white"),
+        ):
+            if mask is None:
+                continue
+            estimated = _estimate_mask_background(mask)
             if estimated is not None and estimated != expected:
-                mode_name = "replacement" if replacement_mode else "animation"
                 print(
-                    f"[Wan SCAIL] Warning: pose_video_mask background looks {estimated} "
-                    f"but {mode_name} mode expects {expected}. Set replacement_mode to the SAME "
-                    "value on this node and on 'Create SCAIL-2 Colored Mask' — mismatched mask "
-                    "conventions degrade quality, especially with multiple people."
+                    f"[Wan SCAIL] Warning: {label} background looks {estimated} but {mode_name} mode expects "
+                    f"{expected}. Set replacement_mode to the SAME value on this node and on 'Create SCAIL-2 "
+                    "Colored Mask' — mismatched mask conventions degrade quality, especially with multiple people."
                 )
+
+        _send_plan(unique_id, target_total_frames, base_frames, overlap, plan, auto_mode)
 
         # Shared conditioning: fresh text encodes for every chunk (each chunk
         # attaches its own reference latent exactly once), one optional CLIP

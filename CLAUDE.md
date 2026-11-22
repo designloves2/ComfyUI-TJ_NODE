@@ -105,6 +105,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - 해결(재시작 후 검증: Gemma 이미지 시드 1~5 중 4회 정상, 시드 2는 `<|channel>thought`만 반복해 빈 출력 오류): chat_handler 기본값을 Qwen2.5-VL로 변경(Gemma 이미지가 5회 중 4회 정상, 시드 2는 여전히 <|channel>thought 반복), Auto-detect가 gemma에도 Qwen2.5-VL 선택, strip_thinking이 Gemma 채널 토큰(<|channel>thought, 단독 <channel|>) 제거(함수 단위 테스트 통과).
 - (이전 진단) Gemma4-12B + 이미지가 시드에 따라 숫자 나열 등 깨진 출력(0.4.3, 0.4.7 공식, 직접 빌드 모두 동일 → 휠 문제 아님). 텍스트 / Qwen 이미지는 정상. 다음에 chat_handler(Auto-detect는 Gemma에 LLaVA 1.5 fallback을 고름) 지정 / 다른 mmproj로 확인. 현재 설치: llama_cpp_python 0.4.3+cu130(원래 버전으로 복원). 휠 백업: C:/AI/*.whl, 임시 폴더 C:/AI/_llama_build(삭제 여부 사용자 확인 필요).
 - LLM 실시간 줄 위치: ComfyUI 화면(STUDIO_ONE web/shared/llm_live.js)은 하단 중앙으로 변경함(브라우저 재현 확인). 웹 세션 빌드 실행파일은 왼쪽 아래 Generate 버튼과 겹쳐 웹 세션에 수정 요청함(결과 대기). Canvers는 떠 있는 줄이 없어 해당 없음.
+- 커밋됨(2026-11-23, 릴리즈 전, 사용자 테스트 중): (1) Wan SCAIL Extend Sampler — 하단 계산 표시가 다른 노드가 넣은 프레임 값을 따라감(숫자 노드 즉시, 계산값은 실행 시작 때 `tj_wan_scail_plan` 이벤트로 갱신), 글자 자동 줄바꿈, 교체 모드 마스크 경고, width/height 32배수 보정(28 vs 29 텐서 오류 원인). 교체 모드가 같아 보인 원인은 워크플로우의 SCAIL2ColoredMask replacement_mode가 샘플러와 따로라서(마스크 배경 규칙 불일치). (2) LLM (TJ) API 키를 `customLLM/.env`(git 제외)에 저장, 실행 때 자동 읽기(Connect & test 한 번). 재시작 후 미검증. 릴리즈/태그/버전업은 사용자 확인 후.
 - 미검증: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
 - 다음 할 일: 필요하면 Open Router / Custom SSE 스트리밍, 위 미검증 확인.
 - `SPEC_H3_LATENT_CONTINUATION_SEAM.md` 수정 제안의 적용 여부는 확인 필요.

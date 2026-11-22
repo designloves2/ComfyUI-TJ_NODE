@@ -39,8 +39,9 @@ from ._llm_utils import (
 )
 from .image_to_prompt import VISION_TASK_INSTRUCTIONS, VISION_TASK_OPTIONS, TJ_ImageToPrompt
 
-_KEYS = {}  # normalised api base -> key (memory only)
+_KEYS = {}  # normalised api base -> key (cache; persisted in customLLM/.env)
 _PACK_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ENV_FILE = os.path.join(_PACK_ROOT, "customLLM", ".env")  # customLLM/ is git-ignored
 PRESET_FILE = os.path.join(_PACK_ROOT, "customLLM", "system_prompts.json")
 _preset_lock = threading.Lock()
 NO_PRESET = "(custom)"
@@ -78,10 +79,48 @@ def _base(base_url):
     return url
 
 
+def _key_name(base):
+    """Variable name in customLLM/.env: OPENROUTER_API_KEY for OpenRouter, LLM_KEY::<url> otherwise."""
+    return "OPENROUTER_API_KEY" if "openrouter.ai" in base else f"LLM_KEY::{base}"
+
+
+def _read_env_file():
+    values = {}
+    try:
+        with open(ENV_FILE, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    name, _, value = line.partition("=")
+                    values[name.strip()] = value.strip()
+    except OSError:
+        pass
+    return values
+
+
+def _save_key(base, key):
+    """Persist the key in customLLM/.env (git-ignored), creating the file on first use and
+    replacing the old value when a different key is entered for the same endpoint."""
+    try:
+        values = _read_env_file()
+        values[_key_name(base)] = key
+        os.makedirs(os.path.dirname(ENV_FILE), exist_ok=True)
+        with open(ENV_FILE, "w", encoding="utf-8") as fh:
+            fh.write("# API keys saved by LLM (TJ). Git-ignored; do not share this file.\n")
+            for name, value in values.items():
+                fh.write(f"{name}={value}\n")
+    except OSError as exc:
+        print(f"[TJ_LLM] could not save key to {ENV_FILE}: {exc}")
+
+
 def _key_for(base):
     key = _KEYS.get(base, "")
-    if not key and "openrouter.ai" in base:
-        key = (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_KEY") or "").strip()
+    if not key:
+        key = _read_env_file().get(_key_name(base), "").strip()
+        if not key and "openrouter.ai" in base:
+            key = (os.environ.get("OPENROUTER_API_KEY") or os.environ.get("LLM_KEY") or "").strip()
+        if key:
+            _KEYS[base] = key
     return key
 
 
@@ -102,7 +141,7 @@ def _request(base, path, payload=None, timeout=60):
             detail = err.get("message", "") if isinstance(err, dict) else str(err)
         except (ValueError, AttributeError):
             pass
-        hint = " - no key stored for this URL; type it in the key box and press Connect & test" if exc.code == 401 and not key else ""
+        hint = " - no key stored for this URL; type it in the key box and press Connect & test once (it is then saved in customLLM/.env)" if exc.code == 401 and not key else ""
         raise RuntimeError(f"HTTP {exc.code}: {detail or exc.reason}{hint}")
     except urllib.error.URLError as exc:
         raise RuntimeError(f"cannot reach {base}: {exc.reason}")
@@ -524,6 +563,7 @@ async def connect(request):
     key = (data.get("api_key") or "").strip()
     if key:
         _KEYS[base] = key
+        _save_key(base, key)
     model = (data.get("model") or "").strip()
 
     def test():
