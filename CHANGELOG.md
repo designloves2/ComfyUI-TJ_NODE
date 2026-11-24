@@ -6,9 +6,12 @@
 ## [Unreleased]
 
 ### [Added]
+- Create SCAIL-2 Colored Mask (TJ): runs the core `SCAIL2ColoredMask` and adds `pose_mask_offset` / `reference_mask_offset` (grow or shrink the subject edge by N px, round, PyTorch only). `-1` trims leftover background around the person in either mode.
+- Mask Color Fill (TJ): paints a MASK with a color into an IMAGE with `mask_offset`, `feather` and a SCAIL-2 style black/white background (`replacement_mode`, `use_as`).
 - LLM (TJ): the API key is saved to `customLLM/.env` (git-ignored) when you press Connect & test, and read back automatically on every run and after a restart. Entering a different key for the same endpoint replaces the saved one. OpenRouter uses `OPENROUTER_API_KEY`.
 
 ### [Fixed]
+- Reference Asset Library: `import soundfile` no longer stops the whole pack from loading on a clean install. The import is guarded (the audio-to-FLAC step reports "soundfile is not installed" when it runs) and `soundfile` is added to `requirements.txt`.
 - Wan SCAIL Extend Sampler (TJ): `width` / `height` are rounded to a multiple of 32 (console note when changed). Other sizes made the mask and video latents differ by one cell: "size of tensor a (28) must match size of tensor b (29)".
 - Wan SCAIL Extend Sampler (TJ): the frame readout follows a `target_total_frames` / `base_frames` / `previous_frame_count` / `extend_N_frames` input fed by another node (number nodes and reroutes live; computed sources after the next run, through the new `tj_wan_scail_plan` event), and its text wraps inside the node instead of running past it.
 - Wan SCAIL Extend Sampler (TJ): replacement mode warns (console and node readout) when `pose_video_mask` / `reference_image_mask` are missing or their background does not match the mode. The toggle itself was already passed to the core node unchanged.

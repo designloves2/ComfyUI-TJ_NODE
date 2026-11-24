@@ -73,6 +73,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Image", title: "RTX Denoise (TJ)", type: "RTX Denoise (TJ)" },
   { category: "Image", title: "RTX VSR (TJ)", type: "RTX VSR (TJ)" },
   { category: "Image", title: "Skin Retouch (TJ)", type: "TJ_SkinRetouch" },
+  { category: "Image", title: "Mask Color Fill (TJ)", type: "TJ_MaskColorFill" },
   { category: "Image", title: "Text Encode Qwen Image 2.1 (TJ)", type: "TJ_TextEncodeQwenImage21" },
 
   // Reference
@@ -91,6 +92,7 @@ export const TJ_LAUNCHER_NODES = [
   { category: "Video", title: "LTX2. TJ Sampler", type: "LTX2. TJ Sampler" },
   { category: "Video", title: "Save & Preview Video (TJ)", type: "Save & Preview Video (TJ)" },
   { category: "Video", title: "Wan SCAIL Extend Sampler (TJ)", type: "Wan SCAIL Extend Sampler (TJ)" },
+  { category: "Video", title: "Create SCAIL-2 Colored Mask (TJ)", type: "TJ_SCAIL2ColoredMask" },
   { category: "Video", title: "LTX25 CLIP GGUF LOADER (TJ)", type: "LTX25 CLIP GGUF LOADER (TJ)" },
   { category: "Video", title: "Video Resize (TJ)", type: "Video Resize (TJ)" },
   { category: "Video", title: "MiniMax H3 Audio Lock (TJ)", type: "TJ_H3_AudioLock" },

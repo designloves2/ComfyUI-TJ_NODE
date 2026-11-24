@@ -15,3 +15,4 @@ from .krea2_unet_gguf import TJ_NODE_Krea2UnetLoaderGGUF
 from .krea2_clip_gguf import TJ_NODE_Krea2ClipLoaderGGUF
 from .skin_retouch import TJ_SkinRetouch
 from .qwen_image21_encode import TJ_TextEncodeQwenImage21
+from .mask_color_fill import TJ_MaskColorFill

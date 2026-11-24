@@ -34,6 +34,7 @@ from .nodes.image import (
     TJ_NODE_Krea2UnetLoaderGGUF,
     TJ_NODE_Krea2ClipLoaderGGUF,
     TJ_SkinRetouch,
+    TJ_MaskColorFill,
     TJ_TextEncodeQwenImage21,
 )
 
@@ -69,6 +70,7 @@ from .nodes.video import (
     TJ_SaveAndPreviewVideo,
     TJ_LTX2Sampler,
     WanSCAILExtendSampler,
+    TJ_SCAIL2ColoredMask,
     TJ_H3_AudioLock,
     TJ_H3_LatentContinuation,
     TJ_H3_SaveLatentCheckpoint,
@@ -143,6 +145,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_NODE_Krea2UnetLoaderGGUF":      TJ_NODE_Krea2UnetLoaderGGUF,
     "TJ_NODE_Krea2ClipLoaderGGUF":      TJ_NODE_Krea2ClipLoaderGGUF,
     "TJ_SkinRetouch":                   TJ_SkinRetouch,
+    "TJ_MaskColorFill":                 TJ_MaskColorFill,
     "TJ_TextEncodeQwenImage21":         TJ_TextEncodeQwenImage21,
 
     # Utility
@@ -178,6 +181,7 @@ NODE_CLASS_MAPPINGS = {
     "TJ_SaveAndPreviewVideo":   TJ_SaveAndPreviewVideo,
     "TJ_LTX2Sampler":           TJ_LTX2Sampler,
     "WanSCAILExtendSampler":     WanSCAILExtendSampler,
+    "TJ_SCAIL2ColoredMask":      TJ_SCAIL2ColoredMask,
     "TJ_H3_AudioLock":          TJ_H3_AudioLock,
     "TJ_H3_LatentContinuation":    TJ_H3_LatentContinuation,
     "TJ_H3_SaveLatentCheckpoint":  TJ_H3_SaveLatentCheckpoint,
@@ -248,6 +252,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_NODE_Krea2UnetLoaderGGUF":      "KREA2 UNET GGUF LOADER (TJ)",
     "TJ_NODE_Krea2ClipLoaderGGUF":      "KREA2 CLIP GGUF LOADER (TJ)",
     "TJ_SkinRetouch":                   "Skin Retouch (TJ)",
+    "TJ_MaskColorFill":                 "Mask Color Fill (TJ)",
     "TJ_TextEncodeQwenImage21":         "Text Encode Qwen Image 2.1 (TJ)",
 
     # Utility
@@ -283,6 +288,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "TJ_SaveAndPreviewVideo":   "Save & Preview Video (TJ)",
     "TJ_LTX2Sampler":           "LTX2. TJ Sampler",
     "WanSCAILExtendSampler":     "Wan SCAIL Extend Sampler (TJ)",
+    "TJ_SCAIL2ColoredMask":      "Create SCAIL-2 Colored Mask (TJ)",
     "TJ_H3_AudioLock":          "MiniMax H3 Audio Lock (TJ)",
     "TJ_H3_LatentContinuation":    "MiniMax H3 Latent Continuation (TJ)",
     "TJ_H3_SaveLatentCheckpoint":  "MiniMax H3 Save Latent Checkpoint (TJ)",

@@ -92,7 +92,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - 이 저장소의 노드 이름/입력을 바꾸면 STUDIO_ONE의 그래프 빌더와 웹앱 2종(AI-ONE-STUDIO, Canvers)이 쓰는 지점 확인 필요.
 - Registry 인수인계 이력은 STUDIO_ONE의 `HANDOFF_REGISTRY.md` 참고.
 
-## 8. 현재 진행 상황 (2026-11-18 기준)
+## 8. 현재 진행 상황 (2026-11-24 기준)
 
 - 릴리즈된 최신: v2.28.0 (Interrupt, 이미지 입력 n_ubatch 제한, chat_handler 기본값 Qwen2.5-VL, Gemma 채널 토큰 제거) / 직전 v2.27.0 — LLM (TJ)의 `model_format` / `aesthetic` / `vision_task` 입력, 실시간 진행 이벤트 `tj_llm_progress` + 콘솔 `[TJ_LLM]` 줄,
   `</think>` 닫는 태그만 있는 응답 처리. 상세는 `CHANGELOG.md`. 명세: `C:/AI/AI-One-Studio-Canvers/docs/NODE_SPEC_LLM_LIVE_LOG.md`.
@@ -106,6 +106,7 @@ GitHub: `designloves2/ComfyUI-TJ_NODE`. Comfy Registry와 ComfyUI-Manager 둘 �
 - (이전 진단) Gemma4-12B + 이미지가 시드에 따라 숫자 나열 등 깨진 출력(0.4.3, 0.4.7 공식, 직접 빌드 모두 동일 → 휠 문제 아님). 텍스트 / Qwen 이미지는 정상. 다음에 chat_handler(Auto-detect는 Gemma에 LLaVA 1.5 fallback을 고름) 지정 / 다른 mmproj로 확인. 현재 설치: llama_cpp_python 0.4.3+cu130(원래 버전으로 복원). 휠 백업: C:/AI/*.whl, 임시 폴더 C:/AI/_llama_build(삭제 여부 사용자 확인 필요).
 - LLM 실시간 줄 위치: ComfyUI 화면(STUDIO_ONE web/shared/llm_live.js)은 하단 중앙으로 변경함(브라우저 재현 확인). 웹 세션 빌드 실행파일은 왼쪽 아래 Generate 버튼과 겹쳐 웹 세션에 수정 요청함(결과 대기). Canvers는 떠 있는 줄이 없어 해당 없음.
 - 커밋됨(2026-11-23, 릴리즈 전, 사용자 테스트 중): (1) Wan SCAIL Extend Sampler — 하단 계산 표시가 다른 노드가 넣은 프레임 값을 따라감(숫자 노드 즉시, 계산값은 실행 시작 때 `tj_wan_scail_plan` 이벤트로 갱신), 글자 자동 줄바꿈, 교체 모드 마스크 경고, width/height 32배수 보정(28 vs 29 텐서 오류 원인). 교체 모드가 같아 보인 원인은 워크플로우의 SCAIL2ColoredMask replacement_mode가 샘플러와 따로라서(마스크 배경 규칙 불일치). (2) LLM (TJ) API 키를 `customLLM/.env`(git 제외)에 저장, 실행 때 자동 읽기(Connect & test 한 번). 재시작 후 미검증. 릴리즈/태그/버전업은 사용자 확인 후.
+- 커밋됨(2026-11-24, 릴리즈 전): (1) `nodes/reflib/nodes.py`의 `import soundfile`을 try로 감싸고 `requirements.txt`에 `soundfile` 추가 — 새 PC에서 팩 전체 로딩 실패하던 문제(STUDIO_ONE 세션 요청, soundfile 없이 팩 로드 85개 노드 확인, 새 PC 설치 시험은 못 함). (2) 새 노드 `Create SCAIL-2 Colored Mask (TJ)`(`nodes/video/scail2_colored_mask.py`: 코어 SCAIL2ColoredMask 실행 후 pose/reference 마스크의 인물 가장자리를 N픽셀 확장/축소, PyTorch 전용 `_dilate_disk`, 부호는 replacement_mode와 무관하게 -N=축소)와 `Mask Color Fill (TJ)`(`nodes/image/mask_color_fill.py`, 같은 오프셋 함수 공유). 재시작 후 노드 등록만 확인, 실제 실행은 미검증. README 미갱신. (3) 서드파티 `Blueforcer/ComfyUI-DLSS5-Enhancer`를 custom_nodes에 설치(런타임 v3.0, selftest 통과, 기존 Strix-3D v15 팩은 삭제). Enhance Video File은 파일 경로 입력이라 그래프의 영상/IMAGE를 못 받음 → 대안 `DLSS5 Enhance Images`, 필요하면 TJ 래퍼 노드 제작(사용자 답변 대기).
 - 미검증: Scene Maker + 입력 이미지 + `suggest_references`, PromptDBSave 빨간 오류 상태, MTP 복구 재시도 경로.
 - 다음 할 일: 필요하면 Open Router / Custom SSE 스트리밍, 위 미검증 확인.
 - `SPEC_H3_LATENT_CONTINUATION_SEAM.md` 수정 제안의 적용 여부는 확인 필요.
