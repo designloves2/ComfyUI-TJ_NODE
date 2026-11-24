@@ -11,7 +11,10 @@ import os
 import re
 import tempfile
 
-import soundfile
+try:
+    import soundfile
+except ImportError:  # not part of ComfyUI's requirements; only the FLAC audio path needs it
+    soundfile = None
 import torch.nn.functional as F
 
 import node_helpers
@@ -53,6 +56,8 @@ def _project_choices():
 def _audio_bytes(audio):
     wave = audio["waveform"][0].cpu().numpy().T
     buf = io.BytesIO()
+    if soundfile is None:
+        raise RuntimeError("soundfile is not installed - run: pip install soundfile")
     soundfile.write(buf, wave, int(audio["sample_rate"]), format="FLAC")
     return buf.getvalue()
 

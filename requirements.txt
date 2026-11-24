@@ -12,3 +12,6 @@ openpyxl
 # install. imageio-ffmpeg supplies the ffmpeg binary imageio needs to write mp4.
 imageio
 imageio-ffmpeg
+# reflib nodes write FLAC audio through soundfile; it is not part of ComfyUI's own requirements,
+# so a clean install needs it (nodes/reflib/nodes.py guards the import and fails only when that path runs).
+soundfile
