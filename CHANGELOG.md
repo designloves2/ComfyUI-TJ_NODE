@@ -5,10 +5,17 @@
 ---
 ## [Unreleased]
 
+---
+## [2.29.0] - 2026-11-25
+
 ### [Added]
+- `Node_Update.bat`: double-click to update the node pack (runs `git pull`, shows what changed, offers to install new Python packages). For users who cannot update through ComfyUI-Manager. `.gitattributes` keeps `*.bat` files on CRLF.
 - Create SCAIL-2 Colored Mask (TJ): runs the core `SCAIL2ColoredMask` and adds `pose_mask_offset` / `reference_mask_offset` (grow or shrink the subject edge by N px, round, PyTorch only). `-1` trims leftover background around the person in either mode.
 - Mask Color Fill (TJ): paints a MASK with a color into an IMAGE with `mask_offset`, `feather` and a SCAIL-2 style black/white background (`replacement_mode`, `use_as`).
 - LLM (TJ): the API key is saved to `customLLM/.env` (git-ignored) when you press Connect & test, and read back automatically on every run and after a restart. Entering a different key for the same endpoint replaces the saved one. OpenRouter uses `OPENROUTER_API_KEY`.
+
+### [Changed]
+- LLM (TJ), Image to Prompt, Prompt Enhancer, TQD Score: the "no model found" error now says the GGUF / TextGenerate backend needs a local model and points to Open Router / Connect Custom, which need none.
 
 ### [Fixed]
 - Reference Asset Library: `import soundfile` no longer stops the whole pack from loading on a clean install. The import is guarded (the audio-to-FLAC step reports "soundfile is not installed" when it runs) and `soundfile` is added to `requirements.txt`.
