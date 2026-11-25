@@ -360,7 +360,7 @@ class LLMSession:
     def _load_gguf(self, vision, seed):
         from llama_cpp import Llama
         if _is_bad_choice(self.gguf_model):
-            raise FileNotFoundError("No .gguf model found in models/text_encoders.")
+            raise FileNotFoundError("No .gguf model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
         model_path = _resolve_text_encoder_path(self.gguf_model)
         if not model_path or not os.path.isfile(model_path):
             raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
@@ -418,7 +418,7 @@ class LLMSession:
             elif self.backend == "ComfyUI TextGenerate":
                 if self.clip is None:
                     if _is_bad_choice(self.text_encoder_name):
-                        raise FileNotFoundError("No model found in models/text_encoders.")
+                        raise FileNotFoundError("No text-encoder model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
                     self.clip = _load_clip_from_text_encoder(self.text_encoder_name, self.clip_loader_type)
                 full_prompt = f"{system}\n\n{prompt}" if system else prompt
                 try:

@@ -185,7 +185,7 @@ class TJ_ImageToPrompt:
         if model_backend == "ComfyUI TextGenerate":
             if clip is None:
                 if _is_bad_choice(text_encoder_name):
-                    raise FileNotFoundError("No model found in models/text_encoders.")
+                    raise FileNotFoundError("No text-encoder model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
                 clip = _load_clip_from_text_encoder(text_encoder_name, clip_loader_type)
             try:
                 raw_output = str(_generate_with_textgenerate(clip, instruction, max_tokens, seed, image=image)).strip()
@@ -196,7 +196,7 @@ class TJ_ImageToPrompt:
         else:
             from llama_cpp import Llama
             if _is_bad_choice(gguf_model):
-                raise FileNotFoundError("No .gguf model found in models/text_encoders.")
+                raise FileNotFoundError("No .gguf model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
             if chat_handler == "NO_VISION_HANDLERS_AVAILABLE" or not _HANDLER_CLASSES:
                 raise RuntimeError("No vision chat handlers available. Update/install llama-cpp-python.")
             if mmproj_file == MMPROJ_NONE:

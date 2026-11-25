@@ -95,14 +95,14 @@ class TJ_PromptEnhancer:
         if model_backend == "ComfyUI TextGenerate":
             if clip is None:
                 if _is_bad_choice(text_encoder_name):
-                    raise FileNotFoundError("No model found in models/text_encoders.")
+                    raise FileNotFoundError("No text-encoder model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
                 clip = _load_clip_from_text_encoder(text_encoder_name, clip_loader_type)
             raw_output = str(_generate_with_textgenerate(clip, f"{sys_prompt}\n\nUser prompt:\n{prompt_in}", max_tokens, seed)).strip()
             file_label = text_encoder_name
         else:
             from llama_cpp import Llama
             if _is_bad_choice(gguf_model):
-                raise FileNotFoundError("No .gguf model found in models/text_encoders.")
+                raise FileNotFoundError("No .gguf model found in models/text_encoders. This backend needs a local model: put one there, or switch the backend to Open Router / Connect Custom (no local model needed).")
             model_path = _resolve_text_encoder_path(gguf_model)
             if not model_path or not os.path.isfile(model_path):
                 raise FileNotFoundError(f"Selected GGUF not found: {model_path}")
